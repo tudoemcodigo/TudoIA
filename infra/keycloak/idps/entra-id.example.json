@@ -1,0 +1,52 @@
+{
+  "alias": "entra-id",
+  "displayName": "Microsoft Entra ID",
+  "providerId": "oidc",
+  "enabled": true,
+  "trustEmail": true,
+  "storeToken": false,
+  "linkOnly": false,
+  "config": {
+    "issuer": "https://login.microsoftonline.com/${TUDOIA_IDP_ENTRA_TENANT_ID}/v2.0",
+    "authorizationUrl": "https://login.microsoftonline.com/${TUDOIA_IDP_ENTRA_TENANT_ID}/oauth2/v2.0/authorize",
+    "tokenUrl": "https://login.microsoftonline.com/${TUDOIA_IDP_ENTRA_TENANT_ID}/oauth2/v2.0/token",
+    "jwksUrl": "https://login.microsoftonline.com/${TUDOIA_IDP_ENTRA_TENANT_ID}/discovery/v2.0/keys",
+    "useJwksUrl": "true",
+    "validateSignature": "true",
+    "clientId": "${TUDOIA_IDP_ENTRA_CLIENT_ID}",
+    "clientSecret": "${TUDOIA_IDP_ENTRA_CLIENT_SECRET}",
+    "clientAuthMethod": "client_secret_post",
+    "defaultScope": "openid profile email",
+    "syncMode": "FORCE",
+    "useUserInfo": "false"
+  },
+  "mappers": [
+    {
+      "name": "entra-grupo-tudoia-admin",
+      "identityProviderMapper": "oidc-advanced-group-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"groups\",\"value\":\"${TUDOIA_IDP_ENTRA_GRUPO_ADMIN_OID}\"}]",
+        "are.claim.values.regex": "false",
+        "group": "/tudoia-admin"
+      }
+    },
+    {
+      "name": "entra-grupo-tudoia-operador",
+      "identityProviderMapper": "oidc-advanced-group-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"groups\",\"value\":\"${TUDOIA_IDP_ENTRA_GRUPO_OPERADOR_OID}\"}]",
+        "are.claim.values.regex": "false",
+        "group": "/tudoia-operador"
+      }
+    },
+    {
+      "name": "entra-grupo-tudoia-leitor",
+      "identityProviderMapper": "oidc-advanced-group-idp-mapper",
+      "config": {
+        "claims": "[{\"key\":\"groups\",\"value\":\"${TUDOIA_IDP_ENTRA_GRUPO_LEITOR_OID}\"}]",
+        "are.claim.values.regex": "false",
+        "group": "/tudoia-leitor"
+      }
+    }
+  ]
+}

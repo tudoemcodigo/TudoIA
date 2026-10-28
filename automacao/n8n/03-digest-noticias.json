@@ -1,0 +1,252 @@
+{
+  "name": "TudoIA - Digest de notícias",
+  "nodes": [
+    {
+      "id": "f3899f91-dc07-4779-a7b8-76fe2e3ed299",
+      "name": "Executar agora",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "074810c4-45fb-4dea-ae3d-33326a99238c",
+      "name": "Todo dia às 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b00d4d5f-214c-4e11-9c56-de8a3ec4aa08",
+      "name": "Ler RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        100
+      ],
+      "parameters": {
+        "url": "https://g1.globo.com/rss/g1/tecnologia/",
+        "options": {}
+      }
+    },
+    {
+      "id": "2f2cb283-1ad9-4ae8-ab8e-e8a822c5e017",
+      "name": "10 primeiras",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        480,
+        100
+      ],
+      "parameters": {
+        "maxItems": 10
+      }
+    },
+    {
+      "id": "401453c7-57b5-48f8-9a98-7e11e323d7e5",
+      "name": "Juntar",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        720,
+        100
+      ],
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "title"
+            },
+            {
+              "fieldToAggregate": "link"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "836acec9-5f02-41d8-9988-8f5fbd408688",
+      "name": "Escrever digest",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        960,
+        100
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Escreva um resumo das notícias abaixo em português, agrupando por assunto, com o link de cada uma.\n\n{{ $json.title.map((t, i) => '- ' + t + ' (' + $json.link[i] + ')').join('\\n') }}",
+        "options": {
+          "systemMessage": "Você escreve resumos de notícias curtos e neutros."
+        }
+      }
+    },
+    {
+      "id": "fc5c383c-12b4-4008-ba28-02d1b4ea4d1a",
+      "name": "TudoIA Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        320
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "tudoia-auto",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "TudoIA LiteLLM"
+        }
+      }
+    },
+    {
+      "id": "32bbe884-16c7-4129-8e52-df65d97b5678",
+      "name": "Converter para arquivo",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        100
+      ],
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "output",
+        "options": {}
+      }
+    },
+    {
+      "id": "cedb3c97-0ac2-4fec-8dcb-8cbd1c98d80a",
+      "name": "Salvar no disco",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        100
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/docs/resumos/digest-{{ $now.toFormat('yyyy-MM-dd') }}.md",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Executar agora": {
+      "main": [
+        [
+          {
+            "node": "Ler RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todo dia às 8h": {
+      "main": [
+        [
+          {
+            "node": "Ler RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler RSS": {
+      "main": [
+        [
+          {
+            "node": "10 primeiras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 primeiras": {
+      "main": [
+        [
+          {
+            "node": "Juntar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar": {
+      "main": [
+        [
+          {
+            "node": "Escrever digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escrever digest": {
+      "main": [
+        [
+          {
+            "node": "Converter para arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter para arquivo": {
+      "main": [
+        [
+          {
+            "node": "Salvar no disco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TudoIA Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Escrever digest",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

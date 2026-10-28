@@ -1,0 +1,7 @@
+# Modelo especializado em geração de código, testes e tool calling (function calling).
+# Perfeito para o desenvolvedor do SquadTI, Claude Code local e rotas de código.
+# Com num_ctx 32768 e OLLAMA_KV_CACHE_TYPE=q4_0, cabe perfeitamente na RTX 5070 de 8 GB.
+FROM qwen2.5-coder:7b
+PARAMETER num_ctx 32768
+PARAMETER num_gpu 99
+PARAMETER temperature 0.2

@@ -1,0 +1,237 @@
+/* Tela de login do TudoIA. Paleta e tipografia definidas para a central de controle, não para um SaaS genérico.
+   Tinta #0B0C10 · superfície #14161D · linha #262B36 · texto #ECEAE4 · acento #6A5DF6 (cor do logo).
+   Tipografia: Bricolage Grotesque (título, corpo e a marca). */
+
+:root {
+  --ink: #0b0c10;
+  --surface: #14161d;
+  --line: #262b36;
+  --text: #ecEae4;
+  --muted: #8c909c;
+  --accent: #6a5df6;
+  --accent-hover: #7c70ff;
+  --danger: #f0616d;
+  --font: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+}
+
+/* Base */
+html, body, body.login-pf {
+  background: var(--ink) !important;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+/* Órbita do logo: ocupa a metade esquerda, cortada pela borda. Uma única animação de entrada. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 56vw;
+  height: 100vh;
+  background: url("../img/orbita.svg") no-repeat -14vw 50% / min(92vh, 980px) min(92vh, 980px);
+  pointer-events: none;
+  z-index: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { background-image: url("../img/orbita-estatica.svg"); }
+}
+
+/* Marca em tipografia grande, como elemento visual da tela */
+body::after {
+  content: "TudoIA";
+  position: fixed;
+  left: 3.2vw;
+  bottom: 2.4vh;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(64px, 11vw, 176px);
+  line-height: 0.85;
+  letter-spacing: -0.045em;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Layout: formulário na metade direita, alinhado à esquerda */
+.pf-v5-c-login, .pf-v5-c-page, .pf-v5-c-login__container {
+  background: transparent !important;
+  min-height: 100vh;
+}
+.pf-v5-c-login {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8vw 0 0 !important;
+}
+.pf-v5-c-login__main {
+  width: min(400px, 88vw);
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.pf-v5-c-login__main-header { padding: 0 0 28px !important; text-align: left !important; }
+.pf-v5-c-login__main-body, .pf-v5-c-login__main-footer { padding: 0 !important; }
+.pf-v5-c-login__main-header .pf-v5-c-title,
+#kc-page-title {
+  text-align: left !important;
+  color: var(--text) !important;
+  font-family: var(--font);
+  font-size: 34px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 !important;
+}
+/* Logo fica na órbita; o título não repete a marca */
+#kc-page-title::before { content: none !important; display: none !important; }
+#kc-header, #kc-header-wrapper { display: none !important; }
+
+/* Entrada da coluna de formulário: uma vez, junto da órbita */
+.pf-v5-c-login__main-body {
+  animation: tudoia-entrada 0.7s cubic-bezier(0.2, 0, 0.2, 1) 0.3s both;
+}
+@keyframes tudoia-entrada {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-v5-c-login__main-body { animation: none; }
+}
+
+/* Rótulos e campos */
+label, .pf-v5-c-form__label, .pf-v5-c-form__label-text {
+  color: var(--muted) !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.pf-v5-c-form-control, .pf-v5-c-form-control input, input.form-control {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 6px !important;
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 10px 12px !important;
+  min-height: 44px;
+  box-shadow: none !important;
+}
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(106, 93, 246, 0.25) !important;
+  outline: none !important;
+}
+.pf-v5-c-form__group { margin-bottom: 18px; }
+
+/* Mostrar senha */
+.pf-v5-c-button.pf-m-control, .pf-v5-c-button.pf-m-plain, button[aria-label*="assword"] {
+  background: var(--surface) !important;
+  color: var(--muted) !important;
+  border: 1px solid var(--line) !important;
+  border-left: 0 !important;
+  border-radius: 0 6px 6px 0 !important;
+  min-height: 44px;
+}
+button[aria-label*="assword"]:hover { color: var(--text) !important; }
+
+/* Botão principal: sóbrio, largura total */
+.pf-v5-c-button.pf-m-primary, #kc-login, input[type="submit"] {
+  background: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 44px;
+  width: 100%;
+  box-shadow: none !important;
+}
+.pf-v5-c-button.pf-m-primary:hover, #kc-login:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+
+/* Links */
+a, .kc-link, #kc-current-locale-link, #kc-registration a {
+  color: var(--text) !important;
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 4px;
+}
+a:hover { text-decoration-color: var(--accent); }
+
+/* Foco visível e alertas */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}
+.pf-v5-c-alert {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-left: 3px solid var(--danger) !important;
+  border-radius: 6px !important;
+  color: var(--text) !important;
+}
+
+/* Telas pequenas: a órbita some, o formulário ocupa a tela */
+@media (max-width: 900px) {
+  body::before, body::after { display: none; }
+  .pf-v5-c-login { justify-content: center; padding: 0 !important; }
+}
+
+/* Centralização vertical: o contêiner interno do PatternFly é que ocupa a altura da tela */
+.pf-v5-c-login__container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 100vh;
+  width: 100%;
+  padding: 0 8vw 0 0;
+  background: transparent !important;
+}
+@media (max-width: 900px) {
+  .pf-v5-c-login__container { justify-content: center; padding: 24px; }
+}
+
+/* O PatternFly põe align-self: start no formulário; a centralização vertical precisa vencer isso. */
+.pf-v5-c-login__main { align-self: center !important; }
+
+/* Borda única: quem desenha a moldura é o wrapper do campo; o input por dentro é transparente. */
+.pf-v5-c-form-control {
+  border: 1px solid var(--line) !important;
+  border-bottom-color: var(--line) !important;
+  border-radius: 6px !important;
+  background: var(--surface) !important;
+}
+.pf-v5-c-form-control input,
+.pf-v5-c-form-control textarea {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 10px 12px !important;
+}
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(106, 93, 246, 0.25) !important;
+}
+.pf-v5-c-form-control::after { border-bottom-color: transparent !important; }
+
+/* Grupo do campo de senha (com o botão do olho): o item do grupo não pode ter moldura própria */
+.pf-v5-c-input-group__item { border: 0 !important; background: transparent !important; }
+
+/* O foco de campo é desenhado pelo wrapper (.pf-v5-c-form-control:focus-within): o input por dentro não tem contorno próprio */
+.pf-v5-c-form-control input:focus, .pf-v5-c-form-control input:focus-visible { outline: none !important; box-shadow: none !important; }
+
+/* O PatternFly desenha um contorno claro de 3 px em campos e botões; aqui o foco é do teclado, não do mouse. */
+.pf-v5-c-form-control, .pf-v5-c-button { outline: 0 !important; }
+.pf-v5-c-button:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px; }
+
+/* Grupo do campo de senha: sem moldura, sombra nem contorno próprios (quem desenha é o wrapper do campo). */
+.pf-v5-c-input-group, .pf-v5-c-input-group__item { border: 0 !important; box-shadow: none !important; outline: 0 !important; }
+.pf-v5-c-input-group .pf-v5-c-form-control { border-right: 0 !important; border-radius: 6px 0 0 6px !important; }

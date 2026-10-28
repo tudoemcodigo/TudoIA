@@ -1,0 +1,182 @@
+{
+  "realm": {
+    "realm": "tudoia",
+    "displayName": "TudoIA",
+    "enabled": true,
+    "bruteForceProtected": true,
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "resetPasswordAllowed": true,
+    "verifyEmail": false,
+    "sslRequired": "external",
+    "passwordPolicy": "length(12) and notUsername and notEmail",
+    "ssoSessionIdleTimeout": 28800,
+    "ssoSessionMaxLifespan": 86400,
+    "loginTheme": "tudoia",
+    "internationalizationEnabled": true,
+    "supportedLocales": [
+      "pt-BR"
+    ],
+    "defaultLocale": "pt-BR"
+  },
+  "roles": [
+    {
+      "name": "tudoia-admin",
+      "description": "Administrador do painel TudoIA"
+    },
+    {
+      "name": "tudoia-operador",
+      "description": "Operador do painel TudoIA"
+    },
+    {
+      "name": "tudoia-leitor",
+      "description": "Leitor do painel TudoIA (somente leitura)"
+    }
+  ],
+  "grupos": [
+    {
+      "name": "tudoia-admin",
+      "roles": [
+        "tudoia-admin"
+      ]
+    },
+    {
+      "name": "tudoia-operador",
+      "roles": [
+        "tudoia-operador"
+      ]
+    },
+    {
+      "name": "tudoia-leitor",
+      "roles": [
+        "tudoia-leitor"
+      ]
+    }
+  ],
+  "escopo": {
+    "name": "tudoia-groups",
+    "description": "Claim groups (nome do grupo, sem caminho) para o painel TudoIA",
+    "protocol": "openid-connect",
+    "attributes": {
+      "include.in.token.scope": "true",
+      "display.on.consent.screen": "false"
+    },
+    "protocolMappers": [
+      {
+        "name": "groups",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-group-membership-mapper",
+        "consentRequired": false,
+        "config": {
+          "claim.name": "groups",
+          "full.path": "false",
+          "id.token.claim": "true",
+          "access.token.claim": "true",
+          "userinfo.token.claim": "true",
+          "introspection.token.claim": "true"
+        }
+      }
+    ]
+  },
+  "cliente": {
+    "clientId": "tudoia-painel",
+    "name": "TudoIA Painel",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "standardFlowEnabled": true,
+    "directAccessGrantsEnabled": false,
+    "implicitFlowEnabled": false,
+    "serviceAccountsEnabled": false,
+    "redirectUris": [
+      "http://127.0.0.1:${TUDOIA_PAINEL_PORTA}/auth/callback",
+      "http://localhost:${TUDOIA_PAINEL_PORTA}/auth/callback"
+    ],
+    "webOrigins": [],
+    "attributes": {
+      "pkce.code.challenge.method": "S256",
+      "post.logout.redirect.uris": "http://127.0.0.1:${TUDOIA_PAINEL_PORTA}/*##http://localhost:${TUDOIA_PAINEL_PORTA}/*",
+      "access.token.lifespan": "28800"
+    },
+    "defaultClientScopes": [
+      "profile",
+      "email",
+      "roles",
+      "tudoia-groups"
+    ],
+    "optionalClientScopes": []
+  },
+  "clienteServicoCapturas": {
+    "clientId": "tudoia-capturas",
+    "name": "TudoIA Capturas (Studio)",
+    "description": "Cliente de serviço (client_credentials) só para leitura: capturas de tela do Studio. Conta no grupo tudoia-leitor.",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "standardFlowEnabled": false,
+    "directAccessGrantsEnabled": false,
+    "implicitFlowEnabled": false,
+    "serviceAccountsEnabled": true,
+    "redirectUris": [],
+    "webOrigins": [],
+    "attributes": {
+      "access.token.lifespan": "300"
+    },
+    "protocolMappers": [
+      {
+        "name": "audiencia-tudoia-painel",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-audience-mapper",
+        "consentRequired": false,
+        "config": {
+          "included.client.audience": "tudoia-painel",
+          "id.token.claim": "false",
+          "access.token.claim": "true",
+          "introspection.token.claim": "true"
+        }
+      }
+    ],
+    "defaultClientScopes": [
+      "roles",
+      "tudoia-groups"
+    ],
+    "optionalClientScopes": [],
+    "grupoConta": "tudoia-leitor"
+  },
+  "clienteServico": {
+    "clientId": "tudoia-mcp",
+    "name": "TudoIA MCP (Cérebro)",
+    "description": "Cliente de serviço (client_credentials) do Cérebro. A conta de serviço fica no grupo tudoia-operador.",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "standardFlowEnabled": false,
+    "directAccessGrantsEnabled": false,
+    "implicitFlowEnabled": false,
+    "serviceAccountsEnabled": true,
+    "redirectUris": [],
+    "webOrigins": [],
+    "attributes": {
+      "access.token.lifespan": "28800"
+    },
+    "protocolMappers": [
+      {
+        "name": "audiencia-tudoia-mcp",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-audience-mapper",
+        "consentRequired": false,
+        "config": {
+          "included.client.audience": "tudoia-mcp",
+          "id.token.claim": "false",
+          "access.token.claim": "true",
+          "introspection.token.claim": "true"
+        }
+      }
+    ],
+    "defaultClientScopes": [
+      "roles",
+      "tudoia-groups"
+    ],
+    "optionalClientScopes": []
+  }
+}

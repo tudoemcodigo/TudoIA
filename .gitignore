@@ -1,0 +1,46 @@
+# Segredos e variáveis locais
+.env
+.env.*
+!.env.example
+
+# Ambientes virtuais e caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDEs, Editores e Agentes de IA (pastas locais e temporárias)
+.cursor/
+.claude/
+.claude-flow/
+.codex/
+.gemini/
+.cline/
+.roo/
+.continue/
+.remember/
+.playwright-mcp/
+.vscode/
+.idea/
+
+# Dados de runtime e logs
+dados/
+
+# Pesos de modelos e binários pesados locais
+modelos/ollama/models/
+modelos/comfyui/ComfyUI_windows_portable/
+
+# Configurações dinâmicas geradas pelo painel
+runtime/litellm/config.yaml*
+
+# Modelos de IA: pesos de cada máquina (baixados por scripts/modelos/baixar.py). Nunca versionar.
+/modelos/
+
+# Saída do empacotamento do instalador (scripts/empacotar)
+dist/
+build/
+
+# Serena (MCP de código): cache de language server e memórias que os agentes escrevem
+.serena/

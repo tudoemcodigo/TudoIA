@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TudoHaS Canonical MCP Servers Manifest",
+  "description": "Configuração canônica e portável de servidores MCP para o ecossistema TudoHaS",
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@4.4.4"
+      ],
+      "env": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}"
+      },
+      "description": "Recuperação de documentação oficial viva e versionada para bibliotecas e SDKs"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      },
+      "description": "Gerenciamento e inspeção de banco de dados, schemas, Auth e Storage do Supabase"
+    },
+    "cerebro": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CEREBRO_TOKEN_ESTATICO}"
+      },
+      "description": "Servidor local de busca semântica, arquivos e memória persistente do usuário"
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "Integração oficial com GitHub para gestão de repositórios, issues, pull requests e branches"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "description": "Servidor MCP oficial do Playwright para automação de navegador, screenshots e testes de ponta a ponta (E2E)"
+    },
+    "sequential-thinking": {
+      "description": "Ferramenta de raciocínio sequencial e estruturado em etapas para resolução de problemas complexos, planejamento arquitetural e revisão de decisões.",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "desktop-commander": {
+      "description": "Execução de comandos no terminal, gerenciamento de processos locais, leitura de logs e edição direta de arquivos e código no sistema.",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@wonderwhy-er/desktop-commander@latest"
+      ]
+    },
+    "fetch": {
+      "description": "Converte qualquer página web ou documentação externa em Markdown limpo de forma leve, sem precisar abrir o navegador do Playwright.",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@tokenizin/mcp-npx-fetch"
+      ]
+    },
+    "vercel": {
+      "description": "Gerenciamento de projetos, deploys, domínios e documentação da Vercel.",
+      "type": "http",
+      "url": "https://mcp.vercel.com",
+      "auth": "oauth"
+    },
+    "microsoft-learn": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://learn.microsoft.com/api/mcp"
+      ],
+      "description": "Servidor MCP oficial da Microsoft para documentação técnica e viva do Azure, .NET, Windows e IA."
+    },
+    "serena": {
+      "command": "serena",
+      "args": [
+        "start-mcp-server",
+        "--context=ide",
+        "--agent-interface",
+        "tools",
+        "--project-from-cwd",
+        "--open-web-dashboard",
+        "false"
+      ],
+      "description": "Busca e edição de código por símbolo via language servers (Serena 2.1.0, uv tool). Contexto ide + interface tools: sem shell, sem arquivo genérico e sem REPL."
+    }
+  }
+}

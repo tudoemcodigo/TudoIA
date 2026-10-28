@@ -1,0 +1,98 @@
+limiar: 3
+pesos:
+  longo: 3
+  codigo: 2
+  palavras_dificeis: 2
+  muitos_turnos: 1
+  trivial: -3
+  semantico_nuvem: 3
+  semantico_local: -2
+limites_texto:
+  caracteres: 2000
+  tokens_total: 12000
+  turnos: 8
+palavras_dificeis:
+- refator
+- revis
+- arquitetura
+- por que
+- porque
+- compare
+- comparar
+- passo a passo
+- analise
+- analisar
+- planeje
+- planejar
+- provar
+- prove que
+- demonstre
+- otimize
+- otimizar
+- depure
+- debug
+- investigue
+- projete
+- implemente
+- estrategia
+- trade-off
+- pros e contras
+- algoritmo
+- complexidade
+palavras_triviais:
+- oi
+- ola
+- bom dia
+- boa tarde
+- boa noite
+- obrigado
+- obrigada
+- valeu
+- tudo bem
+- traduza
+- resuma em uma frase
+- em uma frase
+ordem:
+  tudoia-nuvem:
+  - groq/gpt-oss-120b
+  - nim/glm-5.3
+  - gemini/gemini-3.8-flash
+  - nim/nemotron-3-ultra
+  - nim/nemotron-3.5-lightning
+  - nim/nemotron-3.5-super-vl
+  - nim/nemotron-3-nano-omni
+  - nim/glm-5.3-flash
+  - nim/gemma-4-31b
+  - nim/gpt-oss-20b
+  - nim/step-5-preview
+  - or/free
+  - or/dots-3-note
+  - or/north-mini-code
+  - or/gemma-4-26b
+  - or/lfm-2.5
+  - or/nemotron-3-ultra
+  - groq/gpt-oss-20b
+  - gemini/gemini-3.5-flash-lite
+  tudoia-codigo:
+  - nim/glm-5.3
+  - nim/nemotron-3-ultra
+  - nim/glm-5.3-flash
+  - nim/laguna-xs-2.1
+  - or/north-mini-code
+  - or/laguna-s-2.1
+  - groq/gpt-oss-120b
+  tudoia-codigo-reserva:
+  - gemini/gemini-3.8-flash
+  - or/nemotron-3-ultra
+  - nim/nemotron-3-ultra
+  - nim/glm-5.3-flash
+  - or/north-mini-code
+  tudoia-visao:
+  - nim/nemotron-3.5-super-vl
+  - or/gemma-4-26b
+  - or/dots-3-note
+  - gemini/gemini-3.8-flash
+  tudoia-max:
+  - claude-sonnet-5-5
+  - gpt-6.1-sol
+  - deepseek-v4-pro

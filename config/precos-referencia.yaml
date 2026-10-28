@@ -1,0 +1,27 @@
+# Preços de referência de APIs PAGAS, só para a "economia estimada" da página Análise do painel (/api/v2/analytics).
+# É ESTIMATIVA: quanto os tokens atendidos por modelos gratuitos/locais custariam se fossem para um modelo pago
+# parecido. Não é cobrança nem economia garantida; a interface sempre mostra o rótulo "estimativa".
+#
+# Valores em US$ por MILHÃO de tokens (entrada/saída), copiados em 2026-10-22 do campo fonte_limites dos provedores
+# PAID em config/catalogo-modelos.yaml (que cita as páginas oficiais de preço). Preços mudam: confira a fonte e
+# atualize `data` quando editar. Entrada inválida é ignorada (aparece em "problemas" no painel), nunca derruba nada.
+data: "2026-10-22"
+fonte: "config/catalogo-modelos.yaml (fonte_limites dos provedores PAID); confira nas páginas oficiais de preço"
+
+# Usado quando nenhuma equivalência casa. O mais barato da lista: a estimativa fica conservadora (piso).
+referencia_padrao: gpt-6-luna
+
+modelos:
+  gpt-6.1-sol:       {nome: "OpenAI gpt-6.1-sol", entrada_usd_mtok: 2.00, saida_usd_mtok: 10.00, fonte: "https://openai.com/api/pricing/"}
+  gpt-6-luna:        {nome: "OpenAI gpt-6-luna", entrada_usd_mtok: 0.10, saida_usd_mtok: 0.50, fonte: "https://openai.com/api/pricing/"}
+  claude-sonnet-5-5: {nome: "Anthropic Claude Sonnet 5.5", entrada_usd_mtok: 2.00, saida_usd_mtok: 10.00, fonte: "https://www.anthropic.com/pricing"}
+  claude-opus-5-5:   {nome: "Anthropic Claude Opus 5.5", entrada_usd_mtok: 4.00, saida_usd_mtok: 20.00, fonte: "https://www.anthropic.com/pricing"}
+  claude-haiku-5-5:  {nome: "Anthropic Claude Haiku 5.5", entrada_usd_mtok: 0.10, saida_usd_mtok: 0.50, fonte: "https://www.anthropic.com/pricing"}
+  grok-4.7:          {nome: "xAI grok-4.7", entrada_usd_mtok: 2.00, saida_usd_mtok: 6.00, fonte: "https://docs.x.ai/docs/models"}
+
+# Qual modelo pago serve de preço para cada membro gratuito/local (glob sobre o nome do catálogo, ex.: nim/glm-5.3;
+# para modelos locais, sobre o nome do modelo, ex.: ollama_chat/tudoia-agente). A primeira que casar vale.
+equivalencias:
+  - {padrao: "nim/glm-*", referencia: gpt-6.1-sol}            # modelos grandes de código/agente
+  - {padrao: "*nemotron-3-ultra*", referencia: gpt-6.1-sol}
+  - {padrao: "*gpt-oss-120b*", referencia: gpt-6-luna}

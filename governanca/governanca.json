@@ -1,0 +1,51 @@
+{
+  "regras": [
+    "system-first",
+    "operational-safety",
+    "ai-data-privacy",
+    "ponytail"
+  ],
+  "skills": [
+    "debugging-and-error-recovery",
+    "disciplined-tdd",
+    "frontend-design",
+    "git-workflow-and-versioning",
+    "grill-me",
+    "improve-codebase-architecture",
+    "incremental-implementation",
+    "planning-and-task-breakdown",
+    "security-and-hardening",
+    "spec-driven-development",
+    "using-agent-skills",
+    "code-review-and-quality",
+    "microsoft-docs",
+    "humanize-text",
+    "lgpd-compliance",
+    "observability-and-instrumentation",
+    "documentation-and-adrs",
+    "mcp-builder",
+    "dotnet-aot-compat",
+    "security-threat-model",
+    "advanced-evaluation",
+    "n8n-expression-syntax"
+  ],
+  "mcp": [
+    "context7",
+    "cerebro",
+    "playwright",
+    "sequential-thinking",
+    "desktop-commander",
+    "fetch",
+    "vercel",
+    "microsoft-learn",
+    "serena"
+  ],
+  "workspaces": [],
+  "clientes": [
+    "antigravity",
+    "claude",
+    "cursor",
+    "codex"
+  ],
+  "instancias": []
+}

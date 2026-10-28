@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="120" y1="0" x2="880" y2="0">
+      <stop offset="0" stop-color="#0A84FF"/><stop offset="0.55" stop-color="#6A5DF6"/><stop offset="1" stop-color="#9A44F8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="500" cy="500" r="430" fill="none" stroke="#1E222C" stroke-width="1.5"/>
+  <circle cx="500" cy="500" r="330" fill="none" stroke="#1A1E27" stroke-width="1"/>
+  <path d="M 745 186 A 400 400 0 1 0 745 814" fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round"
+        pathLength="1" stroke-dasharray="1" stroke-dashoffset="1">
+    <animate attributeName="stroke-dashoffset" from="1" to="0" dur="1.8s" begin="0s" fill="freeze" calcMode="spline" keySplines="0.2 0 0.2 1" keyTimes="0;1"/>
+  </path>
+  <g stroke="#2A303D" stroke-width="1.5" stroke-linecap="round">
+    <line x1="330" y1="430" x2="520" y2="330"/>
+    <line x1="330" y1="430" x2="500" y2="640"/>
+    <line x1="520" y1="330" x2="500" y2="640"/>
+  </g>
+  <circle cx="330" cy="430" r="12" fill="#ECEAE4" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="1.2s" fill="freeze"/>
+  </circle>
+  <circle cx="520" cy="330" r="16" fill="#0A84FF" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="1.4s" fill="freeze"/>
+  </circle>
+  <circle cx="500" cy="640" r="12" fill="#9A44F8" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="1.6s" fill="freeze"/>
+  </circle>
+</svg>

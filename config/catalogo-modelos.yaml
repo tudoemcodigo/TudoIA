@@ -1,0 +1,4502 @@
+provedores:
+  nvidia:
+    nome: NVIDIA NIM
+    tier: FREE
+    chave: NVIDIA_NIM_API_KEY
+    site_chave: https://build.nvidia.com
+    api_base: os.environ/NVIDIA_NIM_API_BASE
+    url_modelos: https://integrate.api.nvidia.com/v1/models
+    limites:
+      rpm: 40
+    fonte_limites: fóruns NVIDIA (mai–ago/2026); sem página oficial; a API não informa
+      uso
+    modelos:
+    - nome: nim/nemotron-3-ultra
+      id: nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b
+      papeis:
+      - chat
+      - raciocinio
+      - codigo
+      - agente
+    - nome: nim/nemotron-3-super
+      id: nvidia_nim/nvidia/nemotron-3-super-120b-a12b
+      papeis:
+      - chat
+      - raciocinio
+      - codigo
+      - agente
+      ativo: false
+    - nome: nim/nemotron-3.5-lightning
+      id: nvidia_nim/nvidia/nemotron-3.5-lightning-30b-a3b
+      papeis:
+      - chat
+      - rapido
+      - raciocinio
+    - nome: nim/nemotron-3.5-super-vl
+      id: nvidia_nim/nvidia/nemotron-3.5-super-vl-120b-a12b
+      papeis:
+      - chat
+      - visao
+    - nome: nim/nemotron-3-nano-omni
+      id: nvidia_nim/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+      papeis:
+      - chat
+      - rapido
+    - nome: nim/glm-5.3
+      id: nvidia_nim/z-ai/glm-5.3
+      papeis:
+      - chat
+      - codigo
+      - raciocinio
+      - agente
+      ativo: true
+    - nome: nim/glm-5.3-flash
+      id: nvidia_nim/z-ai/glm-5.3-flash
+      papeis:
+      - chat
+      - codigo
+      - agente
+      - rapido
+      ativo: true
+    - nome: nim/gemma-4-31b
+      id: nvidia_nim/google/gemma-4-31b-it
+      papeis:
+      - chat
+      ativo: true
+    - nome: nim/gpt-oss-20b
+      id: nvidia_nim/openai/gpt-oss-20b
+      papeis:
+      - chat
+      - rapido
+    - nome: nim/step-5-preview
+      id: nvidia_nim/stepfun-ai/step-5-preview
+      papeis:
+      - chat
+      - raciocinio
+    - nome: nim/laguna-xs-2.1
+      id: nvidia_nim/poolside/laguna-xs-2.1
+      papeis:
+      - codigo
+      ativo: true
+    - nome: nim/riva-translate
+      id: nvidia_nim/nvidia/riva-translate-4b-instruct-v2
+      papeis: []
+    - nome: nvidia/yi-large
+      id: nvidia_nim/01-ai/yi-large
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/fuyu-8b
+      id: nvidia_nim/adept/fuyu-8b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/jamba-1.5-large-instruct
+      id: nvidia_nim/ai21labs/jamba-1.5-large-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/sea-lion-7b-instruct
+      id: nvidia_nim/aisingapore/sea-lion-7b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/starcoder2-15b
+      id: nvidia_nim/bigcode/starcoder2-15b
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/dbrx-instruct
+      id: nvidia_nim/databricks/dbrx-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/deepseek-coder-6.7b-instruct
+      id: nvidia_nim/deepseek-ai/deepseek-coder-6.7b-instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/deepseek-v4.1-flash
+      id: nvidia_nim/deepseek-ai/deepseek-v4.1-flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/codegemma-1.1-7b
+      id: nvidia_nim/google/codegemma-1.1-7b
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/codegemma-7b
+      id: nvidia_nim/google/codegemma-7b
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/deplot
+      id: nvidia_nim/google/deplot
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/diffusiongemma-26b-a4b-it
+      id: nvidia_nim/google/diffusiongemma-26b-a4b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/gemma-2b
+      id: nvidia_nim/google/gemma-2b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/gemma-3-12b-it
+      id: nvidia_nim/google/gemma-3-12b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/gemma-3-4b-it
+      id: nvidia_nim/google/gemma-3-4b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/recurrentgemma-2b
+      id: nvidia_nim/google/recurrentgemma-2b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/granite-3.0-3b-a800m-instruct
+      id: nvidia_nim/ibm/granite-3.0-3b-a800m-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/granite-3.0-8b-instruct
+      id: nvidia_nim/ibm/granite-3.0-8b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/granite-34b-code-instruct
+      id: nvidia_nim/ibm/granite-34b-code-instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/granite-8b-code-instruct
+      id: nvidia_nim/ibm/granite-8b-code-instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/codellama-70b
+      id: nvidia_nim/meta/codellama-70b
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/llama-3.2-11b-vision-instruct
+      id: nvidia_nim/meta/llama-3.2-11b-vision-instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: nvidia/llama-3.2-90b-vision-instruct
+      id: nvidia_nim/meta/llama-3.2-90b-vision-instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: nvidia/llama-guard-4-12b
+      id: nvidia_nim/meta/llama-guard-4-12b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama2-70b
+      id: nvidia_nim/meta/llama2-70b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/muse-glimmer-30b
+      id: nvidia_nim/meta/muse-glimmer-30b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/kosmos-2
+      id: nvidia_nim/microsoft/kosmos-2
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/phi-3-vision-128k-instruct
+      id: nvidia_nim/microsoft/phi-3-vision-128k-instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: nvidia/phi-3.5-moe-instruct
+      id: nvidia_nim/microsoft/phi-3.5-moe-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/minimax-m3.1-flash
+      id: nvidia_nim/minimaxai/minimax-m3.1-flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/codestral-22b-instruct-v0.1
+      id: nvidia_nim/mistralai/codestral-22b-instruct-v0.1
+      papeis:
+      - codigo
+      ativo: false
+    - nome: nvidia/mistral-7b-instruct-v0.3
+      id: nvidia_nim/mistralai/mistral-7b-instruct-v0.3
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/mistral-large
+      id: nvidia_nim/mistralai/mistral-large
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/mistral-large-2-instruct
+      id: nvidia_nim/mistralai/mistral-large-2-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/mixtral-8x22b-v0.1
+      id: nvidia_nim/mistralai/mixtral-8x22b-v0.1
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/kimi-k2.6
+      id: nvidia_nim/moonshotai/kimi-k2.6
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/mistral-nemo-12b-instruct
+      id: nvidia_nim/nv-mistralai/mistral-nemo-12b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/ai-synthetic-video-detector
+      id: nvidia_nim/nvidia/ai-synthetic-video-detector
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/cosmos-reason2-8b
+      id: nvidia_nim/nvidia/cosmos-reason2-8b
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: nvidia/embed-qa-4
+      id: nvidia_nim/nvidia/embed-qa-4
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/ising-calibration-1.5-31b
+      id: nvidia_nim/nvidia/ising-calibration-1.5-31b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemoguard-8b-content-safety
+      id: nvidia_nim/nvidia/llama-3.1-nemoguard-8b-content-safety
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemoguard-8b-topic-control
+      id: nvidia_nim/nvidia/llama-3.1-nemoguard-8b-topic-control
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemotron-51b-instruct
+      id: nvidia_nim/nvidia/llama-3.1-nemotron-51b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemotron-70b-instruct
+      id: nvidia_nim/nvidia/llama-3.1-nemotron-70b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemotron-safety-guard-8b-v3
+      id: nvidia_nim/nvidia/llama-3.1-nemotron-safety-guard-8b-v3
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.1-nemotron-ultra-253b-v1
+      id: nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1
+      id: nvidia_nim/nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1
+      papeis:
+      - visao
+      ativo: false
+    - nome: nvidia/llama-3.2-nv-embedqa-1b-v1
+      id: nvidia_nim/nvidia/llama-3.2-nv-embedqa-1b-v1
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/llama-nemotron-embed-vl-1b-v2
+      id: nvidia_nim/nvidia/llama-nemotron-embed-vl-1b-v2
+      papeis:
+      - visao
+      ativo: false
+    - nome: nvidia/llama3-chatqa-1.5-70b
+      id: nvidia_nim/nvidia/llama3-chatqa-1.5-70b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/mistral-nemo-minitron-8b-8k-instruct
+      id: nvidia_nim/nvidia/mistral-nemo-minitron-8b-8k-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-3-embed-1b
+      id: nvidia_nim/nvidia/nemotron-3-embed-1b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-3.5-bolt-e4b
+      id: nvidia_nim/nvidia/nemotron-3.5-bolt-e4b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-3.5-content-safety
+      id: nvidia_nim/nvidia/nemotron-3.5-content-safety
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-3.5-embed-1b
+      id: nvidia_nim/nvidia/nemotron-3.5-embed-1b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-3.5-embed-8b
+      id: nvidia_nim/nvidia/nemotron-3.5-embed-8b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-4-340b-instruct
+      id: nvidia_nim/nvidia/nemotron-4-340b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-4-340b-reward
+      id: nvidia_nim/nvidia/nemotron-4-340b-reward
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-nano-3-30b-a3b
+      id: nvidia_nim/nvidia/nemotron-nano-3-30b-a3b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-parse
+      id: nvidia_nim/nvidia/nemotron-parse
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nemotron-parse-2.0
+      id: nvidia_nim/nvidia/nemotron-parse-2.0
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/neva-22b
+      id: nvidia_nim/nvidia/neva-22b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nv-embedqa-mistral-7b-v2
+      id: nvidia_nim/nvidia/nv-embedqa-mistral-7b-v2
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/nvclip
+      id: nvidia_nim/nvidia/nvclip
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/riva-translate-4b-instruct
+      id: nvidia_nim/nvidia/riva-translate-4b-instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/vila
+      id: nvidia_nim/nvidia/vila
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/arctic-embed-l
+      id: nvidia_nim/snowflake/arctic-embed-l
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/palmyra-creative-122b
+      id: nvidia_nim/writer/palmyra-creative-122b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/palmyra-fin-70b-32k
+      id: nvidia_nim/writer/palmyra-fin-70b-32k
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/palmyra-med-70b
+      id: nvidia_nim/writer/palmyra-med-70b
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/palmyra-med-70b-32k
+      id: nvidia_nim/writer/palmyra-med-70b-32k
+      papeis:
+      - chat
+      ativo: false
+    - nome: nvidia/zamba2-7b-instruct
+      id: nvidia_nim/zyphra/zamba2-7b-instruct
+      papeis:
+      - chat
+      ativo: false
+  openrouter:
+    nome: OpenRouter (:free)
+    tier: FREE
+    chave: OPENROUTER_API_KEY
+    site_chave: https://openrouter.ai/keys
+    url_modelos: https://openrouter.ai/api/v1/models
+    limites:
+      rpm: 20
+      rpd: 50
+      usd_dia: 1
+      reset: utc
+    fonte_limites: openrouter.ai/docs/api-reference/limits (50/dia com menos de 10
+      créditos; 1000/dia com 10 ou mais)
+    modelos:
+    - nome: or/free
+      id: openrouter/openrouter/free
+      papeis:
+      - chat
+    - nome: or/dots-3-note
+      id: openrouter/dots-studio/dots-3-note-preview:free
+      papeis:
+      - chat
+      - visao
+    - nome: or/north-mini-code
+      id: openrouter/cohere/north-mini-code:free
+      papeis:
+      - codigo
+      - rapido
+    - nome: or/laguna-s-2.1
+      id: openrouter/poolside/laguna-s-2.1:free
+      papeis:
+      - codigo
+    - nome: or/gemma-4-26b
+      id: openrouter/google/gemma-4-26b-a4b-it:free
+      papeis:
+      - chat
+      - visao
+    - nome: or/lfm-2.5
+      id: openrouter/liquid/lfm-2.5-2.6b:free
+      papeis:
+      - chat
+      - rapido
+      ativo: true
+    - nome: or/nemotron-3-ultra
+      id: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+      papeis:
+      - chat
+      - raciocinio
+    - nome: openrouter/gpt-6.1-terra
+      id: openrouter/openai/gpt-6.1-terra
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6.1-terra:batch
+      id: openrouter/openai/gpt-6.1-terra:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/kimi-k3.1-pro
+      id: openrouter/moonshotai/kimi-k3.1-pro
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/flint-v1.0
+      id: openrouter/recursive/flint-v1.0:free
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/minimax-m3.1-flash
+      id: openrouter/minimax/minimax-m3.1-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4.1-flash-1017
+      id: openrouter/deepseek/deepseek-v4.1-flash-1017
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/glimpse
+      id: openrouter/elorian/glimpse
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/xing4.0-29b-a4b
+      id: openrouter/xingchen-agi/xing4.0-29b-a4b:free
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/beam-1.0-501b-a23b
+      id: openrouter/reflection/beam-1.0-501b-a23b
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/mercury-3
+      id: openrouter/inception/mercury-3
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/moondream3-preview
+      id: openrouter/moondream/moondream3-preview
+      papeis:
+      - chat
+      contexto: 32000
+      ativo: false
+    - nome: openrouter/moondream3.1-9b-a2b
+      id: openrouter/moondream/moondream3.1-9b-a2b
+      papeis:
+      - chat
+      contexto: 32000
+      ativo: false
+    - nome: openrouter/muse-spark-open
+      id: openrouter/meta/muse-spark-open
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/nemotron-3.5-super-vl
+      id: openrouter/nvidia/nemotron-3.5-super-vl
+      papeis:
+      - visao
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/nvidia/nemotron-3.5-super-vl:free
+      id: openrouter/nvidia/nemotron-3.5-super-vl:free
+      papeis:
+      - visao
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/pareto-26.10
+      id: openrouter/unbiased/pareto-26.10
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/pareto-latest
+      id: openrouter/~unbiased/pareto-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/pareto-26.9
+      id: openrouter/unbiased/pareto-26.9
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/lfm-2.5-24b-a2b
+      id: openrouter/liquid/lfm-2.5-24b-a2b
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gemini-4-argon
+      id: openrouter/google/gemini-4-argon
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-4-argon:batch
+      id: openrouter/google/gemini-4-argon:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/summarize
+      id: openrouter/scaledown/summarize
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/extract
+      id: openrouter/scaledown/extract
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/muse-wonder
+      id: openrouter/meta/muse-wonder
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/step-5-preview
+      id: openrouter/stepfun/step-5-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/claude-haiku-5.5
+      id: openrouter/anthropic/claude-haiku-5.5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-haiku-5.5:batch
+      id: openrouter/anthropic/claude-haiku-5.5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-nano-banana-2.1
+      id: openrouter/google/gemini-nano-banana-2.1
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/mistral-large-4-0
+      id: openrouter/mistralai/mistral-large-4-0
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/ling-3.1-flash
+      id: openrouter/inclusionai/ling-3.1-flash
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-6.1-sol-pro
+      id: openrouter/openai/gpt-6.1-sol-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6.1-sol-pro:batch
+      id: openrouter/openai/gpt-6.1-sol-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6.1-sol
+      id: openrouter/openai/gpt-6.1-sol
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6.1-sol:batch
+      id: openrouter/openai/gpt-6.1-sol:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/claude-sonnet-5.5
+      id: openrouter/anthropic/claude-sonnet-5.5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-sonnet-5.5:batch
+      id: openrouter/anthropic/claude-sonnet-5.5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/jev-router
+      id: openrouter/typesafe/jev-router
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/perceptron-mk1.5
+      id: openrouter/perceptron/perceptron-mk1.5
+      papeis:
+      - chat
+      contexto: 36864
+      ativo: false
+    - nome: openrouter/ember-1
+      id: openrouter/fireworks/ember-1
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/glm-5.3-prime
+      id: openrouter/z-ai/glm-5.3-prime
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.8-max-prime
+      id: openrouter/qwen/qwen3.8-max-prime
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/aion-3.5-mini
+      id: openrouter/aion-labs/aion-3.5-mini
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/aion-3.5
+      id: openrouter/aion-labs/aion-3.5
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/solar-mini4
+      id: openrouter/upstage/solar-mini4
+      papeis:
+      - chat
+      contexto: 524288
+      ativo: false
+    - nome: openrouter/command-a-plus
+      id: openrouter/cohere/command-a-plus
+      papeis:
+      - chat
+      contexto: 192000
+      ativo: false
+    - nome: openrouter/gpt-6-luna-pro
+      id: openrouter/openai/gpt-6-luna-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-luna-pro:batch
+      id: openrouter/openai/gpt-6-luna-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-luna
+      id: openrouter/openai/gpt-6-luna
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-luna:batch
+      id: openrouter/openai/gpt-6-luna:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-sol-pro
+      id: openrouter/openai/gpt-6-sol-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-sol-pro:batch
+      id: openrouter/openai/gpt-6-sol-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-sol
+      id: openrouter/openai/gpt-6-sol
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-sol:batch
+      id: openrouter/openai/gpt-6-sol:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/claude-opus-5.5
+      id: openrouter/anthropic/claude-opus-5.5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-5.5:batch
+      id: openrouter/anthropic/claude-opus-5.5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/switchyard
+      id: openrouter/nvidia/switchyard
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/mimo-v2.6-pro-ultraspeed
+      id: openrouter/xiaomi/mimo-v2.6-pro-ultraspeed
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/mimo-v2.6-flash
+      id: openrouter/xiaomi/mimo-v2.6-flash
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/mimo-v2.6-pro
+      id: openrouter/xiaomi/mimo-v2.6-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/grok-4.7
+      id: openrouter/x-ai/grok-4.7
+      papeis:
+      - chat
+      contexto: 500000
+      ativo: false
+    - nome: openrouter/qwen3.8-omni-flash
+      id: openrouter/qwen/qwen3.8-omni-flash
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/ternary-bonsai-2-27b
+      id: openrouter/prism-ml/ternary-bonsai-2-27b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/glm-5.3-flashx
+      id: openrouter/z-ai/glm-5.3-flashx
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-pro-latest
+      id: openrouter/~deepseek/deepseek-pro-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-flash-latest
+      id: openrouter/~deepseek/deepseek-flash-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/schematron-v2-turbo
+      id: openrouter/inference-net/schematron-v2-turbo
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/schematron-v2-small
+      id: openrouter/inference-net/schematron-v2-small
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-astra-latest
+      id: openrouter/~openai/gpt-astra-latest
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-sol-latest
+      id: openrouter/~openai/gpt-sol-latest
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-terra-latest
+      id: openrouter/~openai/gpt-terra-latest
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-luna-latest
+      id: openrouter/~openai/gpt-luna-latest
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/fugu-ultra-v2
+      id: openrouter/sakana/fugu-ultra-v2
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/fugu-max
+      id: openrouter/sakana/fugu-max
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/ling-3.0-flash-vl
+      id: openrouter/inclusionai/ling-3.0-flash-vl
+      papeis:
+      - visao
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/deepseek-v4.1-flash
+      id: openrouter/deepseek/deepseek-v4.1-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4.1-flash:batch
+      id: openrouter/deepseek/deepseek-v4.1-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/mercury-2.5
+      id: openrouter/inception/mercury-2.5
+      papeis:
+      - chat
+      contexto: 260000
+      ativo: false
+    - nome: openrouter/nex-n2.5-mini
+      id: openrouter/nex-agi/nex-n2.5-mini
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/nex-n2.5-pro
+      id: openrouter/nex-agi/nex-n2.5-pro
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-6-astra
+      id: openrouter/openai/gpt-6-astra
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-astra:batch
+      id: openrouter/openai/gpt-6-astra:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-astra-pro
+      id: openrouter/openai/gpt-6-astra-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-6-astra-pro:batch
+      id: openrouter/openai/gpt-6-astra-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/qwen3.8-max-0902
+      id: openrouter/qwen/qwen3.8-max-0902
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/muse-spark-1.3-contributor
+      id: openrouter/meta/muse-spark-1.3-contributor
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/muse-spark-1.3
+      id: openrouter/meta/muse-spark-1.3
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.8-flash
+      id: openrouter/google/gemini-3.8-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.8-flash:batch
+      id: openrouter/google/gemini-3.8-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/claude-fable-5.1
+      id: openrouter/anthropic/claude-fable-5.1
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-fable-5.1:batch
+      id: openrouter/anthropic/claude-fable-5.1:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/granite-4.2-8b
+      id: openrouter/ibm-granite/granite-4.2-8b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/hy4-preview
+      id: openrouter/tencent/hy4-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/glm-flash-latest
+      id: openrouter/~z-ai/glm-flash-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/qwen3.8-flash
+      id: openrouter/qwen/qwen3.8-flash
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/glm-5.3-flash
+      id: openrouter/z-ai/glm-5.3-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/glm-5.3-flash:batch
+      id: openrouter/z-ai/glm-5.3-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/muse-spark-1.2-contributor
+      id: openrouter/meta/muse-spark-1.2-contributor
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4-flash-vision-exp
+      id: openrouter/deepseek/deepseek-v4-flash-vision-exp
+      papeis:
+      - visao
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/hy-mt2-1.8b
+      id: openrouter/tencent/hy-mt2-1.8b
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/hy-mt2-30b-a3b
+      id: openrouter/tencent/hy-mt2-30b-a3b
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/glm-latest
+      id: openrouter/~z-ai/glm-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/hy-mt2-7b
+      id: openrouter/tencent/hy-mt2-7b
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/glm-5.3
+      id: openrouter/z-ai/glm-5.3
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/glm-5.3:batch
+      id: openrouter/z-ai/glm-5.3:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/qwen3.8-27b
+      id: openrouter/qwen/qwen3.8-27b
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-3.7-flash
+      id: openrouter/google/gemini-3.7-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.7-flash:batch
+      id: openrouter/google/gemini-3.7-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/seed-2-1-turbo
+      id: openrouter/bytedance-seed/seed-2-1-turbo
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.8-2.4t-a95b
+      id: openrouter/qwen/qwen3.8-2.4t-a95b
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/seed-2.0-code
+      id: openrouter/bytedance-seed/seed-2.0-code
+      papeis:
+      - codigo
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/deepseek-v4-pro-0813
+      id: openrouter/deepseek/deepseek-v4-pro-0813
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/grok-4.6
+      id: openrouter/x-ai/grok-4.6
+      papeis:
+      - chat
+      contexto: 500000
+      ativo: false
+    - nome: openrouter/lfm-2.5-2.6b
+      id: openrouter/liquid/lfm-2.5-2.6b
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/nemotron-3.5-lightning
+      id: openrouter/nvidia/nemotron-3.5-lightning
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/nvidia/nemotron-3.5-lightning:free
+      id: openrouter/nvidia/nemotron-3.5-lightning:free
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/sakana-namazu
+      id: openrouter/sakana/sakana-namazu
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/solar-pro4
+      id: openrouter/upstage/solar-pro4
+      papeis:
+      - chat
+      contexto: 524288
+      ativo: false
+    - nome: openrouter/muse-glimmer-30b
+      id: openrouter/meta/muse-glimmer-30b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/muse-spark-1.2
+      id: openrouter/meta/muse-spark-1.2
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4-flash-latest
+      id: openrouter/~deepseek/deepseek-v4-flash-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4-flash-0731
+      id: openrouter/deepseek/deepseek-v4-flash-0731
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/inkling-small
+      id: openrouter/thinkingmachines/inkling-small
+      papeis:
+      - raciocinio
+      contexto: 524288
+      ativo: false
+    - nome: openrouter/thinkingmachines/inkling-small:free
+      id: openrouter/thinkingmachines/inkling-small:free
+      papeis:
+      - raciocinio
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/qwen3.7-flash
+      id: openrouter/qwen/qwen3.7-flash
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-5
+      id: openrouter/anthropic/claude-opus-5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-5:batch
+      id: openrouter/anthropic/claude-opus-5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/ling-3.0-flash
+      id: openrouter/inclusionai/ling-3.0-flash
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/laguna-s-2.1
+      id: openrouter/poolside/laguna-s-2.1
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.6-flash
+      id: openrouter/google/gemini-3.6-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.6-flash:batch
+      id: openrouter/google/gemini-3.6-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.5-flash-lite
+      id: openrouter/google/gemini-3.5-flash-lite
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.5-flash-lite:batch
+      id: openrouter/google/gemini-3.5-flash-lite:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/longcat-2.0
+      id: openrouter/meituan/longcat-2.0
+      papeis:
+      - chat
+      contexto: 1048756
+      ativo: false
+    - nome: openrouter/inkling
+      id: openrouter/thinkingmachines/inkling
+      papeis:
+      - raciocinio
+      contexto: 524288
+      ativo: false
+    - nome: openrouter/thinkingmachines/inkling:free
+      id: openrouter/thinkingmachines/inkling:free
+      papeis:
+      - raciocinio
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/auto-beta
+      id: openrouter/openrouter/auto-beta
+      papeis:
+      - chat
+      contexto: 2000000
+      ativo: false
+    - nome: openrouter/kimi-k3
+      id: openrouter/moonshotai/kimi-k3
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/kimi-k3:batch
+      id: openrouter/moonshotai/kimi-k3:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/muse-spark-1.1
+      id: openrouter/meta/muse-spark-1.1
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gpt-5.6-luna-pro
+      id: openrouter/openai/gpt-5.6-luna-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-luna-pro:batch
+      id: openrouter/openai/gpt-5.6-luna-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-luna
+      id: openrouter/openai/gpt-5.6-luna
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-luna:batch
+      id: openrouter/openai/gpt-5.6-luna:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-terra-pro
+      id: openrouter/openai/gpt-5.6-terra-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-terra-pro:batch
+      id: openrouter/openai/gpt-5.6-terra-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-terra
+      id: openrouter/openai/gpt-5.6-terra
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-terra:batch
+      id: openrouter/openai/gpt-5.6-terra:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-sol-pro
+      id: openrouter/openai/gpt-5.6-sol-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-sol-pro:batch
+      id: openrouter/openai/gpt-5.6-sol-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-sol
+      id: openrouter/openai/gpt-5.6-sol
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.6-sol:batch
+      id: openrouter/openai/gpt-5.6-sol:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/grok-4.5
+      id: openrouter/x-ai/grok-4.5
+      papeis:
+      - chat
+      contexto: 500000
+      ativo: false
+    - nome: openrouter/grok-latest
+      id: openrouter/~x-ai/grok-latest
+      papeis:
+      - chat
+      contexto: 500000
+      ativo: false
+    - nome: openrouter/aion-3.0-mini
+      id: openrouter/aion-labs/aion-3.0-mini
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/aion-3.0
+      id: openrouter/aion-labs/aion-3.0
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/hy3
+      id: openrouter/tencent/hy3
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/laguna-xs-2.1
+      id: openrouter/poolside/laguna-xs-2.1
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/poolside/laguna-xs-2.1:free
+      id: openrouter/poolside/laguna-xs-2.1:free
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/claude-sonnet-5
+      id: openrouter/anthropic/claude-sonnet-5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-sonnet-5:batch
+      id: openrouter/anthropic/claude-sonnet-5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-lite-image
+      id: openrouter/google/gemini-3.1-flash-lite-image
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/fugu-ultra
+      id: openrouter/sakana/fugu-ultra
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-image
+      id: openrouter/google/gemini-3.1-flash-image
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gemini-3-pro-image
+      id: openrouter/google/gemini-3-pro-image
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/glm-5.2
+      id: openrouter/z-ai/glm-5.2
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/fusion
+      id: openrouter/openrouter/fusion
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/kimi-k2.7-code
+      id: openrouter/moonshotai/kimi-k2.7-code
+      papeis:
+      - codigo
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/claude-fable-latest
+      id: openrouter/~anthropic/claude-fable-latest
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-fable-5
+      id: openrouter/anthropic/claude-fable-5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-fable-5:batch
+      id: openrouter/anthropic/claude-fable-5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/nemotron-3.5-content-safety
+      id: openrouter/nvidia/nemotron-3.5-content-safety
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/nvidia/nemotron-3.5-content-safety:free
+      id: openrouter/nvidia/nemotron-3.5-content-safety:free
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/nemotron-3-ultra-550b-a55b
+      id: openrouter/nvidia/nemotron-3-ultra-550b-a55b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.7-plus
+      id: openrouter/qwen/qwen3.7-plus
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.7-plus:batch
+      id: openrouter/qwen/qwen3.7-plus:batch
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/minimax-m3
+      id: openrouter/minimax/minimax-m3
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/step-3.7-flash
+      id: openrouter/stepfun/step-3.7-flash
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/claude-opus-4.8
+      id: openrouter/anthropic/claude-opus-4.8
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-4.8:batch
+      id: openrouter/anthropic/claude-opus-4.8:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.7-max
+      id: openrouter/qwen/qwen3.7-max
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/grok-build-0.1
+      id: openrouter/x-ai/grok-build-0.1
+      papeis:
+      - chat
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/gemini-3.5-flash
+      id: openrouter/google/gemini-3.5-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.5-flash:batch
+      id: openrouter/google/gemini-3.5-flash:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/perceptron-mk1
+      id: openrouter/perceptron/perceptron-mk1
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-lite
+      id: openrouter/google/gemini-3.1-flash-lite
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-lite:batch
+      id: openrouter/google/gemini-3.1-flash-lite:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gpt-chat-latest
+      id: openrouter/openai/gpt-chat-latest
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/grok-4.3
+      id: openrouter/x-ai/grok-4.3
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/grok-4.3:batch
+      id: openrouter/x-ai/grok-4.3:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/mistral-medium-3-5
+      id: openrouter/mistralai/mistral-medium-3-5
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/mistral-medium-3-5:batch
+      id: openrouter/mistralai/mistral-medium-3-5:batch
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/nemotron-3-nano-omni-30b-a3b-reasoning
+      id: openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+      papeis:
+      - raciocinio
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/claude-haiku-latest
+      id: openrouter/~anthropic/claude-haiku-latest
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gpt-mini-latest
+      id: openrouter/~openai/gpt-mini-latest
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gemini-pro-latest
+      id: openrouter/~google/gemini-pro-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/kimi-latest
+      id: openrouter/~moonshotai/kimi-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-flash-latest
+      id: openrouter/~google/gemini-flash-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/claude-sonnet-latest
+      id: openrouter/~anthropic/claude-sonnet-latest
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.5-plus-20260420
+      id: openrouter/qwen/qwen3.5-plus-20260420
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.6-flash
+      id: openrouter/qwen/qwen3.6-flash
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.6-35b-a3b
+      id: openrouter/qwen/qwen3.6-35b-a3b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.6-27b
+      id: openrouter/qwen/qwen3.6-27b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-5.5-pro
+      id: openrouter/openai/gpt-5.5-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.5-pro:batch
+      id: openrouter/openai/gpt-5.5-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.5
+      id: openrouter/openai/gpt-5.5
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.5:batch
+      id: openrouter/openai/gpt-5.5:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/deepseek-v4-pro
+      id: openrouter/deepseek/deepseek-v4-pro
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-v4-flash
+      id: openrouter/deepseek/deepseek-v4-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/hy3-preview
+      id: openrouter/tencent/hy3-preview
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/mimo-v2.5-pro
+      id: openrouter/xiaomi/mimo-v2.5-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/mimo-v2.5
+      id: openrouter/xiaomi/mimo-v2.5
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.4-image-2
+      id: openrouter/openai/gpt-5.4-image-2
+      papeis:
+      - chat
+      contexto: 272000
+      ativo: false
+    - nome: openrouter/claude-opus-latest
+      id: openrouter/~anthropic/claude-opus-latest
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/pareto-code
+      id: openrouter/openrouter/pareto-code
+      papeis:
+      - codigo
+      contexto: 2000000
+      ativo: false
+    - nome: openrouter/kimi-k2.6
+      id: openrouter/moonshotai/kimi-k2.6
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/claude-opus-4.7
+      id: openrouter/anthropic/claude-opus-4.7
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-4.7:batch
+      id: openrouter/anthropic/claude-opus-4.7:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/glm-5.1
+      id: openrouter/z-ai/glm-5.1
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/gemma-4-26b-a4b-it
+      id: openrouter/google/gemma-4-26b-a4b-it
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gemma-4-31b-it
+      id: openrouter/google/gemma-4-31b-it
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/google/gemma-4-31b-it:free
+      id: openrouter/google/gemma-4-31b-it:free
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.6-plus
+      id: openrouter/qwen/qwen3.6-plus
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/glm-5v-turbo
+      id: openrouter/z-ai/glm-5v-turbo
+      papeis:
+      - chat
+      contexto: 202752
+      ativo: false
+    - nome: openrouter/grok-4.20-multi-agent
+      id: openrouter/x-ai/grok-4.20-multi-agent
+      papeis:
+      - chat
+      contexto: 2000000
+      ativo: false
+    - nome: openrouter/grok-4.20
+      id: openrouter/x-ai/grok-4.20
+      papeis:
+      - chat
+      contexto: 2000000
+      ativo: false
+    - nome: openrouter/lyria-3-pro-preview
+      id: openrouter/google/lyria-3-pro-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/lyria-3-clip-preview
+      id: openrouter/google/lyria-3-clip-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/reka-edge
+      id: openrouter/rekaai/reka-edge
+      papeis:
+      - chat
+      contexto: 16384
+      ativo: false
+    - nome: openrouter/minimax-m2.7
+      id: openrouter/minimax/minimax-m2.7
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/gpt-5.4-nano
+      id: openrouter/openai/gpt-5.4-nano
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.4-nano:batch
+      id: openrouter/openai/gpt-5.4-nano:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.4-mini
+      id: openrouter/openai/gpt-5.4-mini
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.4-mini:batch
+      id: openrouter/openai/gpt-5.4-mini:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/mistral-small-2603
+      id: openrouter/mistralai/mistral-small-2603
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/glm-5-turbo
+      id: openrouter/z-ai/glm-5-turbo
+      papeis:
+      - chat
+      contexto: 202752
+      ativo: false
+    - nome: openrouter/nemotron-3-super-120b-a12b
+      id: openrouter/nvidia/nemotron-3-super-120b-a12b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      id: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/seed-2.0-lite
+      id: openrouter/bytedance-seed/seed-2.0-lite
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.5-9b
+      id: openrouter/qwen/qwen3.5-9b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-5.4-pro
+      id: openrouter/openai/gpt-5.4-pro
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.4-pro:batch
+      id: openrouter/openai/gpt-5.4-pro:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.4
+      id: openrouter/openai/gpt-5.4
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/gpt-5.4:batch
+      id: openrouter/openai/gpt-5.4:batch
+      papeis:
+      - chat
+      contexto: 1050000
+      ativo: false
+    - nome: openrouter/mercury-2
+      id: openrouter/inception/mercury-2
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-lite-preview
+      id: openrouter/google/gemini-3.1-flash-lite-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/seed-2.0-mini
+      id: openrouter/bytedance-seed/seed-2.0-mini
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gemini-3.1-flash-image-preview
+      id: openrouter/google/gemini-3.1-flash-image-preview
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/qwen3.5-35b-a3b
+      id: openrouter/qwen/qwen3.5-35b-a3b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.5-27b
+      id: openrouter/qwen/qwen3.5-27b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.5-122b-a10b
+      id: openrouter/qwen/qwen3.5-122b-a10b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3.5-flash-02-23
+      id: openrouter/qwen/qwen3.5-flash-02-23
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-3.1-pro-preview-customtools
+      id: openrouter/google/gemini-3.1-pro-preview-customtools
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gpt-5.3-codex
+      id: openrouter/openai/gpt-5.3-codex
+      papeis:
+      - codigo
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/aion-2.0
+      id: openrouter/aion-labs/aion-2.0
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gemini-3.1-pro-preview
+      id: openrouter/google/gemini-3.1-pro-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3.1-pro-preview:batch
+      id: openrouter/google/gemini-3.1-pro-preview:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/claude-sonnet-4.6
+      id: openrouter/anthropic/claude-sonnet-4.6
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-sonnet-4.6:batch
+      id: openrouter/anthropic/claude-sonnet-4.6:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.5-plus-02-15
+      id: openrouter/qwen/qwen3.5-plus-02-15
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3.5-397b-a17b
+      id: openrouter/qwen/qwen3.5-397b-a17b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/minimax-m2.5
+      id: openrouter/minimax/minimax-m2.5
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/glm-5
+      id: openrouter/z-ai/glm-5
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/claude-opus-4.6
+      id: openrouter/anthropic/claude-opus-4.6
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-opus-4.6:batch
+      id: openrouter/anthropic/claude-opus-4.6:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3-coder-next
+      id: openrouter/qwen/qwen3-coder-next
+      papeis:
+      - codigo
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/step-3.5-flash
+      id: openrouter/stepfun/step-3.5-flash
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/kimi-k2.5
+      id: openrouter/moonshotai/kimi-k2.5
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/solar-pro-3
+      id: openrouter/upstage/solar-pro-3
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/minimax-m2-her
+      id: openrouter/minimax/minimax-m2-her
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/palmyra-x5
+      id: openrouter/writer/palmyra-x5
+      papeis:
+      - chat
+      contexto: 1040000
+      ativo: false
+    - nome: openrouter/gpt-audio
+      id: openrouter/openai/gpt-audio
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-audio-mini
+      id: openrouter/openai/gpt-audio-mini
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/glm-4.7-flash
+      id: openrouter/z-ai/glm-4.7-flash
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/gpt-5.2-codex
+      id: openrouter/openai/gpt-5.2-codex
+      papeis:
+      - codigo
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/seed-1.6-flash
+      id: openrouter/bytedance-seed/seed-1.6-flash
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/seed-1.6
+      id: openrouter/bytedance-seed/seed-1.6
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/minimax-m2.1
+      id: openrouter/minimax/minimax-m2.1
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/glm-4.7
+      id: openrouter/z-ai/glm-4.7
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/gemini-3-flash-preview
+      id: openrouter/google/gemini-3-flash-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-3-flash-preview:batch
+      id: openrouter/google/gemini-3-flash-preview:batch
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/nemotron-3-nano-30b-a3b
+      id: openrouter/nvidia/nemotron-3-nano-30b-a3b
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-5.2-chat
+      id: openrouter/openai/gpt-5.2-chat
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-5.2-pro
+      id: openrouter/openai/gpt-5.2-pro
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.2-pro:batch
+      id: openrouter/openai/gpt-5.2-pro:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.2
+      id: openrouter/openai/gpt-5.2
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.2:batch
+      id: openrouter/openai/gpt-5.2:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/devstral-2512
+      id: openrouter/mistralai/devstral-2512
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/relace-search
+      id: openrouter/relace/relace-search
+      papeis:
+      - chat
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/glm-4.6v
+      id: openrouter/z-ai/glm-4.6v
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/bodybuilder
+      id: openrouter/openrouter/bodybuilder
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-5.1-codex-max
+      id: openrouter/openai/gpt-5.1-codex-max
+      papeis:
+      - codigo
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/nova-2-lite-v1
+      id: openrouter/amazon/nova-2-lite-v1
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/ministral-14b-2512
+      id: openrouter/mistralai/ministral-14b-2512
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/ministral-8b-2512
+      id: openrouter/mistralai/ministral-8b-2512
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/ministral-3b-2512
+      id: openrouter/mistralai/ministral-3b-2512
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/mistral-large-2512
+      id: openrouter/mistralai/mistral-large-2512
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/deepseek-v3.2
+      id: openrouter/deepseek/deepseek-v3.2
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/claude-opus-4.5
+      id: openrouter/anthropic/claude-opus-4.5
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/claude-opus-4.5:batch
+      id: openrouter/anthropic/claude-opus-4.5:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/gemini-3-pro-image-preview
+      id: openrouter/google/gemini-3-pro-image-preview
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/gpt-5.1
+      id: openrouter/openai/gpt-5.1
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.1:batch
+      id: openrouter/openai/gpt-5.1:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.1-codex
+      id: openrouter/openai/gpt-5.1-codex
+      papeis:
+      - codigo
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5.1-codex-mini
+      id: openrouter/openai/gpt-5.1-codex-mini
+      papeis:
+      - codigo
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/kimi-k2-thinking
+      id: openrouter/moonshotai/kimi-k2-thinking
+      papeis:
+      - raciocinio
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/nova-premier-v1
+      id: openrouter/amazon/nova-premier-v1
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/sonar-pro-search
+      id: openrouter/perplexity/sonar-pro-search
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/voxtral-small-24b-2507
+      id: openrouter/mistralai/voxtral-small-24b-2507
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/gpt-oss-safeguard-20b
+      id: openrouter/openai/gpt-oss-safeguard-20b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/minimax-m2
+      id: openrouter/minimax/minimax-m2
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/gpt-5-image-mini
+      id: openrouter/openai/gpt-5-image-mini
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/claude-haiku-4.5
+      id: openrouter/anthropic/claude-haiku-4.5
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/claude-haiku-4.5:batch
+      id: openrouter/anthropic/claude-haiku-4.5:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/qwen3-vl-8b-instruct
+      id: openrouter/qwen/qwen3-vl-8b-instruct
+      papeis:
+      - visao
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-5-image
+      id: openrouter/openai/gpt-5-image
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gemini-2.5-flash-image
+      id: openrouter/google/gemini-2.5-flash-image
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/qwen3-vl-30b-a3b-thinking
+      id: openrouter/qwen/qwen3-vl-30b-a3b-thinking
+      papeis:
+      - visao
+      - raciocinio
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3-vl-30b-a3b-instruct
+      id: openrouter/qwen/qwen3-vl-30b-a3b-instruct
+      papeis:
+      - visao
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/gpt-5-pro
+      id: openrouter/openai/gpt-5-pro
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5-pro:batch
+      id: openrouter/openai/gpt-5-pro:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/glm-4.6
+      id: openrouter/z-ai/glm-4.6
+      papeis:
+      - chat
+      contexto: 204800
+      ativo: false
+    - nome: openrouter/claude-sonnet-4.5
+      id: openrouter/anthropic/claude-sonnet-4.5
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/claude-sonnet-4.5:batch
+      id: openrouter/anthropic/claude-sonnet-4.5:batch
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/deepseek-v3.2-exp
+      id: openrouter/deepseek/deepseek-v3.2-exp
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/cydonia-24b-v4.1
+      id: openrouter/thedrummer/cydonia-24b-v4.1
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/relace-apply-3
+      id: openrouter/relace/relace-apply-3
+      papeis:
+      - chat
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/qwen3-vl-235b-a22b-instruct
+      id: openrouter/qwen/qwen3-vl-235b-a22b-instruct
+      papeis:
+      - visao
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/deepseek-v3.1-terminus
+      id: openrouter/deepseek/deepseek-v3.1-terminus
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/qwen3-coder-flash
+      id: openrouter/qwen/qwen3-coder-flash
+      papeis:
+      - codigo
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/qwen3-next-80b-a3b-thinking
+      id: openrouter/qwen/qwen3-next-80b-a3b-thinking
+      papeis:
+      - raciocinio
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3-next-80b-a3b-instruct
+      id: openrouter/qwen/qwen3-next-80b-a3b-instruct
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/kimi-k2-0905
+      id: openrouter/moonshotai/kimi-k2-0905
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/hermes-4-405b
+      id: openrouter/nousresearch/hermes-4-405b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/deepseek-chat-v3.1
+      id: openrouter/deepseek/deepseek-chat-v3.1
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/mistral-medium-3.1
+      id: openrouter/mistralai/mistral-medium-3.1
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/glm-4.5v
+      id: openrouter/z-ai/glm-4.5v
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/gpt-5
+      id: openrouter/openai/gpt-5
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5:batch
+      id: openrouter/openai/gpt-5:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5-mini
+      id: openrouter/openai/gpt-5-mini
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5-mini:batch
+      id: openrouter/openai/gpt-5-mini:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5-nano
+      id: openrouter/openai/gpt-5-nano
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-5-nano:batch
+      id: openrouter/openai/gpt-5-nano:batch
+      papeis:
+      - chat
+      contexto: 400000
+      ativo: false
+    - nome: openrouter/gpt-oss-120b
+      id: openrouter/openai/gpt-oss-120b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gpt-oss-120b:batch
+      id: openrouter/openai/gpt-oss-120b:batch
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gpt-oss-20b
+      id: openrouter/openai/gpt-oss-20b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gpt-oss-20b:batch
+      id: openrouter/openai/gpt-oss-20b:batch
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/claude-opus-4.1
+      id: openrouter/anthropic/claude-opus-4.1
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/claude-opus-4.1:batch
+      id: openrouter/anthropic/claude-opus-4.1:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/codestral-2508
+      id: openrouter/mistralai/codestral-2508
+      papeis:
+      - codigo
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/qwen3-coder-30b-a3b-instruct
+      id: openrouter/qwen/qwen3-coder-30b-a3b-instruct
+      papeis:
+      - codigo
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/qwen3-30b-a3b-instruct-2507
+      id: openrouter/qwen/qwen3-30b-a3b-instruct-2507
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/glm-4.5
+      id: openrouter/z-ai/glm-4.5
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/glm-4.5-air
+      id: openrouter/z-ai/glm-4.5-air
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/qwen3-235b-a22b-thinking-2507
+      id: openrouter/qwen/qwen3-235b-a22b-thinking-2507
+      papeis:
+      - raciocinio
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/qwen3-coder
+      id: openrouter/qwen/qwen3-coder
+      papeis:
+      - codigo
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/ui-tars-1.5-7b
+      id: openrouter/bytedance/ui-tars-1.5-7b
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gemini-2.5-flash-lite
+      id: openrouter/google/gemini-2.5-flash-lite
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/qwen3-235b-a22b-2507
+      id: openrouter/qwen/qwen3-235b-a22b-2507
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/kimi-k2
+      id: openrouter/moonshotai/kimi-k2
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/dolphin-mistral-24b-venice-edition
+      id: openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/hunyuan-a13b-instruct
+      id: openrouter/tencent/hunyuan-a13b-instruct
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/morph-v3-large
+      id: openrouter/morph/morph-v3-large
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/morph-v3-fast
+      id: openrouter/morph/morph-v3-fast
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: openrouter/mistral-small-3.2-24b-instruct
+      id: openrouter/mistralai/mistral-small-3.2-24b-instruct
+      papeis:
+      - chat
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/minimax-m1
+      id: openrouter/minimax/minimax-m1
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/gemini-2.5-flash
+      id: openrouter/google/gemini-2.5-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/gemini-2.5-pro
+      id: openrouter/google/gemini-2.5-pro
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/o3-pro
+      id: openrouter/openai/o3-pro
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/gemini-2.5-pro-preview
+      id: openrouter/google/gemini-2.5-pro-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: openrouter/deepseek-r1-0528
+      id: openrouter/deepseek/deepseek-r1-0528
+      papeis:
+      - raciocinio
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/mistral-medium-3
+      id: openrouter/mistralai/mistral-medium-3
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/llama-guard-4-12b
+      id: openrouter/meta-llama/llama-guard-4-12b
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/qwen3-30b-a3b
+      id: openrouter/qwen/qwen3-30b-a3b
+      papeis:
+      - chat
+      contexto: 40960
+      ativo: false
+    - nome: openrouter/qwen3-14b
+      id: openrouter/qwen/qwen3-14b
+      papeis:
+      - chat
+      contexto: 40960
+      ativo: false
+    - nome: openrouter/qwen3-32b
+      id: openrouter/qwen/qwen3-32b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/o4-mini-high
+      id: openrouter/openai/o4-mini-high
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/o3
+      id: openrouter/openai/o3
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/o3:batch
+      id: openrouter/openai/o3:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/o4-mini
+      id: openrouter/openai/o4-mini
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/o4-mini:batch
+      id: openrouter/openai/o4-mini:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/gpt-4.1
+      id: openrouter/openai/gpt-4.1
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/gpt-4.1:batch
+      id: openrouter/openai/gpt-4.1:batch
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/gpt-4.1-mini
+      id: openrouter/openai/gpt-4.1-mini
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/gpt-4.1-mini:batch
+      id: openrouter/openai/gpt-4.1-mini:batch
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/gpt-4.1-nano
+      id: openrouter/openai/gpt-4.1-nano
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/gpt-4.1-nano:batch
+      id: openrouter/openai/gpt-4.1-nano:batch
+      papeis:
+      - chat
+      contexto: 1047576
+      ativo: false
+    - nome: openrouter/llama-4-maverick
+      id: openrouter/meta-llama/llama-4-maverick
+      papeis:
+      - chat
+      contexto: 524288
+      ativo: false
+    - nome: openrouter/llama-4-scout
+      id: openrouter/meta-llama/llama-4-scout
+      papeis:
+      - chat
+      contexto: 1310720
+      ativo: false
+    - nome: openrouter/deepseek-chat-v3-0324
+      id: openrouter/deepseek/deepseek-chat-v3-0324
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/o1-pro
+      id: openrouter/openai/o1-pro
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/mistral-small-3.1-24b-instruct
+      id: openrouter/mistralai/mistral-small-3.1-24b-instruct
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gemma-3-4b-it
+      id: openrouter/google/gemma-3-4b-it
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gemma-3-12b-it
+      id: openrouter/google/gemma-3-12b-it
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/command-a
+      id: openrouter/cohere/command-a
+      papeis:
+      - chat
+      contexto: 256000
+      ativo: false
+    - nome: openrouter/reka-flash-3
+      id: openrouter/rekaai/reka-flash-3
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/gemma-3-27b-it
+      id: openrouter/google/gemma-3-27b-it
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/skyfall-36b-v2
+      id: openrouter/thedrummer/skyfall-36b-v2
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/sonar-reasoning-pro
+      id: openrouter/perplexity/sonar-reasoning-pro
+      papeis:
+      - raciocinio
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/sonar-pro
+      id: openrouter/perplexity/sonar-pro
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/sonar-deep-research
+      id: openrouter/perplexity/sonar-deep-research
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/mistral-saba
+      id: openrouter/mistralai/mistral-saba
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/o3-mini-high
+      id: openrouter/openai/o3-mini-high
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/aion-rp-llama-3.1-8b
+      id: openrouter/aion-labs/aion-rp-llama-3.1-8b
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/qwen2.5-vl-72b-instruct
+      id: openrouter/qwen/qwen2.5-vl-72b-instruct
+      papeis:
+      - visao
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/qwen-plus
+      id: openrouter/qwen/qwen-plus
+      papeis:
+      - chat
+      contexto: 1000000
+      ativo: false
+    - nome: openrouter/o3-mini
+      id: openrouter/openai/o3-mini
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/o3-mini:batch
+      id: openrouter/openai/o3-mini:batch
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/mistral-small-24b-instruct-2501
+      id: openrouter/mistralai/mistral-small-24b-instruct-2501
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/sonar
+      id: openrouter/perplexity/sonar
+      papeis:
+      - chat
+      contexto: 127072
+      ativo: false
+    - nome: openrouter/minimax-01
+      id: openrouter/minimax/minimax-01
+      papeis:
+      - chat
+      contexto: 1000192
+      ativo: false
+    - nome: openrouter/phi-4
+      id: openrouter/microsoft/phi-4
+      papeis:
+      - chat
+      contexto: 16384
+      ativo: false
+    - nome: openrouter/deepseek-chat
+      id: openrouter/deepseek/deepseek-chat
+      papeis:
+      - chat
+      contexto: 163840
+      ativo: false
+    - nome: openrouter/o1
+      id: openrouter/openai/o1
+      papeis:
+      - chat
+      contexto: 200000
+      ativo: false
+    - nome: openrouter/command-r7b-12-2024
+      id: openrouter/cohere/command-r7b-12-2024
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/llama-3.3-70b-instruct
+      id: openrouter/meta-llama/llama-3.3-70b-instruct
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/nova-lite-v1
+      id: openrouter/amazon/nova-lite-v1
+      papeis:
+      - chat
+      contexto: 300000
+      ativo: false
+    - nome: openrouter/nova-micro-v1
+      id: openrouter/amazon/nova-micro-v1
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/nova-pro-v1
+      id: openrouter/amazon/nova-pro-v1
+      papeis:
+      - chat
+      contexto: 300000
+      ativo: false
+    - nome: openrouter/gpt-4o-2024-11-20
+      id: openrouter/openai/gpt-4o-2024-11-20
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/mistral-large-2407
+      id: openrouter/mistralai/mistral-large-2407
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/qwen-2.5-coder-32b-instruct
+      id: openrouter/qwen/qwen-2.5-coder-32b-instruct
+      papeis:
+      - codigo
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/unslopnemo-12b
+      id: openrouter/thedrummer/unslopnemo-12b
+      papeis:
+      - chat
+      contexto: 1024000
+      ativo: false
+    - nome: openrouter/magnum-v4-72b
+      id: openrouter/anthracite-org/magnum-v4-72b
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/qwen-2.5-7b-instruct
+      id: openrouter/qwen/qwen-2.5-7b-instruct
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/llama-3.2-1b-instruct
+      id: openrouter/meta-llama/llama-3.2-1b-instruct
+      papeis:
+      - chat
+      contexto: 60000
+      ativo: false
+    - nome: openrouter/llama-3.2-3b-instruct
+      id: openrouter/meta-llama/llama-3.2-3b-instruct
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/qwen-2.5-72b-instruct
+      id: openrouter/qwen/qwen-2.5-72b-instruct
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: openrouter/command-r-08-2024
+      id: openrouter/cohere/command-r-08-2024
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/command-r-plus-08-2024
+      id: openrouter/cohere/command-r-plus-08-2024
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/l3.1-euryale-70b
+      id: openrouter/sao10k/l3.1-euryale-70b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/hermes-3-llama-3.1-70b
+      id: openrouter/nousresearch/hermes-3-llama-3.1-70b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/hermes-3-llama-3.1-405b
+      id: openrouter/nousresearch/hermes-3-llama-3.1-405b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/l3-lunaris-8b
+      id: openrouter/sao10k/l3-lunaris-8b
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/gpt-4o-2024-08-06
+      id: openrouter/openai/gpt-4o-2024-08-06
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/llama-3.1-70b-instruct
+      id: openrouter/meta-llama/llama-3.1-70b-instruct
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/llama-3.1-8b-instruct
+      id: openrouter/meta-llama/llama-3.1-8b-instruct
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/mistral-nemo
+      id: openrouter/mistralai/mistral-nemo
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: openrouter/gpt-4o-mini
+      id: openrouter/openai/gpt-4o-mini
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-4o-mini-2024-07-18
+      id: openrouter/openai/gpt-4o-mini-2024-07-18
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-4o-mini:batch
+      id: openrouter/openai/gpt-4o-mini:batch
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gemma-2-27b-it
+      id: openrouter/google/gemma-2-27b-it
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/gpt-4o
+      id: openrouter/openai/gpt-4o
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-4o-2024-05-13
+      id: openrouter/openai/gpt-4o-2024-05-13
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-4o:batch
+      id: openrouter/openai/gpt-4o:batch
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/mixtral-8x22b-instruct
+      id: openrouter/mistralai/mixtral-8x22b-instruct
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: openrouter/gpt-4-turbo
+      id: openrouter/openai/gpt-4-turbo
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-4-turbo:batch
+      id: openrouter/openai/gpt-4-turbo:batch
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/mistral-large
+      id: openrouter/mistralai/mistral-large
+      papeis:
+      - chat
+      contexto: 128000
+      ativo: false
+    - nome: openrouter/gpt-3.5-turbo-0613
+      id: openrouter/openai/gpt-3.5-turbo-0613
+      papeis:
+      - chat
+      contexto: 4095
+      ativo: false
+    - nome: openrouter/auto
+      id: openrouter/openrouter/auto
+      papeis:
+      - chat
+      contexto: 2000000
+      ativo: false
+    - nome: openrouter/gpt-3.5-turbo-16k
+      id: openrouter/openai/gpt-3.5-turbo-16k
+      papeis:
+      - chat
+      contexto: 16385
+      ativo: false
+    - nome: openrouter/weaver
+      id: openrouter/mancer/weaver
+      papeis:
+      - chat
+      contexto: 8000
+      ativo: false
+    - nome: openrouter/remm-slerp-l2-13b
+      id: openrouter/undi95/remm-slerp-l2-13b
+      papeis:
+      - chat
+      contexto: 6144
+      ativo: false
+    - nome: openrouter/mythomax-l2-13b
+      id: openrouter/gryphe/mythomax-l2-13b
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: openrouter/gpt-4
+      id: openrouter/openai/gpt-4
+      papeis:
+      - chat
+      contexto: 8191
+      ativo: false
+    - nome: openrouter/gpt-6.1-terra-pro
+      id: openrouter/openai/gpt-6.1-terra-pro
+      papeis:
+      - chat
+      ativo: false
+      contexto: 1050000
+    - nome: openrouter/gpt-6.1-terra-pro:batch
+      id: openrouter/openai/gpt-6.1-terra-pro:batch
+      papeis:
+      - chat
+      ativo: false
+      contexto: 1050000
+  groq:
+    nome: Groq
+    tier: FREE
+    chave: GROQ_API_KEY
+    descartar_params:
+    - prompt_cache_key
+    site_chave: https://console.groq.com/keys
+    url_modelos: https://api.groq.com/openai/v1/models
+    limites:
+      rpm: 30
+      rpd: 1000
+      reset: utc
+    fonte_limites: 'console.groq.com/docs/rate-limits (por modelo; gpt-oss-120b: 30
+      RPM, 1K RPD, 200K TPD)'
+    modelos:
+    - nome: groq/gpt-oss-120b
+      id: groq/openai/gpt-oss-120b
+      papeis:
+      - chat
+      - codigo
+      - raciocinio
+      contexto: 8000
+    - nome: groq/llama-3.3-70b
+      id: groq/llama-3.3-70b-versatile
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: groq/gpt-oss-20b
+      id: groq/openai/gpt-oss-20b
+      papeis:
+      - chat
+      - rapido
+      contexto: 131072
+    - nome: groq/qwen3.8-27b
+      id: groq/qwen/qwen3.8-27b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: groq/allam-2-7b
+      id: groq/allam-2-7b
+      papeis:
+      - chat
+      contexto: 4096
+      ativo: false
+    - nome: groq/orpheus-v1-english
+      id: groq/canopylabs/orpheus-v1-english
+      papeis:
+      - chat
+      contexto: 4000
+      ativo: false
+    - nome: groq/whisper-large-v3-turbo
+      id: groq/whisper-large-v3-turbo
+      papeis:
+      - chat
+      contexto: 448
+      ativo: false
+    - nome: groq/gpt-oss-safeguard-20b
+      id: groq/openai/gpt-oss-safeguard-20b
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: groq/whisper-large-v3
+      id: groq/whisper-large-v3
+      papeis:
+      - chat
+      contexto: 448
+      ativo: false
+    - nome: groq/orpheus-arabic-saudi
+      id: groq/canopylabs/orpheus-arabic-saudi
+      papeis:
+      - chat
+      contexto: 4000
+      ativo: false
+    - nome: groq/llama-prompt-guard-2-86m
+      id: groq/meta-llama/llama-prompt-guard-2-86m
+      papeis:
+      - chat
+      contexto: 512
+      ativo: false
+    - nome: groq/llama-prompt-guard-2-22m
+      id: groq/meta-llama/llama-prompt-guard-2-22m
+      papeis:
+      - chat
+      contexto: 512
+      ativo: false
+  gemini:
+    nome: Google Gemini (AI Studio)
+    tier: FREE
+    chave: GEMINI_API_KEY
+    descartar_params:
+    - prompt_cache_key
+    - cached_content
+    - cache_control
+    site_chave: https://aistudio.google.com/apikey
+    url_modelos: https://generativelanguage.googleapis.com/v1beta/models
+    limites: {}
+    fonte_limites: 'valores só em aistudio.google.com/rate-limit (relatos: ~20 pedidos/dia
+      nos Flash 3.x). ⚠ plano grátis usa os dados para treino'
+    modelos:
+    - nome: gemini/gemini-3.8-flash
+      id: gemini/gemini-3.8-flash
+      papeis:
+      - chat
+      - visao
+      - raciocinio
+    - nome: gemini/gemini-3.5-flash-lite
+      id: gemini/gemini-3.5-flash-lite
+      papeis:
+      - chat
+      - rapido
+    - nome: gemini/gemini-2.5-flash
+      id: gemini/gemini-2.5-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-2.5-pro
+      id: gemini/gemini-2.5-pro
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-2.5-flash-preview-tts
+      id: gemini/gemini-2.5-flash-preview-tts
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemini-2.5-pro-preview-tts
+      id: gemini/gemini-2.5-pro-preview-tts
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemma-4-26b-a4b-it
+      id: gemini/gemma-4-26b-a4b-it
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: gemini/gemma-4-31b-it
+      id: gemini/gemma-4-31b-it
+      papeis:
+      - chat
+      contexto: 262144
+      ativo: false
+    - nome: gemini/gemini-flash-latest
+      id: gemini/gemini-flash-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-flash-lite-latest
+      id: gemini/gemini-flash-lite-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-pro-latest
+      id: gemini/gemini-pro-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-2.5-flash-lite
+      id: gemini/gemini-2.5-flash-lite
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-2.5-flash-image
+      id: gemini/gemini-2.5-flash-image
+      papeis:
+      - chat
+      contexto: 32768
+      ativo: false
+    - nome: gemini/gemini-3-flash-preview
+      id: gemini/gemini-3-flash-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.1-pro-preview
+      id: gemini/gemini-3.1-pro-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.1-pro-preview-customtools
+      id: gemini/gemini-3.1-pro-preview-customtools
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-lite-preview
+      id: gemini/gemini-3.1-flash-lite-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-lite
+      id: gemini/gemini-3.1-flash-lite
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3-pro-image-preview
+      id: gemini/gemini-3-pro-image-preview
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-3-pro-image
+      id: gemini/gemini-3-pro-image
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/nano-banana-pro-preview
+      id: gemini/nano-banana-pro-preview
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-image-preview
+      id: gemini/gemini-3.1-flash-image-preview
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-image
+      id: gemini/gemini-3.1-flash-image
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-lite-image
+      id: gemini/gemini-3.1-flash-lite-image
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: gemini/gemini-nano-banana-2.1
+      id: gemini/gemini-nano-banana-2.1
+      papeis:
+      - chat
+      contexto: 65536
+      ativo: false
+    - nome: gemini/gemini-3.5-flash
+      id: gemini/gemini-3.5-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-omni-flash-preview
+      id: gemini/gemini-omni-flash-preview
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-omni-1.1-flash
+      id: gemini/gemini-omni-1.1-flash
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-3.5-transcribe
+      id: gemini/gemini-3.5-transcribe
+      papeis:
+      - chat
+      contexto: 98304
+      ativo: false
+    - nome: gemini/gemini-3.6-flash
+      id: gemini/gemini-3.6-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.7-flash
+      id: gemini/gemini-3.7-flash
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-4-argon
+      id: gemini/gemini-4-argon
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/lyria-3-clip-preview
+      id: gemini/lyria-3-clip-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/lyria-3-pro-preview
+      id: gemini/lyria-3-pro-preview
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/lyria-3.5
+      id: gemini/lyria-3.5
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/gemini-3.1-flash-tts-preview
+      id: gemini/gemini-3.1-flash-tts-preview
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemini-3.8-flash-tts
+      id: gemini/gemini-3.8-flash-tts
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemini-3.8-flash-lite-tts
+      id: gemini/gemini-3.8-flash-lite-tts
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemini-robotics-er-2-preview
+      id: gemini/gemini-robotics-er-2-preview
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-2.5-computer-use-preview-10-2025
+      id: gemini/gemini-2.5-computer-use-preview-10-2025
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/antigravity-preview-05-2026
+      id: gemini/antigravity-preview-05-2026
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/antigravity-preview-09-2026
+      id: gemini/antigravity-preview-09-2026
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/antigravity-preview-latest
+      id: gemini/antigravity-preview-latest
+      papeis:
+      - chat
+      contexto: 1048576
+      ativo: false
+    - nome: gemini/deep-research-max-preview-04-2026
+      id: gemini/deep-research-max-preview-04-2026
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/deep-research-preview-04-2026
+      id: gemini/deep-research-preview-04-2026
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/deep-research-pro-preview-12-2025
+      id: gemini/deep-research-pro-preview-12-2025
+      papeis:
+      - chat
+      contexto: 131072
+      ativo: false
+    - nome: gemini/gemini-embedding-001
+      id: gemini/gemini-embedding-001
+      papeis:
+      - chat
+      contexto: 2048
+      ativo: false
+    - nome: gemini/gemini-embedding-2-preview
+      id: gemini/gemini-embedding-2-preview
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/gemini-embedding-2
+      id: gemini/gemini-embedding-2
+      papeis:
+      - chat
+      contexto: 8192
+      ativo: false
+    - nome: gemini/aqa
+      id: gemini/aqa
+      papeis:
+      - chat
+      contexto: 7168
+      ativo: false
+  cloudflare:
+    nome: Cloudflare Workers AI
+    tier: FREE
+    chave: CLOUDFLARE_API_KEY
+    chaves_extras:
+    - CLOUDFLARE_ACCOUNT_ID
+    site_chave: https://dash.cloudflare.com
+    url_modelos: https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/models/search
+    limites:
+      neurons_dia: 10000
+      reset: utc
+    fonte_limites: developers.cloudflare.com/workers-ai/platform/pricing
+    modelos:
+    - nome: cloudflare/gpt-oss-120b
+      id: cloudflare/@cf/openai/gpt-oss-120b
+      papeis:
+      - chat
+      ativo: false
+  anthropic:
+    nome: Anthropic (Claude)
+    tier: PAID
+    chave: ANTHROPIC_API_KEY
+    site_chave: https://console.anthropic.com
+    url_modelos: https://api.anthropic.com/v1/models
+    limites: {}
+    fonte_limites: 'US$ por milhão de tokens (entrada/saída): Sonnet 2/10, Opus 4/20,
+      Haiku 0,10/0,50'
+    modelos:
+    - nome: claude-sonnet-5-5
+      id: anthropic/claude-sonnet-5-5
+      papeis:
+      - chat
+      - codigo
+      - agente
+      - visao
+      ativo: true
+    - nome: claude-opus-5-5
+      id: anthropic/claude-opus-5-5
+      papeis:
+      - chat
+      - codigo
+      - agente
+      - raciocinio
+      - visao
+      ativo: true
+    - nome: claude-haiku-5-5
+      id: anthropic/claude-haiku-5-5
+      papeis:
+      - chat
+      - rapido
+      ativo: true
+    - nome: anthropic/claude-fable-5-1
+      id: anthropic/claude-fable-5-1
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-opus-5
+      id: anthropic/claude-opus-5
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-sonnet-5
+      id: anthropic/claude-sonnet-5
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-fable-5
+      id: anthropic/claude-fable-5
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-opus-4-8
+      id: anthropic/claude-opus-4-8
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-opus-4-7
+      id: anthropic/claude-opus-4-7
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-sonnet-4-6
+      id: anthropic/claude-sonnet-4-6
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-opus-4-6
+      id: anthropic/claude-opus-4-6
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-opus-4-5-20251101
+      id: anthropic/claude-opus-4-5-20251101
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-haiku-4-5-20251001
+      id: anthropic/claude-haiku-4-5-20251001
+      papeis:
+      - chat
+      ativo: false
+    - nome: anthropic/claude-sonnet-4-5-20250929
+      id: anthropic/claude-sonnet-4-5-20250929
+      papeis:
+      - chat
+      ativo: false
+  openai:
+    nome: OpenAI (GPT)
+    tier: PAID
+    chave: OPENAI_API_KEY
+    site_chave: https://platform.openai.com/api-keys
+    url_modelos: https://api.openai.com/v1/models
+    limites: {}
+    fonte_limites: 'US$ por milhão de tokens: gpt-6.1-sol 2/10, gpt-6-luna 0,10/0,50'
+    modelos:
+    - nome: gpt-6.1-sol
+      id: openai/gpt-6.1-sol
+      papeis:
+      - chat
+      - codigo
+      - agente
+    - nome: gpt-6-luna
+      id: openai/gpt-6-luna
+      papeis:
+      - chat
+      - rapido
+  deepseek:
+    nome: DeepSeek
+    tier: PAID
+    chave: DEEPSEEK_API_KEY
+    site_chave: https://platform.deepseek.com/api_keys
+    url_modelos: https://api.deepseek.com/models
+    limites: {}
+    fonte_limites: api-docs.deepseek.com/quick_start/pricing (muito barato; mais barato
+      fora do pico)
+    modelos:
+    - nome: deepseek-v4-pro
+      id: deepseek/deepseek-v4-pro
+      papeis:
+      - chat
+      - codigo
+      - raciocinio
+    - nome: deepseek-flash
+      id: deepseek/deepseek-flash
+      papeis:
+      - chat
+      - rapido
+  xai:
+    nome: xAI (Grok)
+    tier: PAID
+    chave: XAI_API_KEY
+    site_chave: https://console.x.ai
+    url_modelos: https://api.x.ai/v1/models
+    limites: {}
+    fonte_limites: docs.x.ai/docs/models (grok-4.7 US$ 2/6)
+    modelos:
+    - nome: grok-4.7
+      id: xai/grok-4.7
+      papeis:
+      - chat
+      - codigo
+      - raciocinio
+    - nome: grok-4.3
+      id: xai/grok-4.3
+      papeis:
+      - chat
+      - rapido
+  huggingface:
+    nome: Hugging Face Inference Providers
+    tier: PAID
+    chave: HF_TOKEN
+    site_chave: https://huggingface.co/settings/tokens
+    url_modelos: https://router.huggingface.co/v1/models
+    limites: {}
+    fonte_limites: huggingface.co/docs/inference-providers/pricing (conta free sem
+      créditos mensais)
+    modelos:
+    - nome: huggingface/DeepSeek-V4.1-Flash-1017
+      id: huggingface/deepseek-ai/DeepSeek-V4.1-Flash-1017
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiniMax-M3.1-Flash
+      id: huggingface/MiniMaxAI/MiniMax-M3.1-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.8-27B
+      id: huggingface/Qwen/Qwen3.8-27B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Muse-Spark-Open-816B-A42B
+      id: huggingface/meta-models/Muse-Spark-Open-816B-A42B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Beam-1.0-501B-A23B
+      id: huggingface/reflection/Beam-1.0-501B-A23B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V4.1-Flash
+      id: huggingface/deepseek-ai/DeepSeek-V4.1-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-5.3-Flash
+      id: huggingface/zai-org/GLM-5.3-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Llama-3.1-8B-Instruct
+      id: huggingface/meta-llama/Llama-3.1-8B-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K3
+      id: huggingface/moonshotai/Kimi-K3
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+      id: huggingface/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/GLM-5.3
+      id: huggingface/zai-org/GLM-5.3
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Muse-Glimmer-30B
+      id: huggingface/meta-models/Muse-Glimmer-30B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.5-9B
+      id: huggingface/Qwen/Qwen3.5-9B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gemma-4-31B-it
+      id: huggingface/google/gemma-4-31B-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiMo-V2.6-Pro-RL
+      id: huggingface/XiaomiMiMo/MiMo-V2.6-Pro-RL
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.6-35B-A3B
+      id: huggingface/Qwen/Qwen3.6-35B-A3B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gemma-4-26B-A4B-it
+      id: huggingface/google/gemma-4-26B-A4B-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Ling-3.1-flash
+      id: huggingface/inclusionAI/Ling-3.1-flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gpt-oss-20b
+      id: huggingface/openai/gpt-oss-20b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V4-Flash
+      id: huggingface/deepseek-ai/DeepSeek-V4-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-8B
+      id: huggingface/Qwen/Qwen3-8B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiMo-V2.6-Flash-RL
+      id: huggingface/XiaomiMiMo/MiMo-V2.6-Flash-RL
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gpt-oss-120b
+      id: huggingface/openai/gpt-oss-120b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-4B-Instruct-2507
+      id: huggingface/Qwen/Qwen3-4B-Instruct-2507
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiniMax-M3
+      id: huggingface/MiniMaxAI/MiniMax-M3
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.8-2.4T-A95B
+      id: huggingface/Qwen/Qwen3.8-2.4T-A95B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-R1
+      id: huggingface/deepseek-ai/DeepSeek-R1
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/Qwen3.5-35B-A3B
+      id: huggingface/Qwen/Qwen3.5-35B-A3B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-14B
+      id: huggingface/Qwen/Qwen3-14B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V4-Pro
+      id: huggingface/deepseek-ai/DeepSeek-V4-Pro
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Inkling-Small
+      id: huggingface/thinkingmachines/Inkling-Small
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/Qwen3.8-Flash-Next-FP8
+      id: huggingface/Qwen/Qwen3.8-Flash-Next-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.5-27B
+      id: huggingface/Qwen/Qwen3.5-27B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Hy4-preview
+      id: huggingface/tencent/Hy4-preview
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen2.5-Coder-32B-Instruct
+      id: huggingface/Qwen/Qwen2.5-Coder-32B-Instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: huggingface/DeepSeek-V4-Flash-0731
+      id: huggingface/deepseek-ai/DeepSeek-V4-Flash-0731
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Llama-3.3-70B-Instruct
+      id: huggingface/meta-llama/Llama-3.3-70B-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.7-Flash
+      id: huggingface/zai-org/GLM-4.7-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Inkling
+      id: huggingface/thinkingmachines/Inkling
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/GLM-5.2
+      id: huggingface/zai-org/GLM-5.2
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.6-27B
+      id: huggingface/Qwen/Qwen3.6-27B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen2.5-72B-Instruct
+      id: huggingface/Qwen/Qwen2.5-72B-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-VL-30B-A3B-Instruct
+      id: huggingface/Qwen/Qwen3-VL-30B-A3B-Instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/Qwen3.5-122B-A10B
+      id: huggingface/Qwen/Qwen3.5-122B-A10B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.6
+      id: huggingface/zai-org/GLM-4.6
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen2.5-Coder-7B-Instruct
+      id: huggingface/Qwen/Qwen2.5-Coder-7B-Instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: huggingface/Apertus-v1.5-70B
+      id: huggingface/swiss-ai/Apertus-v1.5-70B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-Next-80B-A3B-Instruct
+      id: huggingface/Qwen/Qwen3-Next-80B-A3B-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-5.1
+      id: huggingface/zai-org/GLM-5.1
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+      id: huggingface/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gemma-3-4b-it
+      id: huggingface/google/gemma-3-4b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen2.5-VL-72B-Instruct
+      id: huggingface/Qwen/Qwen2.5-VL-72B-Instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/MiniMax-M2.5
+      id: huggingface/MiniMaxAI/MiniMax-M2.5
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-R1-Distill-Qwen-7B
+      id: huggingface/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/Ling-3.0-flash
+      id: huggingface/inclusionAI/Ling-3.0-flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-R1-Distill-Qwen-14B
+      id: huggingface/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/phi-4
+      id: huggingface/microsoft/phi-4
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-235B-A22B
+      id: huggingface/Qwen/Qwen3-235B-A22B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-30B-A3B
+      id: huggingface/Qwen/Qwen3-30B-A3B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-4B-Thinking-2507
+      id: huggingface/Qwen/Qwen3-4B-Thinking-2507
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/Step-3.5-Flash
+      id: huggingface/stepfun-ai/Step-3.5-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V4-Flash-Vision-Exp
+      id: huggingface/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/granite-4.2-8b
+      id: huggingface/ibm-granite/granite-4.2-8b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/L3-8B-Stheno-v3.2
+      id: huggingface/Sao10K/L3-8B-Stheno-v3.2
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gemma-3-27b-it
+      id: huggingface/google/gemma-3-27b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V3
+      id: huggingface/deepseek-ai/DeepSeek-V3
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.7
+      id: huggingface/zai-org/GLM-4.7
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-VL-235B-A22B-Instruct
+      id: huggingface/Qwen/Qwen3-VL-235B-A22B-Instruct
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/DeepSeek-V3.1-Terminus
+      id: huggingface/deepseek-ai/DeepSeek-V3.1-Terminus
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiniMax-M2.7
+      id: huggingface/MiniMaxAI/MiniMax-M2.7
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/granite-4.2-3b
+      id: huggingface/ibm-granite/granite-4.2-3b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Bielik-11B-v3.0-Instruct
+      id: huggingface/speakleash/Bielik-11B-v3.0-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.5
+      id: huggingface/zai-org/GLM-4.5
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-5.3-BF16
+      id: huggingface/zai-org/GLM-5.3-BF16
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K2.5
+      id: huggingface/moonshotai/Kimi-K2.5
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gemma-3-12b-it
+      id: huggingface/google/gemma-3-12b-it
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Apertus-8B-Instruct-2509
+      id: huggingface/swiss-ai/Apertus-8B-Instruct-2509
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-5
+      id: huggingface/zai-org/GLM-5
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K2.6
+      id: huggingface/moonshotai/Kimi-K2.6
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K2.7-Code
+      id: huggingface/moonshotai/Kimi-K2.7-Code
+      papeis:
+      - codigo
+      ativo: false
+    - nome: huggingface/tiny-aya-water
+      id: huggingface/CohereLabs/tiny-aya-water
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Ling-3.0-flash-VL
+      id: huggingface/inclusionAI/Ling-3.0-flash-VL
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/GLM-4.5V
+      id: huggingface/zai-org/GLM-4.5V
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen2.5-Coder-3B-Instruct
+      id: huggingface/Qwen/Qwen2.5-Coder-3B-Instruct
+      papeis:
+      - codigo
+      ativo: false
+    - nome: huggingface/GLM-5.3-Flash-BF16
+      id: huggingface/zai-org/GLM-5.3-Flash-BF16
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-32B
+      id: huggingface/Qwen/Qwen3-32B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V4-Pro-0813
+      id: huggingface/deepseek-ai/DeepSeek-V4-Pro-0813
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-235B-A22B-Thinking-2507
+      id: huggingface/Qwen/Qwen3-235B-A22B-Thinking-2507
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/GLM-4.5-Air
+      id: huggingface/zai-org/GLM-4.5-Air
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V3.2
+      id: huggingface/deepseek-ai/DeepSeek-V3.2
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiMo-V2.5-Pro
+      id: huggingface/XiaomiMiMo/MiMo-V2.5-Pro
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Hy3
+      id: huggingface/tencent/Hy3
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/granite-4.2-30b
+      id: huggingface/ibm-granite/granite-4.2-30b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3-235B-A22B-Instruct-2507
+      id: huggingface/Qwen/Qwen3-235B-A22B-Instruct-2507
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/c4ai-command-r7b-12-2024
+      id: huggingface/CohereLabs/c4ai-command-r7b-12-2024
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K2-Instruct
+      id: huggingface/moonshotai/Kimi-K2-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Hermes-3-Llama-3.1-70B
+      id: huggingface/NousResearch/Hermes-3-Llama-3.1-70B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Llama-Guard-4-12B
+      id: huggingface/meta-llama/Llama-Guard-4-12B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Ling-3.0-flash-Fin
+      id: huggingface/inclusionAI/Ling-3.0-flash-Fin
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V3-0324
+      id: huggingface/deepseek-ai/DeepSeek-V3-0324
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Step-3.7-Flash
+      id: huggingface/stepfun-ai/Step-3.7-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen3.5-397B-A17B
+      id: huggingface/Qwen/Qwen3.5-397B-A17B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Llama-4-Scout-17B-16E-Instruct
+      id: huggingface/meta-llama/Llama-4-Scout-17B-16E-Instruct
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/gpt-oss-safeguard-20b
+      id: huggingface/openai/gpt-oss-safeguard-20b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-5.1-FP8
+      id: huggingface/zai-org/GLM-5.1-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/WizardLM-2-8x22B
+      id: huggingface/alpindale/WizardLM-2-8x22B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-R1-0528
+      id: huggingface/deepseek-ai/DeepSeek-R1-0528
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/aya-vision-32b
+      id: huggingface/CohereLabs/aya-vision-32b
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/GLM-5.2-FP8
+      id: huggingface/zai-org/GLM-5.2-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiniMax-M1-80k
+      id: huggingface/MiniMaxAI/MiniMax-M1-80k
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-V3.1
+      id: huggingface/deepseek-ai/DeepSeek-V3.1
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/command-a-vision-07-2025
+      id: huggingface/CohereLabs/command-a-vision-07-2025
+      papeis:
+      - visao
+      ativo: false
+    - nome: huggingface/GLM-4.5V-FP8
+      id: huggingface/zai-org/GLM-4.5V-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Kimi-K2-Instruct-0905
+      id: huggingface/moonshotai/Kimi-K2-Instruct-0905
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/c4ai-command-r-08-2024
+      id: huggingface/CohereLabs/c4ai-command-r-08-2024
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/MiMo-V2.5
+      id: huggingface/XiaomiMiMo/MiMo-V2.5
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.6V-Flash
+      id: huggingface/zai-org/GLM-4.6V-Flash
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/aya-expanse-32b
+      id: huggingface/CohereLabs/aya-expanse-32b
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Apertus-70B-Instruct-2509
+      id: huggingface/swiss-ai/Apertus-70B-Instruct-2509
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.6V
+      id: huggingface/zai-org/GLM-4.6V
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/c4ai-command-r7b-arabic-02-2025
+      id: huggingface/CohereLabs/c4ai-command-r7b-arabic-02-2025
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/ALIA-40b-instruct-2606
+      id: huggingface/BSC-LT/ALIA-40b-instruct-2606
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.6V-FP8
+      id: huggingface/zai-org/GLM-4.6V-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/c4ai-command-a-03-2025
+      id: huggingface/CohereLabs/c4ai-command-a-03-2025
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Nemotron-SEA-LION-v4.8-120B-A12B
+      id: huggingface/aisingapore/Nemotron-SEA-LION-v4.8-120B-A12B
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/DeepSeek-R1-Distill-Llama-8B
+      id: huggingface/deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/Llama-4-Maverick-17B-128E-Instruct-FP8
+      id: huggingface/meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/command-a-reasoning-08-2025
+      id: huggingface/CohereLabs/command-a-reasoning-08-2025
+      papeis:
+      - raciocinio
+      ativo: false
+    - nome: huggingface/AutoGLM-Phone-9B-Multilingual
+      id: huggingface/zai-org/AutoGLM-Phone-9B-Multilingual
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/command-a-translate-08-2025
+      id: huggingface/CohereLabs/command-a-translate-08-2025
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/tiny-aya-global
+      id: huggingface/CohereLabs/tiny-aya-global
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/tiny-aya-earth
+      id: huggingface/CohereLabs/tiny-aya-earth
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/tiny-aya-fire
+      id: huggingface/CohereLabs/tiny-aya-fire
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Gemma-SEA-LION-v4-27B-IT
+      id: huggingface/aisingapore/Gemma-SEA-LION-v4-27B-IT
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/GLM-4.7-FP8
+      id: huggingface/zai-org/GLM-4.7-FP8
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen-SEA-LION-v4-32B-IT
+      id: huggingface/aisingapore/Qwen-SEA-LION-v4-32B-IT
+      papeis:
+      - chat
+      ativo: false
+    - nome: huggingface/Qwen-SEA-LION-v4.5-27B-IT
+      id: huggingface/aisingapore/Qwen-SEA-LION-v4.5-27B-IT
+      papeis:
+      - chat
+      ativo: false

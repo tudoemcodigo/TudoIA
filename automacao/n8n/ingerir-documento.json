@@ -1,0 +1,802 @@
+{
+  "id": "tudoiaIngerirDoc01",
+  "name": "TudoIA - Ingerir documento",
+  "nodes": [
+    {
+      "id": "a1000001-0000-4000-8000-000000000001",
+      "name": "Formulário",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "formTitle": "Ingerir documento na base de conhecimento",
+        "formDescription": "Envie um arquivo .txt, .md ou .pdf. Ele é salvo em docs/entrada, resumido e indexado no cérebro na hora.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Documento",
+              "fieldType": "file",
+              "acceptFileTypes": ".txt,.md,.pdf",
+              "multipleFiles": false,
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "responseNode",
+        "options": {},
+        "path": "tudoia-ingerir-documento",
+        "authentication": "n8nUserAuth"
+      },
+      "webhookId": "tudoia-ingerir-documento"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000002",
+      "name": "Preparar arquivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// nome seguro (sem caminho nem caracteres estranhos), binário sempre em \"data\" e extensão validada\nconst it = items[0];\nconst bins = it.binary || {};\nconst chave = Object.keys(bins)[0];\nif (!chave) throw new Error('Nenhum arquivo foi enviado.');\nconst b = bins[chave];\nconst original = b.fileName || 'documento.txt';\nconst seguro = original.replace(/^.*[\\\\/]/, '').replace(/[^\\p{L}\\p{N}._ -]/gu, '_');\nconst ponto = seguro.lastIndexOf('.');\nconst base = ponto > 0 ? seguro.slice(0, ponto) : seguro;\nconst ext = ponto > 0 ? seguro.slice(ponto + 1).toLowerCase() : '';\nb.fileName = seguro;\n// acceptFileTypes do formulário só vale no navegador; aqui é a validação de verdade\nconst valido = ['txt', 'md', 'pdf'].includes(ext);\nreturn [{ json: { nome: seguro, base, ext, valido }, binary: { data: b } }];"
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000003",
+      "name": "Extensão válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000004",
+      "name": "Msg formato",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        -300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ 'Formato não suportado (.' + $('Preparar arquivo').item.json.ext + '). Envie .txt, .md ou .pdf.' }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000005",
+      "name": "Existe original",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "=/data/docs/entrada/{{ $('Preparar arquivo').item.json.nome }}",
+        "options": {}
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000006",
+      "name": "Existe resumo",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "=/data/docs/resumos/{{ $('Preparar arquivo').item.json.base }}.md",
+        "options": {}
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000007",
+      "name": "Nome final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// se já existe entrada/<nome> ou resumos/<base>.md, acrescenta -AAAAMMDD-HHMMSS aos dois (nunca sobrescreve)\nconst p = $('Preparar arquivo').first();\nconst existe = (no) => $(no).all().some(i => i.binary && Object.keys(i.binary).length > 0);\nlet { nome, base, ext } = p.json;\nif (existe('Existe original') || existe('Existe resumo')) {\n  const d = new Date(); const z = (x) => String(x).padStart(2, '0');\n  const sufixo = `-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;\n  base = base + sufixo; nome = `${base}.${ext}`;\n  p.binary.data.fileName = nome;\n}\nreturn [{ json: { nome, base, ext }, binary: p.binary }];"
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000008",
+      "name": "Gravar original",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/docs/entrada/{{ $json.nome }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000009",
+      "name": "É PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c9",
+              "leftValue": "={{ $('Nome final').item.json.ext }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000a",
+      "name": "Extrair PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        -100
+      ],
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000b",
+      "name": "Extrair texto",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        100
+      ],
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000c",
+      "name": "Texto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// limita o texto enviado ao modelo; o arquivo original continua inteiro em docs/entrada\nconst t = String($json.text ?? $json.data ?? '').trim();\nreturn [{ json: { vazio: !t, texto: t.slice(0, 30000), cortado: t.length > 30000 } }];"
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000d",
+      "name": "Tem texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c13",
+              "leftValue": "={{ $json.vazio }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000e",
+      "name": "Msg sem texto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        -300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ 'Arquivo salvo em docs\\\\entrada (' + $('Nome final').item.json.nome + '), mas não foi possível extrair texto (PDF escaneado, vazio ou corrompido); não há resumo.' }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-00000000000f",
+      "name": "Resumir",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Resuma o documento abaixo em português do Brasil, em até 15 tópicos, com um título na primeira linha. Não invente informações.\n\n{{ $json.texto }}",
+        "options": {
+          "systemMessage": "Você resume documentos de forma fiel, sem inventar informações."
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000010",
+      "name": "TudoIA Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "tudoia-auto",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "kVEalkca2N56z5TP",
+          "name": "TudoIA LiteLLM"
+        }
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000011",
+      "name": "Msg resumo falhou",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2880,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ 'Arquivo salvo em docs\\\\entrada (' + $('Nome final').item.json.nome + '), mas o resumo falhou (modelo indisponível).' }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000012",
+      "name": "Montar resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const nome = $('Nome final').item.json.nome;\nconst resumo = $json.output;\nreturn [{ json: { resumo, markdown: `# Resumo de ${nome}\\n\\n${resumo}\\n` } }];"
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000013",
+      "name": "Converter para arquivo",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        0
+      ],
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "markdown",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000014",
+      "name": "Salvar resumo",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3360,
+        0
+      ],
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/data/docs/resumos/{{ $('Nome final').item.json.base }}.md",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000015",
+      "name": "Indexar no cérebro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://cerebro:8765/indexar",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          },
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "tudoiaCerebroOAuth",
+          "name": "TudoIA Cérebro (client_credentials)"
+        }
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000016",
+      "name": "Msg cérebro off",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3840,
+        200
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ 'Documento ingerido: ' + $('Nome final').item.json.nome + '. O resumo foi salvo, mas o cérebro não respondeu; será indexado em até 10 min.' }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000017",
+      "name": "Mensagem final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const nome = $('Nome final').item.json.nome;\nconst s = Number($json.statusCode);\nlet m;\nif (s === 200) m = 'indexação concluída.';\nelse if (s === 409) m = 'já havia uma indexação em andamento; o arquivo entra na próxima rodada.';\nelse m = `falha na indexação (HTTP ${s}); o resumo foi salvo.`;\nreturn [{ json: { mensagem: `Documento ingerido: ${nome}. ${m}\\n\\n${$('Montar resumo').item.json.resumo}` } }];"
+      }
+    },
+    {
+      "id": "a1000001-0000-4000-8000-000000000018",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4100,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ formSubmittedText: $json.mensagem }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Formulário": {
+      "main": [
+        [
+          {
+            "node": "Preparar arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar arquivo": {
+      "main": [
+        [
+          {
+            "node": "Extensão válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extensão válida?": {
+      "main": [
+        [
+          {
+            "node": "Existe original",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg formato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe original": {
+      "main": [
+        [
+          {
+            "node": "Existe resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe resumo": {
+      "main": [
+        [
+          {
+            "node": "Nome final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nome final": {
+      "main": [
+        [
+          {
+            "node": "Gravar original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar original": {
+      "main": [
+        [
+          {
+            "node": "É PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É PDF?": {
+      "main": [
+        [
+          {
+            "node": "Extrair PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extrair texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair PDF": {
+      "main": [
+        [
+          {
+            "node": "Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg sem texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair texto": {
+      "main": [
+        [
+          {
+            "node": "Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg sem texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texto": {
+      "main": [
+        [
+          {
+            "node": "Tem texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem texto?": {
+      "main": [
+        [
+          {
+            "node": "Resumir",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg sem texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumir": {
+      "main": [
+        [
+          {
+            "node": "Montar resumo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg resumo falhou",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar resumo": {
+      "main": [
+        [
+          {
+            "node": "Converter para arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter para arquivo": {
+      "main": [
+        [
+          {
+            "node": "Salvar resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar resumo": {
+      "main": [
+        [
+          {
+            "node": "Indexar no cérebro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Indexar no cérebro": {
+      "main": [
+        [
+          {
+            "node": "Mensagem final",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Msg cérebro off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg formato": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg sem texto": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg resumo falhou": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Msg cérebro off": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagem final": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TudoIA Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resumir",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

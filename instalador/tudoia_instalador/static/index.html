@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TudoIA Setup</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/instalador.css">
+</head>
+<body>
+  <header class="topo">
+    <img src="/static/logo.svg" alt="" class="logo" width="32" height="32">
+    <div>
+      <h1>TudoIA</h1>
+      <p class="sub">Assistente de instalação <span id="versao"></span></p>
+    </div>
+  </header>
+
+  <nav id="passos" class="passos" aria-label="Etapas"></nav>
+
+  <main id="tela" class="tela" aria-live="polite"></main>
+
+  <footer class="rodape">
+    <button id="voltar" class="btn btn-sec" type="button">Voltar</button>
+    <span id="aviso" class="aviso" role="status"></span>
+    <button id="avancar" class="btn btn-pri" type="button">Continuar</button>
+  </footer>
+
+  <dialog id="seletor" class="seletor">
+    <h2>Escolher pasta</h2>
+    <p id="seletor-atual" class="mono"></p>
+    <ul id="seletor-lista" class="lista-pastas"></ul>
+    <div class="linha">
+      <input id="seletor-nova" type="text" placeholder="Nome de uma pasta nova (opcional)" maxlength="64">
+    </div>
+    <div class="acoes">
+      <button id="seletor-cancelar" class="btn btn-sec" type="button">Cancelar</button>
+      <button id="seletor-ok" class="btn btn-pri" type="button">Usar esta pasta</button>
+    </div>
+  </dialog>
+
+  <script src="/static/instalador.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+FROM qwen3.5:9b
+PARAMETER num_ctx 32768
+PARAMETER num_gpu 99
+PARAMETER temperature 0.3
+SYSTEM """Traduza o texto do usuário entre português e inglês. Devolva SOMENTE a tradução, sem comentários."""
+MESSAGE user Bom dia, tudo bem?
+MESSAGE assistant Good morning, how are you?
+MESSAGE user The meeting was moved to Friday.
+MESSAGE assistant A reunião foi remarcada para sexta-feira.

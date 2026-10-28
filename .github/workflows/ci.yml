@@ -1,0 +1,51 @@
+# Verificação de cada push e pull request: lint, as duas suítes de teste e a sintaxe do JS e do PowerShell.
+# Roda no Windows porque o TudoIA é Windows-first (caminhos, launcher .ps1, ProactorEventLoop).
+# Os testes não usam rede (tests/conftest.py bloqueia o httpx), Docker, GPU nem Keycloak.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: uv
+        run: python -m pip install "uv==0.13.0"
+      - name: Dependências (painel, roteador, governança)
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run --frozen ruff check .
+      - name: Testes
+        run: uv run --frozen pytest -q
+      - name: Testes do Cérebro
+        working-directory: runtime/cerebro
+        run: |
+          uv sync --frozen
+          uv run --frozen pytest -q
+      - name: Sintaxe do painel.js
+        run: node --check painel/tudoia_painel/static/painel.js
+      - name: Sintaxe da tela do instalador
+        run: node --check instalador/tudoia_instalador/static/instalador.js
+      - name: Sintaxe do launcher
+        shell: pwsh
+        run: |
+          foreach ($f in Get-ChildItem "$PWD\scripts" -Filter *.ps1) {
+            $erros = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$erros)
+            if ($erros) { "$($f.Name): $erros"; exit 1 }
+          }

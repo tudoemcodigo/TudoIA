@@ -1,0 +1,7 @@
+# Modelo especializado em raciocínio analítico, planejamento e arquitetura (DeepSeek-R1 Distill).
+# Perfeito para o Analista e Arquiteto do SquadTI e resolução de problemas lógicos complexos.
+# Com num_ctx 24576 e OLLAMA_KV_CACHE_TYPE=q4_0, cabe perfeitamente na RTX 5070 de 8 GB.
+FROM deepseek-r1:7b
+PARAMETER num_ctx 24576
+PARAMETER num_gpu 99
+PARAMETER temperature 0.6

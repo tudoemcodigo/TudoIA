@@ -1,0 +1,46 @@
+[project]
+name = "tudoia"
+version = "2.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "httpx>=0.28",
+    "psutil>=6.0",
+    "authlib>=1.9.1",
+    "joserfc>=1.7.7",
+    "itsdangerous>=2.2.0",
+    "cryptography>=50.0.2",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.17.3",
+]
+# Capturas de tela do Studio (scripts/studio). Usa o Edge já instalado: sem baixar navegador.
+capturas = ["playwright>=1.64"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+# modelos\ é o ComfyUI portable (terceiros); o env.py do Open WebUI é cópia do upstream (ver docs/seguranca.md).
+extend-exclude = ["modelos", "dados", "runtime/open-webui/env.py"]
+
+[tool.ruff.lint]
+# Só o que costuma ser defeito: erro de sintaxe (E9), pyflakes (F) e bugbear (B). Estilo fica de fora.
+select = ["E9", "F", "B"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "painel", "runtime/litellm", "instalador"]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:Using .httpx. with",
+    # authlib ainda importa o módulo httpx internamente; sai quando o authlib migrar para httpx2.
+    "ignore:The httpx module is deprecated",
+]

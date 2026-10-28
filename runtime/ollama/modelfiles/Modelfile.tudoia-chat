@@ -1,0 +1,6 @@
+# Modelo de chat do dia a dia: o qwen3.5:9b com contexto de 32k e todas as camadas na GPU, sem prompt de sistema.
+# É o modelo padrão do Open WebUI, do llm, do aider e do Continue (chat/edição).
+# Perfis 12-16 GB e 24 GB+: troque o FROM pelo chat do seu perfil (01-preparacao.md).
+FROM qwen3.5:9b
+PARAMETER num_ctx 32768
+PARAMETER num_gpu 99

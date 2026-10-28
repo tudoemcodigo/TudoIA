@@ -1,0 +1,142 @@
+{
+  "name": "TudoIA - Agente pesquisador",
+  "nodes": [
+    {
+      "id": "55220bfe-6229-4aa9-b7d6-f24f4268b2cc",
+      "name": "Chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "a2deee98-a167-4a09-86dc-513033fbd6a3",
+      "name": "Pesquisador",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Hoje é {{ $now.setZone('America/Sao_Paulo').toFormat('dd/MM/yyyy') }}. Você é um pesquisador. Use a ferramenta de busca para fatos recentes e cite os sites usados. Use a calculadora para contas. Responda em português do Brasil."
+        }
+      }
+    },
+    {
+      "id": "cd18263e-b29e-404a-a6b7-e9a5b2e01287",
+      "name": "TudoIA Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        120,
+        240
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "tudoia-auto",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "TudoIA LiteLLM"
+        }
+      }
+    },
+    {
+      "id": "91fdcd10-d02a-4fb1-8b73-960cf7389e5a",
+      "name": "Busca SearXNG",
+      "type": "@n8n/n8n-nodes-langchain.toolSearXng",
+      "typeVersion": 1,
+      "position": [
+        320,
+        240
+      ],
+      "parameters": {
+        "options": {
+          "numResults": 5,
+          "language": "pt-BR"
+        }
+      },
+      "credentials": {
+        "searXngApi": {
+          "id": "",
+          "name": "SearXNG local"
+        }
+      }
+    },
+    {
+      "id": "f2dd9e56-833d-46d8-be47-64738252491d",
+      "name": "Calculadora",
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        520,
+        240
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Pesquisador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca SearXNG": {
+      "ai_tool": [
+        [
+          {
+            "node": "Pesquisador",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculadora": {
+      "ai_tool": [
+        [
+          {
+            "node": "Pesquisador",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TudoIA Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pesquisador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

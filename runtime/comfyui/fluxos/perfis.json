@@ -1,0 +1,135 @@
+{
+  "sdxl-foto": {
+    "arquivo": "sdxl-foto.json",
+    "modelo": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+    "chave_modelo": "ckpt_name",
+    "passos": 30,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "3"
+    ]
+  },
+  "sdxl-foto-hires": {
+    "arquivo": "sdxl-foto-hires.json",
+    "modelo": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+    "chave_modelo": "ckpt_name",
+    "passos": 30,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "3",
+      "14"
+    ]
+  },
+  "flux-schnell": {
+    "arquivo": "flux-schnell.json",
+    "modelo": "flux1-schnell-Q4_K_S.gguf",
+    "chave_modelo": "unet_name",
+    "passos": 4,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "3"
+    ]
+  },
+  "zimage-turbo": {
+    "arquivo": "zimage-turbo.json",
+    "modelo": "z_image_turbo_int8_convrot.safetensors",
+    "chave_modelo": "unet_name",
+    "passos": 8,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "3"
+    ]
+  },
+  "zimage-turbo-hires": {
+    "arquivo": "zimage-turbo-hires.json",
+    "modelo": "z_image_turbo_int8_convrot.safetensors",
+    "chave_modelo": "unet_name",
+    "passos": 8,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "3",
+      "14"
+    ]
+  },
+  "video-wan14b-t2v": {
+    "tipo": "video",
+    "arquivo": "video-wan14b-t2v.json",
+    "fps": 16,
+    "largura": 640,
+    "altura": 640,
+    "seeds": [
+      "3"
+    ],
+    "chave_seed": "noise_seed",
+    "imagem": "nao"
+  },
+  "video-wan14b-i2v": {
+    "tipo": "video",
+    "arquivo": "video-wan14b-i2v.json",
+    "fps": 16,
+    "largura": 640,
+    "altura": 640,
+    "seeds": [
+      "3"
+    ],
+    "chave_seed": "noise_seed",
+    "imagem": "obrigatoria"
+  },
+  "video-wan5b": {
+    "tipo": "video",
+    "arquivo": "video-wan5b.json",
+    "fps": 24,
+    "largura": 1280,
+    "altura": 704,
+    "seeds": [
+      "3"
+    ],
+    "chave_seed": "seed",
+    "imagem": "opcional"
+  },
+  "video-minimax-h3": {
+    "tipo": "video",
+    "arquivo": "video-minimax-h3.json",
+    "fps": 24,
+    "largura": 1344,
+    "altura": 768,
+    "passos": 8,
+    "seeds": [
+      "15"
+    ],
+    "chave_seed": "noise_seed",
+    "imagem": "opcional",
+    "audio": true,
+    "titulo": "MiniMax H3 Omni Turbo (Vídeo + Áudio Estéreo · 8 Steps)"
+  },
+  "GeraImagemTudoIA-KREA2": {
+    "tipo": "imagem",
+    "arquivo": "GeraImagemTudoIA-KREA2.json",
+    "modelo": "krea2_turbo_int8_convrot.safetensors",
+    "passos": 8,
+    "tamanho": "1024x1024",
+    "seeds": [
+      "30:3"
+    ]
+  },
+  "inpaint-tudoia": {
+    "tipo": "inpaint",
+    "arquivo": "inpaint-tudoia.json",
+    "modelo": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+    "passos": 25,
+    "seeds": [
+      "7"
+    ]
+  },
+  "musica-yue2": {
+    "tipo": "audio",
+    "arquivo": "musica-yue2.json",
+    "modelo": "yue2_3b_int8_convrot.safetensors",
+    "chave_modelo": "ckpt_name",
+    "passos": 25,
+    "seeds": [
+      "6"
+    ],
+    "titulo": "YuE 2 Music Generator (Full Song · ABC Planning)"
+  }
+}

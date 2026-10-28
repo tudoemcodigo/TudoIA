@@ -1,0 +1,9 @@
+# Modelo para agentes (Claude Code local "tudoia", OpenCode, Continue em modo Agent).
+# Sem SYSTEM: cada agente traz o seu prompt. Contexto de 32k (21/10/2026): com 64k a VRAM de 8 GB ficava no limite e o
+# prefill caía de 1750 para 652 tok/s; pedido maior que 30k o LiteLLM pula (max_input_tokens no gerador).
+# num_gpu 99 força todas as camadas na GPU: o estimador do Ollama deixa 2 camadas na CPU sem precisar (medido em 15/10/2026).
+# Perfis 12-16 GB e 24 GB+: troque o FROM pelo chat do seu perfil (01-preparacao.md).
+FROM qwen3.5:9b
+PARAMETER num_ctx 32768
+PARAMETER num_gpu 99
+PARAMETER temperature 0.6

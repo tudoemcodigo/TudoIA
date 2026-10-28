@@ -1,0 +1,11 @@
+TudoIA
+Copyright 2026 Roberto Oliveira
+
+Este produto é licenciado sob a Apache License, versão 2.0 (veja o arquivo LICENSE).
+
+O projeto inclui e referencia componentes de terceiros, que mantêm as próprias licenças:
+- skills de governança copiadas de addyosmani/agent-skills (MIT);
+- skill frontend-design, da Anthropic (Apache-2.0, com LICENSE próprio na pasta);
+- serviços de terceiros executados via Docker (Open WebUI, LiteLLM, SearXNG, n8n, Kokoro, PostgreSQL) e processos do host (Ollama, ComfyUI), que não são redistribuídos por este repositório.
+
+A lista completa, com versões e licenças verificadas, está em docs/terceiros.md.

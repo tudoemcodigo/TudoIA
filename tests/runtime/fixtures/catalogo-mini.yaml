@@ -1,0 +1,35 @@
+provedores:
+  nvidia:
+    nome: NVIDIA NIM
+    tier: FREE
+    chave: NVIDIA_NIM_API_KEY
+    site_chave: https://build.nvidia.com
+    api_base: https://integrate.api.nvidia.com/v1
+    url_modelos: https://integrate.api.nvidia.com/v1/models
+    limites: {rpm: 40}
+    fonte_limites: forum NVIDIA 2026-08
+    modelos:
+      - {nome: nim/glm-5.3-flash, id: nvidia_nim/z-ai/glm-5.3-flash, papeis: [chat, codigo, agente, rapido], contexto: 131072}
+      - {nome: nim/nemotron-3-super, id: nvidia_nim/nvidia/nemotron-3-super-120b-a12b, papeis: [chat, raciocinio]}
+      - {nome: nim/desligado, id: nvidia_nim/x/y, papeis: [chat], ativo: false}
+      - {nome: nim/visao-vl, id: nvidia_nim/nvidia/vl-teste, papeis: [chat, visao]}
+  cloudflare:
+    nome: Cloudflare Workers AI
+    tier: FREE
+    chave: CLOUDFLARE_API_KEY
+    chaves_extras: [CLOUDFLARE_ACCOUNT_ID]
+    descartar_params: [prompt_cache_key]
+    site_chave: https://dash.cloudflare.com
+    url_modelos: https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/models/search
+    limites: null
+    modelos:
+      - {nome: cloudflare/gpt-oss-120b, id: cloudflare/@cf/openai/gpt-oss-120b, papeis: [chat]}
+  anthropic:
+    nome: Anthropic
+    tier: PAID
+    chave: ANTHROPIC_API_KEY
+    site_chave: https://console.anthropic.com
+    url_modelos: https://api.anthropic.com/v1/models
+    limites: {}
+    modelos:
+      - {nome: claude-sonnet-5-5, id: anthropic/claude-sonnet-5-5, papeis: [chat, codigo, agente]}

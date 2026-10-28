@@ -1,0 +1,231 @@
+# Stack do TudoIA. Suba com `scripts\tudoia.ps1 up` ou, dentro de runtime\:
+#   docker compose -p tudoia --env-file ..\.env up -d
+# Quais serviços sobem: litellm-db e litellm sempre; o resto por perfil, em COMPOSE_PROFILES no .env
+# (cerebro = Cérebro + SearXNG | webui = Open WebUI + Kokoro + SearXNG | n8n | keycloak = login embutido).
+# Todas as chaves ficam no .env da raiz. O LiteLLM (:4000) é o gateway de chat; o Open WebUI também fala direto com o Ollama (OLLAMA_BASE_URL).
+name: tudoia
+
+services:
+  litellm-db:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    container_name: litellm-db
+    restart: unless-stopped
+    ports: ["127.0.0.1:5433:5432"]
+    environment:
+      - POSTGRES_USER=litellm
+      - POSTGRES_PASSWORD=${LITELLM_DB_PASSWORD}
+      - POSTGRES_DB=litellm
+      - TZ=${TZ}
+    volumes: [litellm-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest@sha256:7294b90f868c5c38c99b83021c7ba46f9b439e95f8e32964c925c7d2563a03f7
+    container_name: litellm
+    restart: unless-stopped
+    ports: ["127.0.0.1:4000:4000"]
+    # Só o que o config.yaml gerado referencia (os.environ/...). Nada de .env inteiro: o LiteLLM é o container mais
+    # exposto a texto de terceiros, e não precisa da senha do Keycloak, do token do GitHub nem das chaves do n8n.
+    # Provedor novo no catálogo (`chave:` em config/catalogo-modelos.yaml) entra aqui também.
+    environment:
+      - DATABASE_URL=postgresql://litellm:${LITELLM_DB_PASSWORD}@litellm-db:5432/litellm
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - TZ=${TZ}
+      - NVIDIA_NIM_API_KEY=${NVIDIA_NIM_API_KEY:-}
+      - NVIDIA_NIM_API_BASE=${NVIDIA_NIM_API_BASE:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CLOUDFLARE_API_KEY=${CLOUDFLARE_API_KEY:-}
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - XAI_API_KEY=${XAI_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro   # GERADO pelo painel (POST /api/roteador/gerar)
+      - ./litellm/roteador.py:/app/roteador.py:ro
+      - ./litellm/roteador_regras.py:/app/roteador_regras.py:ro
+      - ./litellm/roteador_eventos.py:/app/roteador_eventos.py:ro
+      - ./litellm/roteador_resiliente.py:/app/roteador_resiliente.py:ro
+      - ../config:/app/config:ro
+      - ../dados/logs:/app/logs
+    working_dir: /app
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      litellm-db: {condition: service_healthy}
+
+  searxng:
+    profiles: [cerebro, webui]
+    image: searxng/searxng:2026.10.19-81371861f@sha256:5ed0323b5f5f8701264ef65e239a2bd83cb57098f2b971fa30bf79c06eeae271
+    container_name: searxng
+    restart: unless-stopped
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+    volumes: [./searxng:/etc/searxng]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz | grep -q OK"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  cerebro:
+    profiles: [cerebro]
+    build: ./cerebro
+    container_name: cerebro
+    restart: unless-stopped
+    ports: ["127.0.0.1:8765:8765"]
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - SEARXNG_URL=http://searxng:8080
+      - CEREBRO_DOCS=/docs
+      - CEREBRO_DOCS_HOST=${CEREBRO_DOCS_HOST:-}
+      - CEREBRO_DADOS=/dados
+      # Tokens do Keycloak: emissor público (iss) e JWKS pelo host.docker.internal (o container não vê localhost).
+      - CEREBRO_OIDC_ISSUER=http://localhost:8180/realms/tudoia,http://host.docker.internal:8180/realms/tudoia
+      - CEREBRO_OIDC_JWKS_URL=http://host.docker.internal:8180/realms/tudoia/protocol/openid-connect/certs
+      - CEREBRO_OIDC_CLIENT_ID=tudoia-mcp
+      # Token sem expiração (papel de operador) para clientes MCP locais. Segredo só no .env; trocar = reiniciar.
+      - CEREBRO_TOKEN_ESTATICO=${CEREBRO_TOKEN_ESTATICO:-}
+    volumes:
+      - ../dados/documentos:/docs:ro
+      - ../dados/cerebro:/dados
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [searxng]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/saude', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  kokoro:
+    profiles: [webui]
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c   # CPU de propósito: deixa a VRAM para LLM e imagem
+    container_name: kokoro
+    restart: unless-stopped
+    ports: ["127.0.0.1:8880:8880"]
+
+  open-webui:
+    profiles: [webui]
+    image: ghcr.io/open-webui/open-webui:main@sha256:4860ba005ae8f19f08d1e12b0868855b7b339ea0dad9927f196820fc0de04575
+    container_name: open-webui
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:8080"]
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - WEBUI_NAME=TudoIA
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+      - ENABLE_API_KEYS=true
+      - TZ=${TZ}
+    volumes:
+      - open-webui:/app/backend/data
+      - ./open-webui/env.py:/app/backend/open_webui/env.py:ro
+      - ./open-webui/static/logo.png:/app/build/static/logo.png:ro
+      - ./open-webui/static/splash.png:/app/build/static/splash.png:ro
+      - ./open-webui/static/splash-dark.png:/app/build/static/splash-dark.png:ro
+      - ./open-webui/static/favicon.png:/app/build/static/favicon.png:ro
+      - ./open-webui/static/favicon.ico:/app/build/static/favicon.ico:ro
+      - ./open-webui/static/apple-touch-icon.png:/app/build/static/apple-touch-icon.png:ro
+      - ./open-webui/static/favicon-96x96.png:/app/build/static/favicon-96x96.png:ro
+      - ./open-webui/static/web-app-manifest-192x192.png:/app/build/static/web-app-manifest-192x192.png:ro
+      - ./open-webui/static/web-app-manifest-512x512.png:/app/build/static/web-app-manifest-512x512.png:ro
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [searxng, kokoro]
+
+  n8n:
+    profiles: [n8n]
+    image: docker.n8n.io/n8nio/n8n:latest@sha256:d02752c6ab446ae9db8deec2f9cc887c378f77cdcad31650814df936b7386dfb
+    container_name: n8n
+    restart: unless-stopped
+    ports: ["127.0.0.1:5678:5678"]
+    environment:
+      - GENERIC_TIMEZONE=${TZ}
+      - TZ=${TZ}
+      - N8N_HOST=localhost
+      - N8N_WEBHOOK_URL=http://localhost:5678/
+      - N8N_RESTRICT_FILE_ACCESS_TO=/data/docs
+      # Sem esta chave o n8n gera outra e as credenciais salvas deixam de decifrar no restart.
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # Nenhum fluxo lê variável de ambiente: sem isto, qualquer nó Code leria a N8N_ENCRYPTION_KEY acima.
+      # O segredo do Cérebro fica no cofre do n8n (scripts/n8n/credencial_cerebro.py).
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=true
+    volumes:
+      - n8n:/home/node/.n8n
+      - ../dados/documentos:/data/docs
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Login do painel (OIDC). Só sobe com o perfil `keycloak`; quem já tem um Keycloak próprio não liga esse perfil e
+  # aponta TUDOIA_OIDC_ISSUER para ele. Modo `start` com HTTP só em 127.0.0.1: não exponha esta porta.
+  keycloak-db:
+    profiles: [keycloak]
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    container_name: keycloak-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-}
+      - POSTGRES_DB=keycloak
+      - TZ=${TZ:-UTC}
+    volumes: [keycloak-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    profiles: [keycloak]
+    image: quay.io/keycloak/keycloak:26.3@sha256:357829ec7c4693397533035092ad13b0644bcc95ded311f33a3738c4d9e9bdba
+    container_name: keycloak
+    restart: unless-stopped
+    command: ["start", "--http-enabled=true", "--hostname-strict=false"]
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${TUDOIA_KEYCLOAK_ADMIN:-admin}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${TUDOIA_KEYCLOAK_ADMIN_PASSWORD:-}
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-}
+      - KC_HEALTH_ENABLED=true
+      - TZ=${TZ:-UTC}
+    ports: ["127.0.0.1:8180:8080"]
+    volumes:
+      # Só a pasta do tema de login do TudoIA: o diretório de temas do Keycloak continua o original.
+      - ../infra/keycloak/tema/tudoia:/opt/keycloak/themes/tudoia:ro
+    healthcheck:
+      # A imagem não tem curl nem wget: usa /dev/tcp do bash na porta de gerenciamento (9000, só dentro do container).
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+    depends_on:
+      keycloak-db: {condition: service_healthy}
+
+volumes:
+  open-webui:
+  n8n:
+  litellm-db:
+  keycloak-db:

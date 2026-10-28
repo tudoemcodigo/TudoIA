@@ -1,0 +1,83 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "yue2_3b_int8_convrot.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "2": {
+    "inputs": {
+      "clip": ["1", 1],
+      "style": "cinematic dark synthwave, atmospheric pulsing bass, 80s analog synthesizers, retro electronic beats",
+      "lyrics": "[instrumental]",
+      "seed": 42,
+      "mode": "full",
+      "max_abc_tokens": 4096,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "top_k": 30,
+      "repetition_penalty": 1.005,
+      "penalty_window": 100
+    },
+    "class_type": "YuE2GenerateABC"
+  },
+  "3": {
+    "inputs": {
+      "clip": ["1", 1],
+      "style": "cinematic dark synthwave, atmospheric pulsing bass, 80s analog synthesizers, retro electronic beats",
+      "lyrics": "[instrumental]",
+      "abc": ["2", 0],
+      "seed": 42,
+      "mode": "full",
+      "max_duration": 30.0,
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 100,
+      "repetition_penalty": 1.2,
+      "cfg_scale": 1.0
+    },
+    "class_type": "YuE2GenerateMusic"
+  },
+  "4": {
+    "inputs": {
+      "seconds": ["3", 1],
+      "batch_size": 1
+    },
+    "class_type": "EmptyYuE2LatentAudio"
+  },
+  "5": {
+    "inputs": {
+      "conditioning": ["3", 0]
+    },
+    "class_type": "ConditioningZeroOut"
+  },
+  "6": {
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["3", 0],
+      "negative": ["5", 0],
+      "latent_image": ["4", 0],
+      "seed": 42,
+      "steps": 25,
+      "cfg": 3.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1.0
+    },
+    "class_type": "KSampler"
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecodeAudio"
+  },
+  "8": {
+    "inputs": {
+      "audio": ["7", 0],
+      "filename_prefix": "audio/YuE2_TudoIA"
+    },
+    "class_type": "SaveAudio"
+  }
+}

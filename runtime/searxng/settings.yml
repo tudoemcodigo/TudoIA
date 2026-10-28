@@ -1,0 +1,12 @@
+# SearXNG do TudoIA: metabuscador privado usado pela Pesquisa na Web do Open WebUI.
+# A chave secreta vem da variável SEARXNG_SECRET (arquivo .env).
+use_default_settings: true
+server:
+  limiter: false          # uso local, sem limite de requisições
+  image_proxy: true
+search:
+  safe_search: 0
+  default_lang: "pt-BR"
+  formats:
+    - html
+    - json                # obrigatório: sem ele o Open WebUI recebe 403
