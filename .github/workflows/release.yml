@@ -34,8 +34,8 @@ jobs:
         run: |
           if ($env:TAG -notmatch '^v(\d+\.\d+\.\d+)$') { throw "tag '$env:TAG' fora do formato vX.Y.Z" }
           $tag = $Matches[1]
-          $proj = python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
-          $inst = python -c "import re; print(re.search(r'VERSAO = \"([^\"]+)\"', open('instalador/tudoia_instalador/__init__.py', encoding='utf-8').read()).group(1))"
+          $proj = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          $inst = (Select-String -Path instalador/tudoia_instalador/__init__.py -Pattern '^VERSAO = "([^"]+)"').Matches[0].Groups[1].Value
           if ($tag -ne $proj -or $tag -ne $inst) { throw "versões divergem: tag=$tag pyproject=$proj instalador=$inst" }
       - name: Dependências
         run: uv sync --frozen
