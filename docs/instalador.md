@@ -5,7 +5,9 @@ Desktop, Ollama, uv), serviços Docker, login (Keycloak) e atalhos. Não leva na
 
 ## Para quem instala
 
-1. Copie `TudoIA-Setup.exe` (e confira o SHA-256 em `TudoIA-Setup.exe.sha256`) e dê duplo clique. O Windows
+1. Baixe `TudoIA-Setup.exe` e o `.sha256` da [última release](https://github.com/tudoemcodigo/TudoIA/releases/latest).
+   Confira com `(Get-FileHash .\TudoIA-Setup.exe).Hash` (deve ser igual ao do `.sha256`) e, se tiver a CLI do GitHub,
+   a origem: `gh attestation verify .\TudoIA-Setup.exe --repo tudoemcodigo/TudoIA`. Dê duplo clique. O Windows
    SmartScreen avisa porque o executável **não é assinado**: *Mais informações > Executar assim mesmo*.
 2. O instalador abre uma tela em `http://127.0.0.1:<porta>/` (só neste PC, protegida por token) com seis passos:
    **Sistema**, **Onde instalar**, **O que instalar**, **Conta e chaves**, **Revisar**, **Instalar**.
@@ -73,6 +75,20 @@ Códigos de saída da instalação: 0 ok, 1 falhou, 2 opções inválidas, 3 pre
    pessoais, a pasta de usuário do Windows e o nome de usuário e do computador de quem empacota. Qualquer achado
    reprova a construção. Para termos extras: `PESSOAIS_EXTRA=nome1,nome2`.
 3. PyInstaller (`--onefile`) gera `dist/TudoIA-Setup.exe` (~9 MB) e o `.sha256`.
+
+### Publicar uma release
+
+O `.exe` **não vai para o Git** (`dist/` e `build/` estão no `.gitignore`): ele sai de uma release do GitHub,
+construído pelo CI em `.github/workflows/release.yml`. Para publicar:
+
+1. Suba a versão no `pyproject.toml` e em `VERSAO` (`instalador/tudoia_instalador/__init__.py`); o teste
+   `tests/instalacao/test_versao.py` reprova se divergirem.
+2. Commit, e então `git tag vX.Y.Z` e `git push origin vX.Y.Z`.
+3. O workflow confere tag = pyproject = instalador, roda lint e testes, constrói o `.exe`, confere o SHA-256, atesta a
+   proveniência e cria a release com o `.exe` e o `.sha256`.
+
+Assinatura digital (remove o aviso do SmartScreen) é a pendência: exige certificado de code signing ou Azure Trusted
+Signing, com segredos no repositório. Não está implementada.
 
 Para mudar o que entra no pacote, edite `INCLUIR`/`EXCLUIR` em `payload.py`. O teste
 `tests/instalacao/test_payload.py::test_o_repositorio_real_gera_um_pacote_limpo` reprova se alguém commitar um segredo.

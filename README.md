@@ -28,7 +28,7 @@ Licença: Apache-2.0 (ver [LICENSE](LICENSE)). Skills de terceiros mantêm a lic
 
 ## Início rápido
 
-**Windows, um clique:** `TudoIA-Setup.exe` abre um assistente que instala tudo (Docker Desktop, Ollama, serviços, login e atalhos), com as pastas e os componentes à sua escolha. Veja [docs/instalador.md](docs/instalador.md). Para gerar o `.exe`: `.\scripts\tudoia.ps1 empacotar`.
+**Windows, um clique:** [baixe o `TudoIA-Setup.exe`](https://github.com/tudoemcodigo/TudoIA/releases/latest/download/TudoIA-Setup.exe) (e o [`.sha256`](https://github.com/tudoemcodigo/TudoIA/releases/latest/download/TudoIA-Setup.exe.sha256)). O assistente instala tudo (Docker Desktop, Ollama, serviços, login e atalhos), com as pastas e os componentes à sua escolha. Confira o download com `(Get-FileHash .\TudoIA-Setup.exe).Hash` e compare com o `.sha256`. Veja [docs/instalador.md](docs/instalador.md). Para gerar o `.exe` você mesmo: `.\scripts\tudoia.ps1 empacotar`.
 
 Manual, no Windows:
 
@@ -70,6 +70,6 @@ instalação.
 
 ## Estado do projeto
 
-- Versão do pacote Python: 2.0.0 (`pyproject.toml`).
+- Versão do pacote Python: 2.0.1 (`pyproject.toml`).
 - Python 3.12 (`.python-version`).
 - Os modelos, os pesos e os dados de execução não fazem parte do repositório (`modelos/` e `dados/` são ignorados).
