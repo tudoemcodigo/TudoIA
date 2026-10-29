@@ -1,7 +1,7 @@
 # Instalador (TudoIA Setup)
 
 `TudoIA-Setup.exe` instala o ecossistema numa máquina Windows limpa: assistente no navegador, pré-requisitos (Docker
-Desktop, Ollama, uv), serviços Docker, login (Keycloak) e atalhos. Não leva nada da máquina onde foi gerado.
+Desktop, Ollama, Python, uv), serviços Docker, login (Keycloak) e atalhos. Não leva nada da máquina onde foi gerado.
 
 ## Para quem instala
 
@@ -10,7 +10,7 @@ Desktop, Ollama, uv), serviços Docker, login (Keycloak) e atalhos. Não leva na
    a origem: `gh attestation verify .\TudoIA-Setup.exe --repo tudoemcodigo/TudoIA`. Dê duplo clique. O Windows
    SmartScreen avisa porque o executável **não é assinado**: *Mais informações > Executar assim mesmo*.
 2. O instalador abre uma tela em `http://127.0.0.1:<porta>/` (só neste PC, protegida por token) com seis passos:
-   **Sistema**, **Onde instalar**, **O que instalar**, **Conta e chaves**, **Revisar**, **Instalar**.
+   **Sistema**, **O que instalar**, **Onde instalar**, **Conta e chaves**, **Revisar**, **Instalar**.
 3. No fim aparece o endereço do painel, o e-mail do administrador e uma **senha temporária, mostrada uma única vez**
    (a troca é obrigatória no primeiro login; a política do realm exige 12 caracteres).
 
@@ -18,8 +18,8 @@ Desktop, Ollama, uv), serviços Docker, login (Keycloak) e atalhos. Não leva na
 
 | Passo | Opções |
 |---|---|
-| Onde instalar | Pasta de instalação (padrão `C:\TudoIA`), pasta de **dados** (vira junção em `<instalação>\dados`), pasta dos modelos do Ollama, pasta do ComfyUI portable, nome do projeto Docker |
 | O que instalar | Núcleo (sempre: painel, LiteLLM, Postgres) e, à escolha: Cérebro + SearXNG, Open WebUI + Kokoro, n8n, Keycloak embutido (ou usar um existente em `localhost:8180`), Ollama, ComfyUI portable (só com GPU NVIDIA) |
+| Onde instalar | Pasta de instalação (padrão `C:\TudoIA`), pasta de **dados** (vira junção em `<instalação>\dados`), pasta dos modelos do Ollama, pasta do ComfyUI portable, nome do projeto Docker |
 | Conta e chaves | E-mail do primeiro administrador, fuso horário, chaves de provedores (opcionais), atalhos, iniciar ao final, configurar Claude Code/Cursor/Codex (`sync`, desligado por padrão), origem do código (embutido ou GitHub) |
 
 **Modelos de IA não são baixados na instalação** (dezenas de GB). Depois, use o painel ou `tudoia modelos`.
@@ -27,7 +27,7 @@ Desktop, Ollama, uv), serviços Docker, login (Keycloak) e atalhos. Não leva na
 ### O que ele faz, em ordem
 
 verificar o sistema → instalar os arquivos → pastas e junção de dados → `.env` (chaves só nele; acesso restrito ao seu
-usuário) → `uv` → dependências Python (`uv sync --frozen`) → segredos internos → Docker Desktop (winget, com a janela
+usuário) → `uv` → Python 3.12 (se não houver) → dependências Python (`uv sync --frozen`) → segredos internos → Docker Desktop (winget, com a janela
 de permissão do Windows; se precisar reiniciar, abra o TudoIA Setup de novo depois do reinício, carregue as opções anteriores e ele continua de onde parou) → Ollama → configuração do LiteLLM → `docker compose
 pull` e `up --wait` → Keycloak (realm, clientes e administrador) → credencial do n8n → ComfyUI → atalhos → painel.
 

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import sys
 import tempfile
 import urllib.parse
@@ -111,6 +112,19 @@ def _so_hosts(hosts: tuple[str, ...]):
     return SoHosts
 
 
+def _remover_silencioso(caminho: Path) -> None:
+    try:
+        caminho.unlink(missing_ok=True)
+    except PermissionError:
+        try:
+            os.chmod(caminho, stat.S_IWRITE)
+            caminho.unlink(missing_ok=True)
+        except OSError:
+            pass
+    except OSError:
+        pass
+
+
 def baixar_https(url: str, destino: Path, hosts: tuple[str, ...], max_bytes: int, abrir: Callable | None = None,
                  progresso: Callable[[int], None] | None = None) -> Path:
     """Baixa `url` para `destino`: só https, só nos hosts dados (inclusive nos redirecionamentos), com teto de tamanho."""
@@ -118,6 +132,11 @@ def baixar_https(url: str, destino: Path, hosts: tuple[str, ...], max_bytes: int
     if u.scheme != "https" or u.hostname not in hosts:
         raise ErroCodigo(f"só https em {', '.join(hosts)} é aceito (recebi {u.hostname})")
     abrir = abrir or urllib.request.build_opener(_so_hosts(hosts)).open
+    if destino.is_file():
+        try:
+            os.chmod(destino, stat.S_IWRITE)
+        except OSError:
+            pass
     try:
         with abrir(urllib.request.Request(url, headers={"User-Agent": "TudoIA-Setup"}), timeout=60) as r, destino.open("wb") as f:
             total = 0
@@ -129,10 +148,10 @@ def baixar_https(url: str, destino: Path, hosts: tuple[str, ...], max_bytes: int
                 if progresso:
                     progresso(total)
     except ErroCodigo:
-        destino.unlink(missing_ok=True)
+        _remover_silencioso(destino)
         raise
     except OSError as e:
-        destino.unlink(missing_ok=True)
+        _remover_silencioso(destino)
         raise ErroCodigo(f"não consegui baixar {u.hostname}{u.path} ({type(e).__name__})") from e
     return destino
 

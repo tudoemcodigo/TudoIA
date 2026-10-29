@@ -5,11 +5,14 @@ import json
 import os
 import re
 import shutil
+import stat
 import tempfile
+import time
 import urllib.request
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 from . import VERSAO, codigo, envfile
 from .execucao import ErroComando
@@ -28,6 +31,53 @@ SETUP_7Z_URL = "https://www.7-zip.org/a/7zr.exe"
 DOCKER_INSTALADOR_URL = "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe"
 OLLAMA_INSTALADOR_URL = "https://ollama.com/download/OllamaSetup.exe"
 COD_REINICIO = (3010, 1641)   # "reinicialização necessária" do instalador do Windows/MSI
+
+
+def _remover_arquivo_seguro(caminho: Path, retentativas: int = 5, espera: float = 0.5,
+                            log: Callable[[str], None] | None = None) -> bool:
+    if not caminho.is_file():
+        return True
+    for tentativa in range(retentativas):
+        try:
+            caminho.unlink(missing_ok=True)
+            return True
+        except PermissionError:
+            try:
+                os.chmod(caminho, stat.S_IWRITE)
+                caminho.unlink(missing_ok=True)
+                return True
+            except (PermissionError, OSError):
+                pass
+        except OSError:
+            pass
+        if tentativa < retentativas - 1:
+            time.sleep(espera * (tentativa + 1))
+    if log:
+        log(f"aviso: não consegui remover arquivo temporário {caminho.name}; pode ser removido mais tarde")
+    return False
+
+
+def _mover_pasta_segura(origem: Path, destino: Path, log: Callable[[str], None] | None = None) -> None:
+    if origem.resolve() == destino.resolve():
+        return
+    if destino.exists() and destino.is_dir() and not any(destino.iterdir()):
+        try:
+            destino.rmdir()
+        except OSError:
+            pass
+    for tentativa in range(5):
+        try:
+            origem.rename(destino)
+            return
+        except (PermissionError, OSError):
+            if tentativa < 4:
+                time.sleep(1.0 * (tentativa + 1))
+            else:
+                try:
+                    shutil.move(str(origem), str(destino))
+                    return
+                except (PermissionError, OSError) as err_move:
+                    raise ErroInstalacao(f"não consegui mover {origem.name} para {destino}: {err_move}") from err_move
 
 
 def _tem_instalacao_anterior(raiz: Path) -> bool:
@@ -83,7 +133,7 @@ def obter_codigo(c: Contexto) -> None:
         raise ErroInstalacao(f"pacote do código inválido: {e}") from e
     finally:
         if c.o.fonte_codigo == "github":
-            zip_path.unlink(missing_ok=True)
+            _remover_arquivo_seguro(zip_path, log=c.log)
     if not (c.raiz / "runtime" / "docker-compose.yml").is_file() or not (c.raiz / ".env.example").is_file():
         raise ErroInstalacao("o pacote não parece ser o TudoIA (faltam runtime/docker-compose.yml ou .env.example)")
     c.log(f"{n} arquivos instalados em {c.raiz}")
@@ -165,7 +215,7 @@ def obter_uv(c: Contexto) -> None:
         except codigo.ErroCodigo as e:
             raise ErroInstalacao(f"não consegui obter o uv: {e}") from e
         finally:
-            zip_path.unlink(missing_ok=True)
+            _remover_arquivo_seguro(zip_path, log=c.log)
     c.uv = str(exe)
     c.log(f"uv {UV_VERSAO} em {exe}")
 
@@ -178,9 +228,23 @@ def _sha256_publicado(url: str) -> str | None:
             m = re.match(r"([0-9a-fA-F]{64})", tmp.read_text(encoding="utf-8", errors="replace"))
             return m.group(1).lower() if m else None
         finally:
-            tmp.unlink(missing_ok=True)
+            _remover_arquivo_seguro(tmp)
     except codigo.ErroCodigo:
         return None
+
+
+def instalar_python(c: Contexto) -> None:
+    assert c.uv, "etapa do uv não rodou"
+    r = c.executor.rodar([c.uv, "python", "find", "3.12"], aceitos=(0, 1), mostrar=False)
+    if r.codigo == 0 and r.saida.strip():
+        c.log(f"Python 3.12 já disponível: {r.saida.strip().splitlines()[-1]}")
+        return
+    c.log("Python 3.12 não encontrado; baixando e instalando...")
+    c.executor.rodar([c.uv, "python", "install", "3.12"], timeout=1800)
+    r_pos = c.executor.rodar([c.uv, "python", "find", "3.12"], aceitos=(0, 1), mostrar=False)
+    if r_pos.codigo != 0 or not r_pos.saida.strip():
+        raise ErroInstalacao("o Python 3.12 não foi encontrado após a instalação pelo uv")
+    c.log(f"Python 3.12 instalado com sucesso: {r_pos.saida.strip().splitlines()[-1]}")
 
 
 def dependencias(c: Contexto) -> None:
@@ -345,7 +409,7 @@ def _extrair_7z(c: Contexto, arquivo: Path, destino: Path) -> None:
     try:
         c.executor.rodar([str(sete), "x", str(arquivo), f"-o{destino}", "-y"], timeout=3600)
     finally:
-        sete.unlink(missing_ok=True)
+        _remover_arquivo_seguro(sete, log=c.log)
 
 
 def comfyui(c: Contexto) -> None:
@@ -363,9 +427,10 @@ def comfyui(c: Contexto) -> None:
     except codigo.ErroCodigo as e:
         raise ErroInstalacao(str(e)) from e
     finally:
-        arquivo.unlink(missing_ok=True)
-    if portavel.name != "ComfyUI_windows_portable" and (pai / "ComfyUI_windows_portable").is_dir() and not portavel.exists():
-        (pai / "ComfyUI_windows_portable").rename(portavel)
+        _remover_arquivo_seguro(arquivo, log=c.log)
+    padrao = pai / "ComfyUI_windows_portable"
+    if padrao.is_dir() and padrao.resolve() != portavel.resolve():
+        _mover_pasta_segura(padrao, portavel, c.log)
     if not (portavel / "run_nvidia_gpu.bat").is_file():
         raise ErroInstalacao("o ComfyUI foi extraído, mas não achei run_nvidia_gpu.bat")
 
@@ -406,6 +471,7 @@ def montar_etapas() -> list[Etapa]:
         Etapa("pastas", "Preparando as pastas", pastas),
         Etapa("env", "Gravando a configuração (.env)", escrever_env),
         Etapa("uv", "Obtendo o uv (gerenciador Python)", obter_uv),
+        Etapa("python", "Instalando o Python 3.12", instalar_python),
         Etapa("dependencias", "Instalando as dependências Python", dependencias),
         Etapa("segredos", "Gerando os segredos internos", segredos_internos),
         Etapa("docker", "Preparando o Docker Desktop", docker, docker_uso),

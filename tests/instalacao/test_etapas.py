@@ -362,6 +362,7 @@ def test_lista_de_etapas_tem_ids_unicos_e_ordem_segura():
     assert len(ids) == len(set(ids))
     ordem = {i: n for n, i in enumerate(ids)}
     assert ordem["verificacao"] < ordem["codigo"] < ordem["env"] < ordem["dependencias"] < ordem["segredos"] < ordem["stack"]
+    assert ordem["uv"] < ordem["python"] < ordem["dependencias"]
     assert ordem["docker"] < ordem["stack"] < ordem["keycloak"] < ordem["n8n"] and ordem["config_litellm"] < ordem["stack"]
     assert ordem["env"] < ordem["docker"]    # o .env (e as chaves) já existem se o Docker pedir reinício
 
@@ -375,3 +376,119 @@ def test_etapas_opcionais_so_rodam_com_o_componente(opcoes):
     opcoes.keycloak_existente = True
     assert por_id["ollama"].aplica(opcoes) and por_id["n8n"].aplica(opcoes) and por_id["keycloak"].aplica(opcoes)
     assert not por_id["sync"].aplica(opcoes)    # clientes de IA só com consentimento explícito
+
+
+# ───────── resiliência do ComfyUI e limpeza segura de arquivos
+def test_remover_arquivo_seguro_trata_arquivo_somente_leitura(tmp_path):
+    import os
+    import stat
+    arq = tmp_path / "ro.txt"
+    arq.write_text("conteúdo")
+    os.chmod(arq, stat.S_IREAD)
+    assert etapas._remover_arquivo_seguro(arq) is True
+    assert not arq.exists()
+
+
+def test_remover_arquivo_seguro_tolera_falha_persistente_com_aviso(tmp_path, monkeypatch):
+    arq = tmp_path / "bloqueado.txt"
+    arq.write_text("conteúdo")
+    avisos = []
+
+    def unlink_falha(self, missing_ok=True):
+        raise PermissionError("arquivo em uso")
+
+    monkeypatch.setattr(Path, "unlink", unlink_falha)
+    # Não deve estourar exceção, apenas logar aviso e devolver False
+    assert etapas._remover_arquivo_seguro(arq, retentativas=2, espera=0.01, log=avisos.append) is False
+    assert any("não consegui remover" in a for a in avisos)
+
+
+def test_mover_pasta_segura_remove_destino_vazio_e_move(tmp_path):
+    origem = tmp_path / "origem"
+    origem.mkdir()
+    (origem / "arquivo.txt").write_text("ok")
+    destino = tmp_path / "destino"
+    destino.mkdir()  # pasta vazia
+    etapas._mover_pasta_segura(origem, destino)
+    assert not origem.exists()
+    assert (destino / "arquivo.txt").is_file()
+
+
+def test_comfyui_resiste_a_permission_error_no_unlink_do_arquivo(ctx, tmp_path, monkeypatch):
+    ctx.o.componentes = ["comfyui"]
+    ctx.o.pasta_comfyui = str(tmp_path / "comfy_final")
+
+    # Simula download criando arquivo falso
+    def baixar_fake(url, destino, hosts, max_bytes):
+        destino.write_bytes(b"conteudo-fake-7z")
+        return destino
+
+    # Simula extração criando a pasta esperada com run_nvidia_gpu.bat
+    def extrair_fake(c, arquivo, destino):
+        pasta_extraida = destino / "ComfyUI_windows_portable"
+        pasta_extraida.mkdir(parents=True, exist_ok=True)
+        (pasta_extraida / "run_nvidia_gpu.bat").write_text("@echo off")
+
+    monkeypatch.setattr(etapas.codigo, "baixar_https", baixar_fake)
+    monkeypatch.setattr(etapas, "_extrair_7z", extrair_fake)
+
+    # Força _remover_arquivo_seguro a simular PermissionError persistente ao limpar o .7z
+    monkeypatch.setattr(etapas, "_remover_arquivo_seguro", lambda caminho, **kw: False)
+
+    etapas.comfyui(ctx)
+    assert (Path(ctx.o.pasta_comfyui) / "run_nvidia_gpu.bat").is_file()
+
+
+def test_passos_frontend_ordem_o_que_instalar_antes_de_onde_instalar():
+    js = (Path(__file__).resolve().parent.parent.parent / "instalador" / "tudoia_instalador" / "static" / "instalador.js").read_text(encoding="utf-8")
+    assert 'const PASSOS = ["Sistema", "O que instalar", "Onde instalar", "Conta e chaves", "Revisar", "Instalar"];' in js
+    assert 'const telas = [telaSistema, telaComponentes, telaOnde, telaConta, telaRevisar, telaInstalar];' in js
+    assert '1: ["componentes", "keycloak_existente", "keycloak_existente_admin", "keycloak_existente_senha"]' in js
+    assert '2: ["pasta_instalacao", "pasta_dados", "pasta_pesos_ollama", "pasta_comfyui", "projeto_compose"]' in js
+    assert 'mostrarCarregando' in js and 'esconderCarregando' in js
+    assert 'cartao("Python"' in js
+
+
+def test_python_info_detecta_versao():
+    from tudoia_instalador import sistema
+    def falso_executar(cmd, timeout=5.0):
+        if cmd[0] == "python":
+            return 0, "Python 3.12.3\n"
+        return 127, ""
+    instalado, versao = sistema.python_info(falso_executar)
+    assert instalado is True and versao == "3.12.3"
+
+    def nao_instalado(cmd, timeout=5.0):
+        return 127, ""
+    instalado2, versao2 = sistema.python_info(nao_instalado)
+    assert instalado2 is False and versao2 == ""
+
+
+def test_instalar_python_quando_ja_existe(ctx):
+    from tudoia_instalador.execucao import Resultado
+    ctx.uv = "uv.exe"
+    ex = _executor(ctx, [("find 3.12", Resultado(0, "C:\\Python312\\python.exe\n"))])
+    etapas.instalar_python(ctx)
+    assert any("Python 3.12 já disponível" in linha for linha in ctx.logs)
+    assert not any("install" in c for c in ex.comandos())
+
+
+def test_instalar_python_quando_nao_encontrado(ctx):
+    from tudoia_instalador.execucao import Resultado
+    ctx.uv = "uv.exe"
+    chamadas_find = [0]
+    def falso_rodar(cmd, **kw):
+        linha = " ".join(cmd)
+        if "find 3.12" in linha:
+            chamadas_find[0] += 1
+            if chamadas_find[0] == 1:
+                return Resultado(1, "")
+            return Resultado(0, "C:\\Users\\user\\.local\\bin\\python.exe\n")
+        if "install 3.12" in linha:
+            return Resultado(0, "Installed Python 3.12.3")
+        return Resultado(0, "")
+    ex = _executor(ctx)
+    ex.rodar = falso_rodar
+    etapas.instalar_python(ctx)
+    assert any("baixando e instalando" in linha for linha in ctx.logs)
+    assert any("instalado com sucesso" in linha for linha in ctx.logs)
