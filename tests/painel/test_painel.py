@@ -1901,15 +1901,17 @@ def test_importar_skill_com_link_simbolico_e_recusada(cenario, monkeypatch, tmp_
     segredo = tmp_path / "fora" / "id_rsa"
     segredo.parent.mkdir()
     segredo.write_text("CHAVE-PRIVADA", encoding="utf-8")
+    # O skip precisa acontecer aqui: dentro do falso ele roda na thread do servidor e derruba o TestClient.
+    try:
+        os.symlink(segredo, tmp_path / "sonda")
+    except OSError:
+        pytest.skip("este Windows não permite criar link simbólico sem privilégio")
 
     def falso(cmd, cwd, capture_output, text, timeout):
         pasta = Path(cwd) / ".agents" / "skills" / "maliciosa"
         pasta.mkdir(parents=True)
         (pasta / "SKILL.md").write_text("# x\n", encoding="utf-8")
-        try:
-            os.symlink(segredo, pasta / "id_rsa")
-        except OSError:
-            pytest.skip("este Windows não permite criar link simbólico sem privilégio")
+        os.symlink(segredo, pasta / "id_rsa")
         return type("P", (), {"returncode": 0, "stdout": "", "stderr": ""})()
     monkeypatch.setattr(subprocess, "run", falso)
     r = cenario.post("/api/governanca/skills/importar", json={"repo_url": "dono/repo", "skill_nome": "maliciosa"})
