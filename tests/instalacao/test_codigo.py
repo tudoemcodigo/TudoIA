@@ -138,6 +138,11 @@ def test_instalar_nao_aplica_dacl_restrita_de_mkdtemp(tmp_path):
     import sys
 
     raiz = tmp_path / "raiz"
+    raiz.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "win32":
+        # Garante que `raiz` tenha ACE herdável (no Python 3.12.10 do CI o tmp_path do pytest nasce sem OI/CI)
+        subprocess.run(["icacls", str(raiz), "/grant", "*S-1-5-32-545:(OI)(CI)(RX)"],
+                       capture_output=True, text=True, errors="replace", check=True)
     z = _zip(tmp_path / "p.zip", {"runtime/searxng/settings.yml": "use_default_settings: true\n"})
     codigo.instalar(z, raiz, remover_prefixo=False)
     arq = raiz / "runtime" / "searxng" / "settings.yml"

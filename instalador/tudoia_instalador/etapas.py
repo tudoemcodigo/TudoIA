@@ -118,11 +118,13 @@ def verificacao(c: Contexto) -> None:
 
 
 def _normalizar_acls_docker(c: Contexto) -> None:
-    """Restaura herança de ACL nas pastas montadas pelos containers (evita PermissionError em SearXNG/LiteLLM)."""
+    """Restaura herança de ACL e leitura para BUILTIN\\Users (*S-1-5-32-545) nas pastas montadas pelos containers."""
     for sub in ("runtime", "config", "infra"):
         pasta = c.raiz / sub
         if pasta.is_dir():
             c.executor.rodar(["icacls", str(pasta), "/reset", "/t", "/c", "/q"], aceitos=(0, 1), mostrar=False)
+            c.executor.rodar(["icacls", str(pasta), "/grant", "*S-1-5-32-545:(OI)(CI)(RX)", "/t", "/c", "/q"],
+                             aceitos=(0, 1), mostrar=False)
 
 
 # ───────────────────────────────────────────────────────────── 2. código-fonte
