@@ -1,5 +1,5 @@
 <#
-.SYNOPSIS  Liga o TudoIA: Docker Desktop, Ollama, os servicos Docker e o painel. Abre o painel no navegador.
+.SYNOPSIS  Liga o TudoIA: Docker Desktop, Ollama, ComfyUI, os servicos Docker e o painel. Abre o painel no navegador.
 .NOTES     Nao mexe nos clientes de IA (para isso, use tudoia.ps1 sync). Seguro de rodar com tudo ja ligado.
 #>
 param([switch]$SemNavegador)
@@ -36,6 +36,20 @@ if ($pesos -and -not (PortaAberta 11434) -and (Get-Command ollama -ErrorAction S
     $env:OLLAMA_HOST = '127.0.0.1:11434'
     $env:OLLAMA_MODELS = $pesos
     Start-Process ollama -ArgumentList 'serve' -WindowStyle Hidden
+}
+
+# 2b. ComfyUI (so se o .env aponta para uma pasta do ComfyUI portable instalada com o TudoIA)
+$comfy = ValorEnv 'TUDOIA_COMFYUI_PORTABLE'
+if ($comfy -and -not (PortaAberta 8188)) {
+    $comfyPy = Join-Path $comfy 'python_embeded\python.exe'
+    $comfyMain = Join-Path $comfy 'ComfyUI\main.py'
+    if ((Test-Path $comfyPy) -and (Test-Path $comfyMain)) {
+        $logs = Join-Path $raiz 'dados\logs'
+        New-Item -ItemType Directory -Force $logs | Out-Null
+        Start-Process $comfyPy -ArgumentList '-s', $comfyMain, '--windows-standalone-build', '--disable-auto-launch' `
+            -WorkingDirectory $comfy -WindowStyle Hidden `
+            -RedirectStandardOutput (Join-Path $logs 'comfyui.log') -RedirectStandardError (Join-Path $logs 'comfyui.err.log')
+    }
 }
 
 # 3. Servicos Docker (os perfis vem de COMPOSE_PROFILES no .env)

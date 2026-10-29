@@ -432,10 +432,26 @@ def _extrair_7z(c: Contexto, arquivo: Path, destino: Path) -> None:
         _remover_arquivo_seguro(sete, log=c.log)
 
 
+def _iniciar_comfyui(c: Contexto, portavel: Path) -> None:
+    if porta_ocupada(8188):
+        c.log("o ComfyUI já está rodando na porta 8188")
+        return
+    exe_py = portavel / "python_embeded" / "python.exe"
+    if not exe_py.is_file():
+        return
+    c.executor.iniciar_solto(
+        [str(exe_py), "-s", str(portavel / "ComfyUI" / "main.py"), "--windows-standalone-build", "--disable-auto-launch"],
+        cwd=portavel, env=None, arquivo_log=Path(str(c.o.dados)) / "logs" / "comfyui.log",
+    )
+    if not c.esperar_ate(lambda: porta_ocupada(8188), 90, "o ComfyUI"):
+        c.log("aviso: o ComfyUI ainda está carregando em segundo plano (porta 8188)")
+
+
 def comfyui(c: Contexto) -> None:
     portavel = Path(str(c.o.comfyui))
     if (portavel / "run_nvidia_gpu.bat").is_file():
         c.log("ComfyUI portable já está em " + str(portavel))
+        _iniciar_comfyui(c, portavel)
         return
     pai = portavel.parent
     pai.mkdir(parents=True, exist_ok=True)
@@ -454,6 +470,7 @@ def comfyui(c: Contexto) -> None:
         _mover_pasta_segura(padrao, portavel, c.log)
     if not (portavel / "run_nvidia_gpu.bat").is_file():
         raise ErroInstalacao("o ComfyUI foi extraído, mas não achei run_nvidia_gpu.bat")
+    _iniciar_comfyui(c, portavel)
 
 
 # ───────────────────────────────────────────────────────────── 10. clientes de IA, atalhos e painel

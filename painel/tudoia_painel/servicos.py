@@ -180,16 +180,24 @@ class ServicosDocker:
             raise RuntimeError(f"não foi possível iniciar ollama: {e}") from e
 
     def _start_comfyui(self) -> None:
-        script = comfyui_portable(self.raiz) / "run_nvidia_gpu.bat"
+        pasta = comfyui_portable(self.raiz)
+        script = pasta / "run_nvidia_gpu.bat"
         if not script.is_file():
             raise RuntimeError(f"executável do ComfyUI não encontrado em {script}")
         log_dir = self.raiz / "dados" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "comfyui.log"
+        exe_py = pasta / "python_embeded" / "python.exe"
+        cmd = (
+            [str(exe_py), "-s", str(pasta / "ComfyUI" / "main.py"), "--windows-standalone-build", "--disable-auto-launch"]
+            if exe_py.is_file()
+            else ["cmd.exe", "/c", str(script)]
+        )
         with open(log_path, "a", encoding="utf-8") as log_f:
             subprocess.Popen(
-                ["cmd.exe", "/c", str(script)],
-                cwd=str(script.parent),
+                cmd,
+                cwd=str(pasta),
+                stdin=subprocess.DEVNULL,
                 creationflags=DETACHED_FLAGS,
                 stdout=log_f,
                 stderr=subprocess.STDOUT,

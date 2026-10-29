@@ -472,6 +472,25 @@ def test_comfyui_resiste_a_permission_error_no_unlink_do_arquivo(ctx, tmp_path, 
     assert (Path(ctx.o.pasta_comfyui) / "run_nvidia_gpu.bat").is_file()
 
 
+def test_comfyui_inicia_processo_em_segundo_plano(ctx, tmp_path, monkeypatch):
+    ctx.o.componentes = ["comfyui"]
+    portavel = tmp_path / "ComfyUI"
+    (portavel / "python_embeded").mkdir(parents=True)
+    (portavel / "ComfyUI").mkdir(parents=True)
+    (portavel / "run_nvidia_gpu.bat").write_text("@echo off")
+    (portavel / "python_embeded" / "python.exe").write_text("fake")
+    (portavel / "ComfyUI" / "main.py").write_text("print('ok')")
+    ctx.o.pasta_comfyui = str(portavel)
+
+    estado = {"sobe": False}
+    monkeypatch.setattr(etapas, "porta_ocupada", lambda p: estado["sobe"])
+    ex = _executor(ctx)
+    ex.iniciar_solto = lambda cmd, **kw: (ex.soltos.append(cmd), estado.__setitem__("sobe", True))
+    etapas.comfyui(ctx)
+    assert len(ex.soltos) == 1
+    assert "--disable-auto-launch" in ex.soltos[0]
+
+
 def test_passos_frontend_ordem_o_que_instalar_antes_de_onde_instalar():
     js = (Path(__file__).resolve().parent.parent.parent / "instalador" / "tudoia_instalador" / "static" / "instalador.js").read_text(encoding="utf-8")
     assert 'const PASSOS = ["Sistema", "O que instalar", "Onde instalar", "Conta e chaves", "Revisar", "Instalar"];' in js
