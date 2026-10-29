@@ -133,6 +133,17 @@ def tem_internet(url: str = "https://github.com", abrir=urllib.request.urlopen) 
         return False
 
 
+def python_info(executar=rodar) -> tuple[bool, str]:
+    """Verifica se há Python no sistema. Retorna (instalado, versao)."""
+    for cmd in (["python", "--version"], ["py", "-3", "--version"]):
+        cod, saida = executar(cmd, timeout=5.0)
+        if cod == 0 and "Python " in saida:
+            partes = saida.strip().split()
+            versao = partes[1] if len(partes) > 1 else saida.strip()
+            return True, versao
+    return False, ""
+
+
 @dataclass
 class Diagnostico:
     windows_build: int
@@ -146,6 +157,8 @@ class Diagnostico:
     gpu_vram_mb: int
     internet: bool
     portas_ocupadas: dict[str, int]
+    python_instalado: bool = False
+    python_versao: str = ""
 
     def como_dict(self) -> dict:
         return asdict(self)
@@ -154,12 +167,14 @@ class Diagnostico:
 def diagnosticar(executar=rodar) -> Diagnostico:
     build = build_windows()
     gpu = gpu_nvidia(executar)
+    py_ok, py_ver = python_info(executar)
     return Diagnostico(
         windows_build=build, windows_ok=build >= MIN_WINDOWS_BUILD, administrador=eh_administrador(),
         docker_instalado=docker_exe() is not None, docker_pronto=docker_pronto(executar),
         ollama_instalado=ollama_exe() is not None, winget=shutil.which("winget") is not None,
         gpu_nome=gpu.nome, gpu_vram_mb=gpu.vram_mb, internet=tem_internet(),
         portas_ocupadas={nome: p for nome, p in PORTAS.items() if porta_ocupada(p)},
+        python_instalado=py_ok, python_versao=py_ver,
     )
 
 

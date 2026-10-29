@@ -179,11 +179,20 @@ class Motor:
                 self.falhou, self.erro = True, str(e)
                 self.registrar(f"!! {detalhe}")
                 break
-            except Exception as e:   # noqa: BLE001 — falha inesperada: registra o tipo, nunca o texto cru
-                msg = f"erro inesperado ({type(e).__name__}); veja o registro do instalador"
+            except Exception as e:   # noqa: BLE001 — falha inesperada: sanitiza antes de registrar
+                import traceback
+                detalhe_erro = self.ctx.redator.limpar(str(e))
+                msg = f"erro inesperado ({type(e).__name__}: {detalhe_erro}); veja o registro do instalador" if detalhe_erro else f"erro inesperado ({type(e).__name__}); veja o registro do instalador"
                 self._marcar(etapa.id, FALHOU, msg)
                 self.falhou, self.erro = True, msg
                 self.registrar(f"!! {msg}")
+                if self.arquivo_log is not None:
+                    try:
+                        self.arquivo_log.parent.mkdir(parents=True, exist_ok=True)
+                        with self.arquivo_log.open("a", encoding="utf-8") as f:
+                            f.write(self.ctx.redator.limpar(traceback.format_exc()) + "\n")
+                    except OSError:
+                        pass
                 break
             concluidas[etapa.id] = OK
             self._marcar(etapa.id, OK)

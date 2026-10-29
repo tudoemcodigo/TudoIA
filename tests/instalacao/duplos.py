@@ -35,6 +35,6 @@ class ExecutorFalso(Executor):
 def diag(**mudancas) -> Diagnostico:
     base = dict(windows_build=22631, windows_ok=True, administrador=False, docker_instalado=True, docker_pronto=True,
                 ollama_instalado=True, winget=True, gpu_nome="NVIDIA Teste", gpu_vram_mb=8192, internet=True,
-                portas_ocupadas={})
+                portas_ocupadas={}, python_instalado=True, python_versao="3.12.15")
     base.update(mudancas)
     return Diagnostico(**base)

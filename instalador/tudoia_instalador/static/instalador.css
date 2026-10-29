@@ -21,7 +21,41 @@ p { margin: 4px 0 10px; color: var(--texto2); }
 .passo { padding: 6px 12px; border: 1px solid var(--borda); border-radius: 999px; font-size: 13px; color: var(--texto3); }
 .passo.atual { border-color: var(--primaria); color: var(--texto); background: rgba(106, 93, 246, .12); }
 .passo.feito { color: var(--ok); border-color: rgba(60, 207, 145, .4); }
-.tela { background: var(--surface); border: 1px solid var(--borda); border-radius: var(--raio); padding: 22px; min-height: 420px; }
+.tela { background: var(--surface); border: 1px solid var(--borda); border-radius: var(--raio); padding: 22px; min-height: 420px; position: relative; }
+.carregando-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(19, 21, 27, .88);
+  backdrop-filter: blur(4px);
+  border-radius: var(--raio);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 50;
+  animation: fadeIn .15s ease-out;
+}
+.carregando-tela {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 380px;
+  gap: 14px;
+}
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid var(--borda);
+  border-top-color: var(--primaria);
+  border-radius: 50%;
+  animation: girar .8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.carregando-texto { font-size: 16px; color: var(--texto); font-weight: 600; }
+.carregando-sub { font-size: 13px; color: var(--texto3); }
 .rodape { display: flex; gap: 12px; align-items: center; padding: 16px 0 22px; }
 .aviso { flex: 1; font-size: 13px; color: var(--aviso); }
 .btn { font: inherit; padding: 9px 20px; border-radius: 8px; border: 1px solid var(--borda-forte); cursor: pointer; }

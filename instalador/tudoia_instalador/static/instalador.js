@@ -1,7 +1,7 @@
 "use strict";
 // Assistente do TudoIA Setup. Todo texto vindo de fora entra por textContent (nunca innerHTML).
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
-const PASSOS = ["Sistema", "Onde instalar", "O que instalar", "Conta e chaves", "Revisar", "Instalar"];
+const PASSOS = ["Sistema", "O que instalar", "Onde instalar", "Conta e chaves", "Revisar", "Instalar"];
 const $ = (id) => document.getElementById(id);
 
 function h(tag, attrs, ...filhos) {
@@ -32,6 +32,25 @@ let passo = 0;
 let opcoes = null;
 let errosCampo = {};
 let instalando = false;
+
+function mostrarCarregando(mensagem = "Aguarde um momento…", detalhe = "Conferindo configurações e sistema") {
+  esconderCarregando();
+  $("avancar").disabled = true;
+  $("voltar").disabled = true;
+  const overlay = h("div", { id: "carregando", class: "carregando-overlay", role: "status", "aria-live": "assertive" },
+    h("div", { class: "spinner", "aria-hidden": "true" }),
+    h("div", { class: "carregando-texto" }, mensagem),
+    detalhe && h("div", { class: "carregando-sub" }, detalhe)
+  );
+  $("tela").append(overlay);
+}
+
+function esconderCarregando() {
+  const el = $("carregando");
+  if (el) el.remove();
+  if (passo < 5) $("avancar").disabled = false;
+  $("voltar").disabled = false;
+}
 
 function padroes() {
   const p = structuredClone(diag.padroes);
@@ -93,10 +112,11 @@ function telaSistema() {
   const ocupadas = Object.entries(s.portas_ocupadas).map(([n, p]) => `${n} (${p})`);
   const blocos = [
     h("h2", {}, "Vamos conferir esta máquina"),
-    h("p", {}, "O instalador baixa o que faltar (Docker Desktop, Ollama, dependências e imagens). Nada é enviado para fora."),
+    h("p", {}, "O instalador baixa o que faltar (Python, Docker Desktop, Ollama, dependências e imagens). Nada é enviado para fora."),
     h("div", { class: "grade" },
       cartao("Windows", s.windows_ok, s.windows_ok ? `build ${s.windows_build}` : `build ${s.windows_build}: precisa do Windows 10 2004 ou mais novo`),
       cartao("Internet", s.internet, s.internet ? "acesso ao GitHub" : "sem acesso ao github.com"),
+      cartao("Python", s.python_instalado, s.python_instalado ? `instalado (${s.python_versao})` : "não encontrado: será instalado automaticamente", !s.python_instalado),
       cartao("Docker Desktop", s.docker_pronto, s.docker_pronto ? "pronto" : s.docker_instalado ? "instalado, será iniciado" : "será instalado (pede permissão de administrador)", !s.docker_pronto),
       cartao("Ollama", s.ollama_instalado, s.ollama_instalado ? "instalado" : "será instalado se você marcar", !s.ollama_instalado),
       cartao("GPU NVIDIA", !!s.gpu_nome, s.gpu_nome ? `${s.gpu_nome} (${Math.round(s.gpu_vram_mb / 1024)} GB)` : "não encontrada: sem ComfyUI; só nuvem e CPU", !s.gpu_nome),
@@ -265,7 +285,9 @@ function fim(p) {
 }
 
 async function retomar() {
+  mostrarCarregando("Retomando a instalação…", "Aguarde enquanto o processo é reiniciado");
   const r = await api("POST", "/api/retomar").catch((e) => ({ erro: e.message }));
+  esconderCarregando();
   if (r.erro) { $("aviso").textContent = r.erro; return; }
   instalando = true;
   $("fim").replaceChildren();
@@ -280,14 +302,14 @@ async function validar() {
   return resumoValidado.erros;
 }
 
-const CAMPOS_POR_PASSO = { 1: ["pasta_instalacao", "pasta_dados", "pasta_pesos_ollama", "pasta_comfyui", "projeto_compose"],
-  2: ["componentes", "keycloak_existente", "keycloak_existente_admin", "keycloak_existente_senha"],
+const CAMPOS_POR_PASSO = { 1: ["componentes", "keycloak_existente", "keycloak_existente_admin", "keycloak_existente_senha"],
+  2: ["pasta_instalacao", "pasta_dados", "pasta_pesos_ollama", "pasta_comfyui", "projeto_compose"],
   3: ["admin_email", "fuso", "github_repo", "github_ref", "chaves_provedores", "fonte_codigo"] };
 
 function desenhar() {
   document.title = `TudoIA Setup · ${PASSOS[passo]}`;
   $("passos").replaceChildren(...PASSOS.map((n, i) => h("span", { class: "passo" + (i === passo ? " atual" : i < passo ? " feito" : "") }, `${i + 1}. ${n}`)));
-  const telas = [telaSistema, telaOnde, telaComponentes, telaConta, telaRevisar, telaInstalar];
+  const telas = [telaSistema, telaComponentes, telaOnde, telaConta, telaRevisar, telaInstalar];
   $("tela").replaceChildren(...[telas[passo]()].flat(3).filter(Boolean));
   $("voltar").style.visibility = passo === 0 || passo === 5 ? "hidden" : "visible";
   $("avancar").textContent = passo === 4 ? "Instalar" : "Continuar";
@@ -301,27 +323,63 @@ $("avancar").addEventListener("click", async () => {
   $("aviso").textContent = "";
   try {
     if (passo >= 1 && passo <= 3) {
+      mostrarCarregando("Validando opções…", "Conferindo portas, pastas e compatibilidade");
       const erros = await validar();
       const meus = erros.filter((e) => (CAMPOS_POR_PASSO[passo] || []).includes(e.campo));
-      if (meus.length) { $("aviso").textContent = meus[0].mensagem; desenhar(); $("aviso").textContent = meus[0].mensagem; return; }
+      if (meus.length) {
+        esconderCarregando();
+        $("aviso").textContent = meus[0].mensagem;
+        desenhar();
+        $("aviso").textContent = meus[0].mensagem;
+        return;
+      }
     }
-    if (passo === 3) await validar();
+    if (passo === 3) {
+      mostrarCarregando("Preparando revisão…", "Validando todas as configurações");
+      await validar();
+    }
     if (passo === 4) {
+      mostrarCarregando("Validando tudo antes de instalar…", "Verificando se o sistema está pronto");
       const erros = await validar();
-      if (erros.length) { $("aviso").textContent = "Há campos para corrigir."; desenhar(); return; }
+      if (erros.length) {
+        esconderCarregando();
+        $("aviso").textContent = "Há campos para corrigir.";
+        desenhar();
+        return;
+      }
+      mostrarCarregando("Iniciando a instalação…", "Disparando o processo de configuração do TudoIA");
       const r = await api("POST", "/api/instalar", opcoes).catch((e) => ({ erro: e.message }));
-      if (r.erro) { $("aviso").textContent = r.erro; return; }
-      passo = 5; instalando = true; proximo = 0; desenhar(); acompanhar(); return;
+      if (r.erro) {
+        esconderCarregando();
+        $("aviso").textContent = r.erro;
+        return;
+      }
+      esconderCarregando();
+      passo = 5;
+      instalando = true;
+      proximo = 0;
+      desenhar();
+      acompanhar();
+      return;
     }
+    esconderCarregando();
     passo += 1;
     desenhar();
   } catch (e) {
+    esconderCarregando();
     $("aviso").textContent = e.message;
   }
 });
 
 (async function iniciar() {
   try {
+    $("tela").replaceChildren(
+      h("div", { class: "carregando-tela" },
+        h("div", { class: "spinner", "aria-hidden": "true" }),
+        h("div", { class: "carregando-texto" }, "Iniciando o TudoIA Setup…"),
+        h("div", { class: "carregando-sub" }, "Examinando sistema, portas e componentes")
+      )
+    );
     diag = await api("GET", "/api/diagnostico");
   } catch (e) {
     $("tela").replaceChildren(h("p", { class: "estado-erro" }, "Não consegui falar com o instalador: " + e.message + ". Abra o endereço completo que ele mostrou."));
