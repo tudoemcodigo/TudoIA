@@ -193,3 +193,10 @@ def test_escuta_so_em_loopback(app):
     # a ligação é em 127.0.0.1 (criar_servidor); uma conexão ao IP da LAN nem existe para testar aqui, então confere o código
     import inspect
     assert '("127.0.0.1", porta)' in inspect.getsource(servidor.criar_servidor)
+
+
+def test_corpo_recusado_e_sempre_lido_antes_de_responder(app):
+    """Responder 400 sem ler o corpo e fechar o socket manda um RST no Windows: o cliente perde a resposta."""
+    for _ in range(100):
+        assert req(app, "POST", "/api/validar", bruto=b"a=b" * 80000, tipo="application/x-www-form-urlencoded")[0] == 400
+        assert req(app, "POST", "/api/validar", bruto=b"{nao json" * 2000)[0] == 400
