@@ -65,19 +65,27 @@ def _mover_pasta_segura(origem: Path, destino: Path, log: Callable[[str], None] 
             destino.rmdir()
         except OSError:
             pass
-    for tentativa in range(5):
-        try:
-            origem.rename(destino)
-            return
-        except (PermissionError, OSError):
-            if tentativa < 4:
-                time.sleep(1.0 * (tentativa + 1))
-            else:
-                try:
-                    shutil.move(str(origem), str(destino))
-                    return
-                except (PermissionError, OSError) as err_move:
-                    raise ErroInstalacao(f"não consegui mover {origem.name} para {destino}: {err_move}") from err_move
+    if not destino.exists():
+        for tentativa in range(5):
+            try:
+                origem.rename(destino)
+                return
+            except (PermissionError, OSError):
+                if tentativa < 4:
+                    time.sleep(0.5 * (tentativa + 1))
+    try:
+        destino.mkdir(parents=True, exist_ok=True)
+        for item in list(origem.iterdir()):
+            alvo = destino / item.name
+            if alvo.exists():
+                if alvo.is_dir():
+                    shutil.rmtree(alvo, ignore_errors=True)
+                else:
+                    _remover_arquivo_seguro(alvo, log=log)
+            shutil.move(str(item), str(alvo))
+        shutil.rmtree(origem, ignore_errors=True)
+    except (PermissionError, OSError) as err_move:
+        raise ErroInstalacao(f"não consegui mover {origem.name} para {destino}: {err_move}") from err_move
 
 
 def _tem_instalacao_anterior(raiz: Path) -> bool:
@@ -235,13 +243,13 @@ def _sha256_publicado(url: str) -> str | None:
 
 def instalar_python(c: Contexto) -> None:
     assert c.uv, "etapa do uv não rodou"
-    r = c.executor.rodar([c.uv, "python", "find", "3.12"], aceitos=(0, 1), mostrar=False)
+    r = c.executor.rodar([c.uv, "python", "find", "3.12", "--no-project"], aceitos=(0, 1, 2), mostrar=False)
     if r.codigo == 0 and r.saida.strip():
         c.log(f"Python 3.12 já disponível: {r.saida.strip().splitlines()[-1]}")
         return
     c.log("Python 3.12 não encontrado; baixando e instalando...")
     c.executor.rodar([c.uv, "python", "install", "3.12"], timeout=1800)
-    r_pos = c.executor.rodar([c.uv, "python", "find", "3.12"], aceitos=(0, 1), mostrar=False)
+    r_pos = c.executor.rodar([c.uv, "python", "find", "3.12", "--no-project"], aceitos=(0, 1, 2), mostrar=False)
     if r_pos.codigo != 0 or not r_pos.saida.strip():
         raise ErroInstalacao("o Python 3.12 não foi encontrado após a instalação pelo uv")
     c.log(f"Python 3.12 instalado com sucesso: {r_pos.saida.strip().splitlines()[-1]}")
@@ -419,16 +427,17 @@ def comfyui(c: Contexto) -> None:
         return
     pai = portavel.parent
     pai.mkdir(parents=True, exist_ok=True)
-    arquivo = pai / "ComfyUI_windows_portable_nvidia.7z"
-    c.log("baixando o ComfyUI portable (cerca de 2 GB)")
-    try:
-        codigo.baixar_https(COMFYUI_URL, arquivo, COMFYUI_HOSTS, 8 * 1024 ** 3)
-        _extrair_7z(c, arquivo, pai)
-    except codigo.ErroCodigo as e:
-        raise ErroInstalacao(str(e)) from e
-    finally:
-        _remover_arquivo_seguro(arquivo, log=c.log)
     padrao = pai / "ComfyUI_windows_portable"
+    if not (padrao / "run_nvidia_gpu.bat").is_file():
+        arquivo = pai / "ComfyUI_windows_portable_nvidia.7z"
+        c.log("baixando o ComfyUI portable (cerca de 2 GB)")
+        try:
+            codigo.baixar_https(COMFYUI_URL, arquivo, COMFYUI_HOSTS, 8 * 1024 ** 3)
+            _extrair_7z(c, arquivo, pai)
+        except codigo.ErroCodigo as e:
+            raise ErroInstalacao(str(e)) from e
+        finally:
+            _remover_arquivo_seguro(arquivo, log=c.log)
     if padrao.is_dir() and padrao.resolve() != portavel.resolve():
         _mover_pasta_segura(padrao, portavel, c.log)
     if not (portavel / "run_nvidia_gpu.bat").is_file():

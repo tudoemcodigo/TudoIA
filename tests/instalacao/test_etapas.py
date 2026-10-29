@@ -414,6 +414,37 @@ def test_mover_pasta_segura_remove_destino_vazio_e_move(tmp_path):
     assert (destino / "arquivo.txt").is_file()
 
 
+def test_mover_pasta_segura_mescla_quando_destino_ja_existe_com_conteudo(tmp_path):
+    origem = tmp_path / "ComfyUI_windows_portable"
+    origem.mkdir()
+    (origem / "run_nvidia_gpu.bat").write_text("@echo off")
+    destino = tmp_path / "Modelos"
+    destino.mkdir()
+    (destino / "outro.txt").write_text("existente")
+    etapas._mover_pasta_segura(origem, destino)
+    assert not origem.exists()
+    assert (destino / "run_nvidia_gpu.bat").is_file()
+    assert not (destino / "ComfyUI_windows_portable").exists()
+
+
+def test_comfyui_reaproveita_extracao_anterior_sem_baixar_novamente(ctx, tmp_path, monkeypatch):
+    ctx.o.componentes = ["comfyui"]
+    ctx.o.pasta_comfyui = str(tmp_path / "Modelos" / "ComfyUI")
+    padrao = tmp_path / "Modelos" / "ComfyUI_windows_portable"
+    padrao.mkdir(parents=True)
+    (padrao / "run_nvidia_gpu.bat").write_text("@echo off")
+
+    baixou = [False]
+    def baixar_proibido(*a, **kw):
+        baixou[0] = True
+        raise AssertionError("não deveria baixar de novo")
+
+    monkeypatch.setattr(etapas.codigo, "baixar_https", baixar_proibido)
+    etapas.comfyui(ctx)
+    assert baixou[0] is False
+    assert (Path(ctx.o.pasta_comfyui) / "run_nvidia_gpu.bat").is_file()
+
+
 def test_comfyui_resiste_a_permission_error_no_unlink_do_arquivo(ctx, tmp_path, monkeypatch):
     ctx.o.componentes = ["comfyui"]
     ctx.o.pasta_comfyui = str(tmp_path / "comfy_final")
@@ -480,10 +511,11 @@ def test_instalar_python_quando_nao_encontrado(ctx):
     def falso_rodar(cmd, **kw):
         linha = " ".join(cmd)
         if "find 3.12" in linha:
+            assert 2 in kw.get("aceitos", (0,)), "uv python find devolve código 2 quando não encontra o interpretador"
             chamadas_find[0] += 1
             if chamadas_find[0] == 1:
-                return Resultado(1, "")
-            return Resultado(0, "C:\\Users\\user\\.local\\bin\\python.exe\n")
+                return Resultado(2, "error: No interpreter found for Python 3.12")
+            return Resultado(0, "C:\\Python312\\python.exe\n")
         if "install 3.12" in linha:
             return Resultado(0, "Installed Python 3.12.3")
         return Resultado(0, "")
