@@ -334,13 +334,14 @@ def test_atalhos_usam_literais_com_aspas_simples_e_o_script_da_instalacao(ctx, t
     from tudoia_instalador import atalhos
     monkeypatch.setattr(atalhos, "pastas_de_atalho", lambda: [tmp_path / "Desktop"])
     (ctx.raiz / "scripts").mkdir(parents=True)
-    for nome in ("iniciar.ps1", "parar.ps1", "desinstalar.ps1"):
+    for nome in ("painel.ps1", "iniciar.ps1", "parar.ps1", "desinstalar.ps1"):
         (ctx.raiz / "scripts" / nome).write_text("", encoding="utf-8")
     ex = _executor(ctx)
     atalhos.criar_atalhos(ctx)
     scripts = [c[-1] for c, _ in ex.chamadas]
-    assert len(scripts) == 3 and all("CreateShortcut(" in s and "$s.Save()" in s for s in scripts)
-    assert "iniciar.ps1" in scripts[0] and "-WindowStyle Hidden" in scripts[0] and "-WindowStyle" not in scripts[2]
+    assert len(scripts) == 4 and all("CreateShortcut(" in s and "$s.Save()" in s for s in scripts)
+    assert "painel.ps1" in scripts[0] and "-WindowStyle Hidden" in scripts[0]
+    assert "iniciar.ps1" in scripts[1] and "-WindowStyle Hidden" in scripts[1] and "-WindowStyle" not in scripts[3]
 
 
 def test_atalho_com_aspa_simples_na_pasta_nao_escapa_do_literal():

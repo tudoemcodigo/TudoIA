@@ -14,7 +14,9 @@ function ValorEnv([string]$chave, [string]$padrao = '') {
     return $padrao
 }
 function PortaAberta([int]$porta) {
-    [bool](Get-NetTCPConnection -State Listen -LocalPort $porta -ErrorAction SilentlyContinue)
+    if (Get-NetTCPConnection -State Listen -LocalPort $porta -ErrorAction SilentlyContinue) { return $true }
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    try { $tcp.Connect('127.0.0.1', $porta); return $true } catch { return $false } finally { $tcp.Dispose() }
 }
 function Esperar([scriptblock]$condicao, [int]$segundos) {
     $fim = (Get-Date).AddSeconds($segundos)

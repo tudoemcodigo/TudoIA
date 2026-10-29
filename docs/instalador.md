@@ -37,8 +37,8 @@ mascarados).
 
 ### Depois de instalado
 
-Atalhos **TudoIA - Iniciar**, **TudoIA - Parar** e **TudoIA - Desinstalar** na área de trabalho e no menu Iniciar
-(`scripts\iniciar.ps1`, `parar.ps1`, `desinstalar.ps1`). A desinstalação mantém `dados` e `modelos` a menos que você
+Atalhos **TudoIA - Painel**, **TudoIA - Iniciar**, **TudoIA - Parar** e **TudoIA - Desinstalar** na área de trabalho e no menu Iniciar
+(`scripts\painel.ps1`, `iniciar.ps1`, `parar.ps1`, `desinstalar.ps1`). O atalho **TudoIA - Painel** abre diretamente a página do painel se ele já estiver em execução ou inicia-o automaticamente antes de abrir. A desinstalação mantém `dados` e `modelos` a menos que você
 digite `APAGAR`; só apaga pastas que tenham a marca `.tudoia-instalacao.json`.
 
 ### Sem tela (automação)

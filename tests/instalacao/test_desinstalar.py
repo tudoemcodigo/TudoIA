@@ -28,6 +28,12 @@ def _ex():
     return ExecutorFalso(logs.append, Redator()), logs
 
 
+@pytest.fixture(autouse=True)
+def _isolar_atalhos(tmp_path, monkeypatch):
+    """Impede que os testes do desinstalador apaguem os atalhos reais da Área de Trabalho e do Menu Iniciar."""
+    monkeypatch.setattr(d, "pastas_de_atalho", lambda: [tmp_path / "Desktop", tmp_path / "Menu" / "TudoIA"])
+
+
 def test_sem_a_marca_do_instalador_nada_e_apagado(tmp_path):
     pasta = tmp_path / "Documentos"
     pasta.mkdir()

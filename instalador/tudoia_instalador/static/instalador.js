@@ -270,7 +270,7 @@ function fim(p) {
     alvo.replaceChildren(h("div", { class: "destaque" }, h("b", {}, "TudoIA instalado."),
       h("p", {}, "Painel: ", h("span", { class: "mono" }, r.painel), " — entre com ", h("b", {}, r.admin_email), "."),
       r.admin_senha_temporaria && h("p", {}, "Senha temporária (aparece só agora; a troca é obrigatória no primeiro login): ", h("span", { class: "senha" }, r.admin_senha_temporaria)),
-      h("p", {}, "Próximo passo: baixar os modelos de IA (painel → Modelos). Os atalhos TudoIA - Iniciar/Parar já estão no menu Iniciar.")),
+      h("p", {}, "Próximo passo: baixar os modelos de IA (painel → Modelos). Os atalhos TudoIA - Painel, Iniciar e Parar já estão na área de trabalho e no menu Iniciar.")),
       h("button", { class: "btn btn-pri", type: "button", onclick: () => api("POST", "/api/abrir-painel") }, "Abrir o painel"), " ",
       h("button", { class: "btn btn-sec", type: "button", onclick: async () => { await api("POST", "/api/encerrar"); document.body.replaceChildren(h("p", {}, "Instalador encerrado. Pode fechar esta aba.")); } }, "Fechar o instalador"));
   } else if (p.reinicio) {

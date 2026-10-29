@@ -10,6 +10,7 @@ POWERSHELL = r"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 # Cada atalho: (nome do arquivo .lnk, script dentro de scripts\, argumentos extras do script, janela oculta?)
 ATALHOS = (
+    ("TudoIA - Painel", "painel.ps1", "", True),
     ("TudoIA - Iniciar", "iniciar.ps1", "", True),
     ("TudoIA - Parar", "parar.ps1", "", True),
     ("TudoIA - Desinstalar", "desinstalar.ps1", "", False),
