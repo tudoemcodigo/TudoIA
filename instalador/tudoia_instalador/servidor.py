@@ -226,10 +226,11 @@ class Manipulador(BaseHTTPRequestHandler):
             return None
         if n > LIMITE_CORPO or n < 0:
             return None
+        bruto = self.rfile.read(n)    # sempre lê (até o limite): fechar com corpo não lido manda RST e o cliente perde o 400
         if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
             return None
         try:
-            dados = json.loads(self.rfile.read(n) or b"{}")
+            dados = json.loads(bruto or b"{}")
         except ValueError:
             return None
         return dados if isinstance(dados, dict) else None
