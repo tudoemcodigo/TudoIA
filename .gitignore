@@ -27,6 +27,8 @@ __pycache__/
 
 # Dados de runtime e logs
 dados/
+.tudoia-instalacao.json
+ferramentas/
 
 # Pesos de modelos e binários pesados locais
 modelos/ollama/models/

@@ -94,8 +94,10 @@ def test_obter_codigo_instala_o_pacote(ctx, tmp_path, monkeypatch):
         f.writestr("runtime/docker-compose.yml", "services: {}")
         f.writestr(".env.example", "TZ=\n")
     monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 2}))
+    ex = _executor(ctx)
     etapas.obter_codigo(ctx)
     assert (ctx.raiz / ".env.example").is_file()
+    assert any(c[0] == "icacls" and "/reset" in c for c, _ in ex.chamadas)
 
 
 def test_pastas_cria_estrutura_e_marca(ctx):

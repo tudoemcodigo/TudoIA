@@ -117,6 +117,14 @@ def verificacao(c: Contexto) -> None:
     c.log(f"Windows {d.windows_build}, {livre:.0f} GB livres, GPU: {d.gpu_nome or 'não encontrada'}")
 
 
+def _normalizar_acls_docker(c: Contexto) -> None:
+    """Restaura herança de ACL nas pastas montadas pelos containers (evita PermissionError em SearXNG/LiteLLM)."""
+    for sub in ("runtime", "config", "infra"):
+        pasta = c.raiz / sub
+        if pasta.is_dir():
+            c.executor.rodar(["icacls", str(pasta), "/reset", "/t", "/c", "/q"], aceitos=(0, 1), mostrar=False)
+
+
 # ───────────────────────────────────────────────────────────── 2. código-fonte
 def obter_codigo(c: Contexto) -> None:
     c.raiz.mkdir(parents=True, exist_ok=True)
@@ -144,6 +152,7 @@ def obter_codigo(c: Contexto) -> None:
             _remover_arquivo_seguro(zip_path, log=c.log)
     if not (c.raiz / "runtime" / "docker-compose.yml").is_file() or not (c.raiz / ".env.example").is_file():
         raise ErroInstalacao("o pacote não parece ser o TudoIA (faltam runtime/docker-compose.yml ou .env.example)")
+    _normalizar_acls_docker(c)
     c.log(f"{n} arquivos instalados em {c.raiz}")
 
 
@@ -342,6 +351,7 @@ def _compose(c: Contexto) -> list[str]:
 
 
 def subir_stack(c: Contexto) -> None:
+    _normalizar_acls_docker(c)
     base = _compose(c)
     c.executor.rodar([*base, "pull", "--ignore-buildable"], cwd=c.raiz, timeout=7200)
     try:

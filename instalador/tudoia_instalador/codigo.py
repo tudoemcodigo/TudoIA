@@ -4,10 +4,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import stat
 import sys
-import tempfile
 import urllib.parse
 import urllib.request
 import zipfile
@@ -168,7 +168,10 @@ def baixar_github(repo: str, ref: str, destino: Path, abrir: Callable | None = N
 def instalar(zip_path: Path, raiz: Path, remover_prefixo: bool) -> int:
     """Extrai numa pasta temporária ao lado e copia por cima da raiz, sem tocar no que é do usuário (PRESERVAR)."""
     raiz.mkdir(parents=True, exist_ok=True)
-    tmp = Path(tempfile.mkdtemp(prefix=".codigo-", dir=raiz))
+    # Não usar tempfile.mkdtemp: no Python 3.12+ (Windows) ele aplica mode=0o700 (DACL restrita sem BUILTIN\Usuários),
+    # e os.replace preserva essa DACL restrita, causando PermissionError nos bind-mounts do Docker (SearXNG/LiteLLM).
+    tmp = raiz / f".codigo-{secrets.token_hex(8)}"
+    tmp.mkdir(parents=True, exist_ok=True)
     try:
         extrair(zip_path, tmp, remover_prefixo)
         copiados = 0
@@ -178,6 +181,8 @@ def instalar(zip_path: Path, raiz: Path, remover_prefixo: bool) -> int:
                 continue
             alvo = raiz / rel
             alvo.parent.mkdir(parents=True, exist_ok=True)
+            if alvo.is_file():
+                _remover_silencioso(alvo)
             os.replace(origem, alvo) if alvo.drive == origem.drive else shutil.move(str(origem), str(alvo))
             copiados += 1
         return copiados

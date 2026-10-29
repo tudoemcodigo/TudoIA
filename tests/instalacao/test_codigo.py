@@ -129,3 +129,19 @@ def test_redirecionamento_para_fora_do_github_e_recusado():
 def test_url_do_github_escapa_a_ref():
     assert codigo.url_github("tudoemcodigo/TudoIA", "main") == "https://github.com/tudoemcodigo/TudoIA/archive/main.zip"
     assert " " not in codigo.url_github("a/b", "x y")
+
+
+def test_instalar_nao_aplica_dacl_restrita_de_mkdtemp(tmp_path):
+    """Regressão real: tempfile.mkdtemp no Python 3.12+ cria pasta 0o700 (sem BUILTIN\\Usuários) e os.replace
+    preservava essa DACL em runtime/searxng/settings.yml, quebrando o SearXNG e o LiteLLM no Docker."""
+    import subprocess
+    import sys
+
+    raiz = tmp_path / "raiz"
+    z = _zip(tmp_path / "p.zip", {"runtime/searxng/settings.yml": "use_default_settings: true\n"})
+    codigo.instalar(z, raiz, remover_prefixo=False)
+    arq = raiz / "runtime" / "searxng" / "settings.yml"
+    assert arq.is_file()
+    if sys.platform == "win32":
+        r = subprocess.run(["icacls", str(arq)], capture_output=True, text=True, errors="replace", check=False)
+        assert "(I)" in r.stdout, f"esperava ACL herdada (I) em {arq}, obtive:\n{r.stdout}"
