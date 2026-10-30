@@ -1,0 +1,298 @@
+{
+  "id": "a1000002-7d1a-4000-8000-000000000002",
+  "revision": 0,
+  "last_node_id": 60,
+  "last_link_id": 110,
+  "nodes": [
+    {
+      "id": 59,
+      "type": "MarkdownNote",
+      "pos": [-560, 10],
+      "size": [490, 620],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "TUDOIA · Fluxo Oficial de Vídeo Cinematográfico (Wan 2.2 TI2V 5B)",
+      "properties": {},
+      "widgets_values": [
+        "# 🎬 TUDOIA · Vídeo Cinematográfico (Wan 2.2 TI2V 5B)\n\nFluxo híbrido oficial **Texto-para-Vídeo (`T2V`)** e **Imagem-para-Vídeo (`I2V`)** otimizado para GPUs locais (8 GB+ VRAM com `VAEDecodeTiled`).\n\n## 📦 Modelos Configurados\n- **Diffusion Model:** `wan2.2_ti2v_5B_fp16.safetensors` (`models/diffusion_models/`)\n- **Text Encoder:** `umt5_xxl_fp8_e4m3fn_scaled.safetensors` (`models/text_encoders/`)\n- **VAE:** `wan2.2_vae.safetensors` (`models/vae/`)\n\n## 🖥️ Mapeamento com a Tela `#videos` do Painel\n- **Modo (`#estudioVidModoOrigem`):**\n  - `t2v` (Texto → Vídeo): `Wan22ImageToVideoLatent` gera os quadros do zero.\n  - `i2v` (Imagem → Vídeo): conecta a imagem de referência em `start_image` (no ComfyUI, selecione o nó `LoadImage` e tecle `Ctrl + B`).\n- **Resolução (`#estudioVidResolucao`):** `480p` (`832x480`), `720p` (`1280x704`).\n- **Duração (`#estudioVidDuracao`) & FPS (`#estudioVidFps`):** Calculam `length` em quadros (`((duracao * fps - 1) // 4) * 4 + 1`) e o `fps` do `CreateVideo`.\n- **Decodificação Tiled (`VAEDecodeTiled`):** Evita estouro de memória de vídeo decodificando em blocos temporais e espaciais."
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 37,
+      "type": "UNETLoader",
+      "pos": [-30, 50],
+      "size": [350, 82],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "MODEL", "type": "MODEL", "slot_index": 0, "links": [94]}],
+      "title": "Carregar Modelo de Vídeo (Wan 2.2 TI2V 5B)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "UNETLoader",
+        "models": [
+          {
+            "name": "wan2.2_ti2v_5B_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
+            "directory": "diffusion_models"
+          }
+        ]
+      },
+      "widgets_values": ["wan2.2_ti2v_5B_fp16.safetensors", "default"]
+    },
+    {
+      "id": 38,
+      "type": "CLIPLoader",
+      "pos": [-30, 190],
+      "size": [350, 110],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "CLIP", "type": "CLIP", "slot_index": 0, "links": [74, 75]}],
+      "title": "Carregar Text Encoder (UMT5-XXL FP8)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "CLIPLoader",
+        "models": [
+          {
+            "name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+            "directory": "text_encoders"
+          }
+        ]
+      },
+      "widgets_values": ["umt5_xxl_fp8_e4m3fn_scaled.safetensors", "wan", "default"]
+    },
+    {
+      "id": 39,
+      "type": "VAELoader",
+      "pos": [-30, 350],
+      "size": [350, 60],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "VAE", "type": "VAE", "slot_index": 0, "links": [76, 105]}],
+      "title": "Carregar VAE (wan2.2_vae)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "wan2.2_vae.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": ["wan2.2_vae.safetensors"]
+    },
+    {
+      "id": 56,
+      "type": "LoadImage",
+      "pos": [-30, 520],
+      "size": [320, 314],
+      "flags": {},
+      "order": 4,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [106]},
+        {"name": "MASK", "type": "MASK", "links": null}
+      ],
+      "title": "Imagem Inicial (I2V · Ctrl+B para ativar)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "LoadImage"},
+      "widgets_values": ["example.png", "image"]
+    },
+    {
+      "id": 48,
+      "type": "ModelSamplingSD3",
+      "pos": [850, 20],
+      "size": [210, 58],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [{"name": "model", "type": "MODEL", "link": 94}],
+      "outputs": [{"name": "MODEL", "type": "MODEL", "slot_index": 0, "links": [95]}],
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "ModelSamplingSD3"},
+      "widgets_values": [8.0]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [380, 50],
+      "size": [425, 165],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 74}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "slot_index": 0, "links": [46]}],
+      "title": "Roteiro Cinematográfico (Prompt Positivo)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "Cinematic aerial drone tracking shot over Sao Paulo skyline at twilight, glowing skyscrapers, smooth fluid camera motion, 24fps film grain, anamorphic lens flare, photorealistic 8k."
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [380, 260],
+      "size": [425, 180],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 75}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "slot_index": 0, "links": [52]}],
+      "title": "Prompt Negativo (Wan 2.2)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 55,
+      "type": "Wan22ImageToVideoLatent",
+      "pos": [380, 520],
+      "size": [310, 155],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "vae", "type": "VAE", "link": 105},
+        {"name": "start_image", "shape": 7, "type": "IMAGE", "link": 106}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [104]}],
+      "title": "Latente de Vídeo (Resolução & Quadros)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "Wan22ImageToVideoLatent"},
+      "widgets_values": [832, 480, 81, 1]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [850, 130],
+      "size": [315, 262],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 95},
+        {"name": "positive", "type": "CONDITIONING", "link": 46},
+        {"name": "negative", "type": "CONDITIONING", "link": 52},
+        {"name": "latent_image", "type": "LATENT", "link": 104}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "slot_index": 0, "links": [35]}],
+      "title": "KSampler Vídeo (uni_pc · 20 steps)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "KSampler"},
+      "widgets_values": [898471028164125, "randomize", 20, 5.0, "uni_pc", "simple", 1.0]
+    },
+    {
+      "id": 8,
+      "type": "VAEDecodeTiled",
+      "pos": [1200, 120],
+      "size": [290, 150],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 35},
+        {"name": "vae", "type": "VAE", "link": 76}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "slot_index": 0, "links": [107]}],
+      "title": "Decodificar Vídeo em Tiles (Otimizado p/ 8GB VRAM)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "VAEDecodeTiled"},
+      "widgets_values": [512, 64, 64, 8]
+    },
+    {
+      "id": 57,
+      "type": "CreateVideo",
+      "pos": [1200, 320],
+      "size": [290, 80],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 107},
+        {"name": "audio", "shape": 7, "type": "AUDIO", "link": null}
+      ],
+      "outputs": [{"name": "VIDEO", "type": "VIDEO", "links": [108]}],
+      "title": "Montar Vídeo (FPS)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CreateVideo"},
+      "widgets_values": [24.0]
+    },
+    {
+      "id": 58,
+      "type": "SaveVideo",
+      "pos": [1540, 120],
+      "size": [580, 460],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [{"name": "video", "type": "VIDEO", "link": 108}],
+      "outputs": [],
+      "title": "Salvar Vídeo (TUDOIA_Video)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "SaveVideo"},
+      "widgets_values": ["video/TUDOIA_Video", "auto", "auto"]
+    }
+  ],
+  "links": [
+    [35, 3, 0, 8, 0, "LATENT"],
+    [46, 6, 0, 3, 1, "CONDITIONING"],
+    [52, 7, 0, 3, 2, "CONDITIONING"],
+    [74, 38, 0, 6, 0, "CLIP"],
+    [75, 38, 0, 7, 0, "CLIP"],
+    [76, 39, 0, 8, 1, "VAE"],
+    [94, 37, 0, 48, 0, "MODEL"],
+    [95, 48, 0, 3, 0, "MODEL"],
+    [104, 55, 0, 3, 3, "LATENT"],
+    [105, 39, 0, 55, 0, "VAE"],
+    [106, 56, 0, 55, 1, "IMAGE"],
+    [107, 8, 0, 57, 0, "IMAGE"],
+    [108, 57, 0, 58, 0, "VIDEO"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "1. TUDOIA · Modelos Wan 2.2 TI2V 5B",
+      "bounding": [-50, -20, 400, 460],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "2. TUDOIA · Roteiro Cinematográfico & Dimensões",
+      "bounding": [365, -20, 460, 720],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "3. Imagem Inicial Opcional (I2V · Ctrl+B)",
+      "bounding": [-50, 460, 400, 400],
+      "color": "#2a6f4e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.58,
+      "offset": [620, 80]
+    },
+    "frontendVersion": "1.49.6"
+  },
+  "version": 0.4
+}

@@ -153,7 +153,7 @@ class GerarVideoReq(BaseModel):
     model_config = ConfigDict(extra="ignore")
     prompt: str = Field(min_length=1, max_length=4096)
     motor: str = Field(default="auto", max_length=64)
-    modelo: str = Field(default="fluxo:video-minimax-h3", max_length=128)
+    modelo: str = Field(default="video-minimax-h3", max_length=128)
     duracao_segundos: int = Field(default=5, ge=1, le=60)
     resolucao: str = Field(default="720p", pattern=r"^(480p|720p|1080p)$")
     fps: int = Field(default=24, ge=8, le=60)

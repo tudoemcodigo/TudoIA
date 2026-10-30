@@ -28,7 +28,8 @@ def preencher_segredos(raiz: Path) -> list[str]:
     perfis = {p.strip() for p in (atuais.get("COMPOSE_PROFILES") or "").split(",")}
     for chave in SEGREDOS_INTERNOS + (SEGREDOS_KEYCLOAK if "keycloak" in perfis else ()):
         if not (atuais.get(chave) or "").strip():
-            gravar_valor(env_path, chave, secrets.token_urlsafe(32), raiz / "dados" / "backups" / "env")
+            novo_val = f"sk-{secrets.token_urlsafe(32)}" if chave == "LITELLM_MASTER_KEY" else secrets.token_urlsafe(32)
+            gravar_valor(env_path, chave, novo_val, raiz / "dados" / "backups" / "env")
             preenchidos.append(chave)
     return preenchidos
 

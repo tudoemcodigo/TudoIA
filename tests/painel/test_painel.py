@@ -58,7 +58,6 @@ def cenario(tmp_path, monkeypatch):
     raiz, home = tmp_path / "raiz", tmp_path / "home"
     shutil.copytree(REPO / "governanca", raiz / "governanca")
     shutil.copytree(REPO / "config", raiz / "config")
-    shutil.copytree(REPO / "runtime" / "comfyui", raiz / "runtime" / "comfyui")
     home.mkdir()
     ws = tmp_path / "ws"
     ws.mkdir()
@@ -66,7 +65,7 @@ def cenario(tmp_path, monkeypatch):
     cfg["workspaces"] = [str(ws)]
     cfg["mcp"] = ["cerebro"]   # sem MCP que exija segredo
     (raiz / "governanca" / "governanca.json").write_text(json.dumps(cfg), encoding="utf-8")
-    (raiz / ".env").write_text("OPENAI_API_KEY=sk-super-secreto-1234567890\nGROQ_API_KEY=gsk_123456\nTZ=America/Sao_Paulo\nCEREBRO_TOKEN_ESTATICO=token-de-teste\n", encoding="utf-8")
+    (raiz / ".env").write_text("OPENAI_API_KEY=sk-super-secreto-1234567890\nGROQ_API_KEY=gsk_123456\nOPENROUTER_API_KEY=sk-or-teste\nTZ=America/Sao_Paulo\nCEREBRO_TOKEN_ESTATICO=token-de-teste\n", encoding="utf-8")
     serv = ServicosFalso()
     with TestClient(criar_app(raiz, serv, home, autenticacao=CONFIG_AUTH), base_url=BASE) as c:
         c.cookies.set("tudoia_sessao", sessao_assinada([PAPEL_ADMIN]))
@@ -648,15 +647,60 @@ def test_adicionar_modelo_a_provedor(cenario):
 
 
 def test_roteador_detalhes_grupos_e_elegiveis(cenario):
+    for g in cenario.get("/api/roteador/detalhes").json().get("grupos", []):
+        cenario.delete(f"/api/roteador/grupos/{g['id']}")
+    r0 = cenario.get("/api/roteador/detalhes")
+    assert r0.status_code == 200
+    assert r0.json()["grupos"] == []
+
+    cenario.post("/api/provedores/groq/modelos", json={
+        "nome": "groq/llama-cod",
+        "id": "groq/llama-3.3-70b",
+        "papeis": ["chat", "codigo"],
+        "ativo": True,
+    })
+    cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-codigo",
+        "titulo": "Código",
+        "descricao": "Grupo de código",
+        "modelos": ["groq/llama-cod"],
+    })
     r = cenario.get("/api/roteador/detalhes")
     assert r.status_code == 200
     dados = r.json()
     assert "grupos" in dados
     grupos = {g["id"]: g for g in dados["grupos"]}
-    assert "tudoia-nuvem" in grupos
     assert "tudoia-codigo" in grupos
-    assert "tudoia-max" in grupos
-    assert len(grupos["tudoia-codigo"]["membros"]) > 0
+    assert len(grupos["tudoia-codigo"]["membros"]) == 1
+
+    # Verifica que modelos elegíveis são listados e marcações fictícias não são inventadas
+    elegiveis = {m["nome"]: m for m in grupos["tudoia-codigo"]["modelos_elegiveis"]}
+    assert "local/tudoia-chat" not in elegiveis
+
+
+def test_vincular_modelos_locais_manualmente(cenario):
+    cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-dev",
+        "titulo": "Desenvolvimento Local",
+        "descricao": "Grupo híbrido com fallback local",
+        "modelos": [],
+    })
+    # Vincula modelo local real do Ollama manualmente ao grupo
+    r_put = cenario.put("/api/roteador/grupos", json={
+        "ordem": {
+            "tudoia-dev": ["local/qwen2.5-coder:latest"]
+        }
+    })
+    assert r_put.status_code == 200
+    r_det = cenario.get("/api/roteador/detalhes")
+    assert r_det.status_code == 200
+    grupos = {g["id"]: g for g in r_det.json()["grupos"]}
+    assert "tudoia-dev" in grupos
+    membros = grupos["tudoia-dev"]["membros"]
+    assert len(membros) == 1
+    assert membros[0]["nome"] == "local/qwen2.5-coder:latest"
+    assert membros[0]["provedor_nome"] == "Ollama Local"
+    assert membros[0]["origem"] == "local"
 
 
 def test_atualizar_composicao_grupos(cenario):
@@ -673,12 +717,24 @@ def test_atualizar_composicao_grupos(cenario):
 
 
 def test_auto_bind_modelos_por_papeis(cenario):
+    cenario.post("/api/provedores/groq/modelos", json={
+        "nome": "groq/llama-cod",
+        "id": "groq/llama-3.3-70b",
+        "papeis": ["codigo"],
+        "ativo": True,
+    })
+    cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-codigo",
+        "titulo": "Código",
+        "descricao": "Grupo de código",
+        "modelos": [],
+    })
     r = cenario.post("/api/roteador/auto-bind", json={})
     assert r.status_code == 200
     dados = r.json()
     assert dados["ok"] is True
     assert "ordem" in dados
-    assert "tudoia-codigo" in dados["ordem"]
+    assert dados["ordem"]["tudoia-codigo"] == ["groq/llama-cod"]
 
 
 def test_gerenciamento_grupos_roteador_lifecycle(cenario):
@@ -710,12 +766,7 @@ def test_gerenciamento_grupos_roteador_lifecycle(cenario):
     assert r_edit.json()["ok"] is True
     assert r_edit.json()["ativo"] is False
 
-    # 4. Proteger grupos vitais contra exclusão (ex: tudoia-codigo)
-    r_del_vital = cenario.delete("/api/roteador/grupos/tudoia-codigo")
-    assert r_del_vital.status_code == 422
-    assert "não pode ser excluído" in r_del_vital.json()["erro"]["mensagem"]
-
-    # 5. Excluir grupo customizado com sucesso
+    # 4. Excluir grupo customizado com sucesso
     r_del = cenario.delete("/api/roteador/grupos/tudoia-pesquisa")
     assert r_del.status_code == 200
     assert r_del.json()["ok"] is True
@@ -818,32 +869,22 @@ def test_testar_modelo_embedding_ollama(cenario, monkeypatch):
 
 
 
-def test_modelos_e_fluxos_midia_verificacao_e_exclusao(cenario):
-    import json
+def test_modelos_midia_verificacao_e_exclusao(cenario):
     import struct
 
-    # Cria um modelo safetensors sintético válido (> 1MB) e um fluxo ComfyUI que depende dele
+    # Cria um modelo safetensors sintético válido (> 1MB)
     dir_modelos = cenario.raiz / "modelos" / "comfyui" / "ComfyUI_windows_portable" / "ComfyUI" / "models" / "diffusion_models"
     dir_modelos.mkdir(parents=True, exist_ok=True)
     arq_sf = dir_modelos / "video_teste.safetensors"
     header_json = b'{"__metadata__": {"format": "pt"}}'
     arq_sf.write_bytes(struct.pack("<Q", len(header_json)) + header_json + (b"\x00" * (1024 * 1024 + 512)))
 
-    dir_fluxos = cenario.raiz / "runtime" / "comfyui" / "fluxos"
-    dir_fluxos.mkdir(parents=True, exist_ok=True)
-    arq_fl = dir_fluxos / "video-teste.json"
-    arq_fl.write_text(json.dumps({
-        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "video_teste.safetensors"}}
-    }), encoding="utf-8")
-
-    # 1. Listar modelos deve retornar modelos e fluxos detalhados de mídia
+    # 1. Listar modelos deve retornar modelos detalhados de mídia
     r_list = cenario.get("/api/modelos")
     assert r_list.status_code == 200
     midia = r_list.json()["midia"]
+    assert "fluxos" not in midia
     assert any(m["arquivo"] == "video_teste.safetensors" for m in midia["modelos"])
-    fluxo_info = next(f for f in midia["fluxos"] if f["nome"] == "video-teste")
-    assert fluxo_info["integro"] is True
-    assert "video_teste.safetensors" in fluxo_info["modelos_requeridos"]
 
     # 2. Verificar integridade binária do modelo .safetensors via /api/modelos/testar
     r_ver_mod = cenario.post("/api/modelos/testar", json={"modelo": "midia:comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/video_teste.safetensors", "tipo": "midia"})
@@ -851,23 +892,11 @@ def test_modelos_e_fluxos_midia_verificacao_e_exclusao(cenario):
     assert r_ver_mod.json()["ok"] is True
     assert "SAFETENSORS íntegro" in r_ver_mod.json()["resposta"]
 
-    # 3. Verificar integridade do fluxo ComfyUI
-    r_ver_fl = cenario.post("/api/modelos/testar", json={"modelo": "fluxo:video-teste.json", "tipo": "midia"})
-    assert r_ver_fl.status_code == 200
-    assert r_ver_fl.json()["ok"] is True
-    assert "1/1 modelos OK" in r_ver_fl.json()["resposta"]
-
-    # 4. Excluir o modelo .safetensors do disco
+    # 3. Excluir o modelo .safetensors do disco
     r_del_mod = cenario.delete("/api/modelos/midia/midia:comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/video_teste.safetensors")
     assert r_del_mod.status_code == 200
     assert r_del_mod.json()["ok"] is True
     assert not arq_sf.exists()
-
-    # 5. Agora o fluxo deve acusar que o modelo requerido está ausente no disco!
-    r_ver_fl_apos = cenario.post("/api/modelos/testar", json={"modelo": "fluxo:video-teste.json", "tipo": "midia"})
-    assert r_ver_fl_apos.status_code == 200
-    assert r_ver_fl_apos.json()["ok"] is False
-    assert "video_teste.safetensors" in r_ver_fl_apos.json()["erro"]
 
 
 def test_testar_roteador_com_escolha_de_grupo(cenario, monkeypatch):
@@ -987,11 +1016,11 @@ def test_estudio_gerar_imagem(cenario, monkeypatch):
     assert "imagem_url" in d
 
 
-def test_estudio_gerar_imagem_fluxo_comfy_offline(cenario, monkeypatch):
+def test_estudio_gerar_imagem_local_comfy_offline(cenario, monkeypatch):
     monkeypatch.setattr("tudoia_painel.servicos.porta_aberta", lambda porta: False)
     r = cenario.post("/api/estudio/gerar-imagem", json={
         "prompt": "Octavio Frias Bridge",
-        "modelo": "fluxo:GeraImagemTudoIA-KREA2.json",
+        "modelo": "local:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
         "aspect_ratio": "16:9"
     })
     assert r.status_code == 503
@@ -1081,23 +1110,23 @@ def test_estudio_upload_midia_e_fluxo_i2v(cenario, monkeypatch):
     r_trav = cenario.get("/api/estudio/uploads/..%2F..%2F..%2F.env")
     assert r_trav.status_code == 404
 
-    # 4. Geração com fluxo i2v sem arquivo (deve falhar amigavelmente)
+    # 4. Geração com modo i2v sem arquivo (deve falhar amigavelmente)
     r_sem_arq = cenario.post("/api/estudio/gerar-video", json={
         "prompt": "Câmera girando ao redor da pessoa",
         "motor": "auto",
-        "modelo": "fluxo:video-wan14b-i2v.json",
+        "modelo": "video-wan14b-i2v",
         "modo_origem": "i2v",
         "arquivo_referencia": None
     })
     assert r_sem_arq.status_code == 422
     assert "requer um arquivo de imagem" in r_sem_arq.json()["erro"]["mensagem"]
 
-    # 5. Fluxo comfyui offline detectado quando porta fechada
+    # 5. ComfyUI offline detectado quando porta fechada
     monkeypatch.setattr("tudoia_painel.servicos.porta_aberta", lambda porta: False)
     r_comfy_off = cenario.post("/api/estudio/gerar-video", json={
         "prompt": "Câmera girando ao redor da pessoa",
         "motor": "auto",
-        "modelo": "fluxo:video-wan14b-i2v.json",
+        "modelo": "video-wan14b-i2v",
         "modo_origem": "i2v",
         "arquivo_referencia": url_upload
     })
@@ -1406,33 +1435,6 @@ def test_instancias_governanca_crud(cenario):
 
 
 
-def test_fluxo_com_caminho_relativo_nao_sai_da_pasta(cenario, monkeypatch):
-    """Regressão: 'fluxo:../...' lia qualquer .json do disco e o enviava ao ComfyUI."""
-    segredo = cenario.raiz / "fora.json"
-    segredo.write_text(json.dumps({"1": {"class_type": "X", "inputs": {}}}), encoding="utf-8")
-    monkeypatch.setattr("tudoia_painel.servicos.porta_aberta", lambda porta, timeout=0.5: True, raising=False)
-    chamadas = []
-
-    class ClienteFalso:
-        def __init__(self, *a, **kw):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *a):
-            return False
-
-        def post(self, url, **kw):
-            chamadas.append(url)
-            raise AssertionError("grafo fora da pasta não deveria chegar ao ComfyUI")
-
-    monkeypatch.setattr("httpx.Client", ClienteFalso)
-    for alvo in ("fluxo:../fora", "fluxo:../../fora.json", "fluxo:" + str(segredo)):
-        cenario.post("/api/estudio/gerar-imagem", json={"prompt": "teste", "modelo": alvo, "aspect_ratio": "1:1"})
-        assert "/prompt" not in " ".join(chamadas), alvo
-
-
 def test_upload_aceita_corpo_maior_que_1mb_so_na_rota_de_upload():
     from tudoia_painel.seguranca import checar
     from starlette.datastructures import Headers
@@ -1486,6 +1488,12 @@ def test_inferir_papeis_pelo_id():
 
 def test_descobrir_openrouter_reconhece_modelo_cadastrado_com_prefixo(cenario, monkeypatch):
     # Regressão: antes, 'openrouter/google/...' era comparado com 'google/...' e aparecia como ausente.
+    cenario.post("/api/provedores/openrouter/modelos", json={
+        "nome": "or/gemma-4-26b", "id": "openrouter/google/gemma-4-26b-a4b-it:free", "papeis": ["chat"], "ativo": True,
+    })
+    cenario.post("/api/provedores/openrouter/modelos", json={
+        "nome": "or/lfm-2.5", "id": "openrouter/liquid/lfm-2.5:free", "papeis": ["chat"], "ativo": True,
+    })
     monkeypatch.setattr("tudoia_painel.provedores_service._buscar_modelos_api",
                         _api_falsa({"OpenRouter (:free)": [_modelo_api("google/gemma-4-26b-a4b-it:free", free=True)]}))
     dados = cenario.get("/api/provedores/openrouter/descobrir-modelos").json()
@@ -1507,6 +1515,10 @@ def test_sincronizar_previa_nao_grava(cenario, monkeypatch):
 
 def test_sincronizar_adiciona_inativo_remove_descontinuado_e_protege_roteado(cenario, monkeypatch):
     # 'or/descontinuado' não está no roteamento: deve sair. 'or/free' está: deve ficar.
+    cenario.post("/api/provedores/openrouter/modelos", json={
+        "nome": "or/free", "id": "openrouter/openrouter/free", "papeis": ["chat"], "ativo": True,
+    })
+    cenario.put("/api/roteador/grupos", json={"ordem": {"tudoia-nuvem": ["or/free"]}})
     cenario.post("/api/provedores/openrouter/modelos", json={
         "nome": "or/descontinuado", "id": "openrouter/vendor/descontinuado:free", "papeis": ["chat"], "ativo": True,
     })
@@ -1720,6 +1732,9 @@ def test_falha_de_ambiente_nao_desativa_modelo(resultado):
 def test_testar_com_litellm_fora_nao_mexe_no_catalogo(cenario, monkeypatch):
     """Antes: 'Testar todos' com o LiteLLM parado inativava todo modelo de nuvem e o tirava do roteamento."""
     import httpx
+    cenario.post("/api/provedores/groq/modelos", json={
+        "nome": "groq/teste", "id": "groq/llama-3", "papeis": ["chat"], "ativo": True,
+    })
     cat = cenario.raiz / "config" / "catalogo-modelos.yaml"
     rot = cenario.raiz / "config" / "roteamento.yaml"
     antes = (cat.read_bytes(), rot.read_bytes())
@@ -2075,3 +2090,40 @@ def test_logs_de_gasto_sem_litellm_devolvem_vazio():
     from tudoia_painel import limites
     assert limites.ler_logs_litellm("chave", 24) == []   # rede bloqueada no conftest: ConnectError
     assert limites.ler_logs_litellm("", 24) == []
+
+
+def test_listar_novos_catalogo_ignora_provedores_sem_chave(tmp_path, monkeypatch):
+    from tudoia_painel import provedores_service as ps
+    cat = tmp_path / "catalogo.yaml"
+    env_file = tmp_path / ".env"
+    cat.write_text("""
+provedores:
+  openrouter:
+    nome: OpenRouter
+    tier: FREE
+    chave: OPENROUTER_API_KEY
+    url_modelos: https://openrouter.ai/api/v1/models
+  nvidia:
+    nome: NVIDIA
+    tier: FREE
+    chave: NVIDIA_NIM_API_KEY
+    url_modelos: https://integrate.api.nvidia.com/v1/models
+""", encoding="utf-8")
+    env_file.write_text("NVIDIA_NIM_API_KEY=chave_valida\n", encoding="utf-8")
+
+    # Mock de busca para retornar modelo se chamado
+    monkeypatch.setattr(ps, "_buscar_modelos_api", lambda p, env: [{"id": "meta/llama-3"}])
+
+    # 1. Listando todos: openrouter deve ser ignorado sem erro, nvidia deve vir
+    res = ps.listar_novos_catalogo(cat, env_file)
+    assert res["ok"] is True
+    provs = {m["provedor"] for m in res["novos"]}
+    assert "nvidia" in provs
+    assert "openrouter" not in provs
+    assert "openrouter" not in res["erros"]
+
+    # 2. Pedindo openrouter explicitamente: deve avisar que está sem chave no .env
+    res_especifico = ps.listar_novos_catalogo(cat, env_file, provedor="openrouter")
+    assert "openrouter" in res_especifico["erros"]
+    assert "sem chave" in res_especifico["erros"]["openrouter"]
+

@@ -113,6 +113,15 @@ function terminarCarregamento(estado) {
   }
 }
 
+let redirecionandoLogin = false;
+function redirecionarLogin() {
+  if (redirecionandoLogin) return;
+  redirecionandoLogin = true;
+  const hash = window.location.hash || "";
+  const retorno = encodeURIComponent(location.pathname + location.search + hash);
+  window.location.assign(`/auth/login?retorno=${retorno}`);
+}
+
 async function api(metodo, caminho, corpo) {
   const opcoes = { method: metodo, headers: { "content-type": "application/json" } };
   if (metodo !== "GET") opcoes.body = JSON.stringify(corpo ?? {});
@@ -121,7 +130,7 @@ async function api(metodo, caminho, corpo) {
     const r = await fetch(caminho, opcoes);
     if (r.status === 401) {
       // Sessão ausente ou expirada: volta ao login e retorna para a tela atual depois.
-      window.location.assign(`/auth/login?retorno=${encodeURIComponent(location.pathname + location.search)}`);
+      redirecionarLogin();
       throw new Error("sessão expirada: faça login novamente");
     }
     const dados = await r.json().catch(() => ({}));
@@ -244,28 +253,40 @@ async function carregarServicos() {
     let todosOnline = true;
     for (const s of lista) {
       if (!s.ativo) todosOnline = false;
+      const tituloEl = s.url
+        ? el("a", {
+            className: "servico-titulo servico-titulo-link",
+            href: s.url,
+            target: "_blank",
+            rel: "noopener noreferrer",
+            title: `Abrir ${s.titulo || s.nome} em nova aba (${s.url})`,
+            textContent: s.titulo || s.nome,
+          })
+        : el("div", { className: "servico-titulo", textContent: s.titulo || s.nome });
+
       const nome = el("div", { className: "servico-nome" }, [
         el("span", { className: `status-dot ${s.ativo ? "online" : ""}` }),
         el("div", {}, [
-          el("div", { className: "servico-titulo", textContent: s.titulo || s.nome }),
+          tituloEl,
           el("div", { className: "servico-desc", textContent: s.descricao || `Serviço ${s.nome}` }),
         ]),
       ]);
       const tipo = el("span", { className: "servico-tipo", textContent: s.tipo });
       const porta = !s.porta
         ? el("span", { className: "servico-porta inativa", textContent: "—" })
-        : s.url && s.ativo
-          ? el("a", { className: "servico-porta", href: s.url, target: "_blank", title: `Abrir ${s.url} em nova aba`, textContent: `:${s.porta}` })
+        : s.url
+          ? el("a", { className: `servico-porta ${s.ativo ? "" : "inativa"}`, href: s.url, target: "_blank", rel: "noopener noreferrer", title: `Abrir ${s.url} em nova aba`, textContent: `:${s.porta}` })
           : el("span", { className: "servico-porta inativa", textContent: `:${s.porta}` });
       const estado = el("span", { className: `servico-estado ${s.ativo ? "on" : "off"}`, textContent: s.ativo ? "Online" : "Parado" });
 
       const linkApp = s.url ? el("a", {
-        href: s.ativo ? s.url : "javascript:void(0)",
-        target: s.ativo ? "_blank" : "",
+        href: s.url,
+        target: "_blank",
+        rel: "noopener noreferrer",
         className: s.ativo ? "btn btn-open-ui btn-sm" : "btn btn-outline btn-sm",
-        style: s.ativo ? "" : "opacity:0.35; cursor:not-allowed;",
-        title: s.ativo ? `Abrir ${s.titulo || s.nome} em nova aba (${s.url})` : `Inicie o serviço para abrir a interface (${s.url})`,
-        textContent: "Abrir"
+        style: s.ativo ? "" : "opacity:0.55;",
+        title: s.ativo ? `Abrir ${s.titulo || s.nome} em nova aba (${s.url})` : `Serviço parado (${s.url}) — clique para abrir se já estiver em execução`,
+        textContent: "Abrir ↗"
       }) : null;
       const btnStart = el("button", {
         className: "btn btn-sm btn-outline",
@@ -411,16 +432,32 @@ function renderizarSubfiltroProvedores() {
   }
 }
 
+let buscaModelosTermo = "";
+
+function casouBuscaModelos(textoCompleto) {
+  if (!buscaModelosTermo) return true;
+  const termos = buscaModelosTermo.split(/\s+/).filter(Boolean);
+  const alvo = (textoCompleto || "").toLowerCase();
+  return termos.every(t => alvo.includes(t));
+}
+
 function renderizarModelos() {
   const grid = $("grid-modelos");
   grid.replaceChildren();
   if (!cacheModelos) return;
   renderizarSubfiltroProvedores();
 
+  let cardsExibidos = 0;
+  let totalCardsDisponiveis = 0;
+
   // 1. Locais (Ollama)
   // Com um provedor escolhido no subfiltro, só aparecem os modelos dele (nuvem)
   if ((filtroModeloAtual === "todos" || filtroModeloAtual === "local") && !filtroProvedorModelo) {
     for (const m of cacheModelos.locais || []) {
+      totalCardsDisponiveis++;
+      const textoBuscaLocal = `${m.nome} ${m.formato} ${m.quantizacao} ${m.familia || ''} ${m.categoria || ''} local ollama gpu`;
+      if (!casouBuscaModelos(textoBuscaLocal)) continue;
+      cardsExibidos++;
       const badgesTopo = [];
       if (m.em_vram) {
         badgesTopo.push(el("span", { className: "badge badge-vram", textContent: `VRAM ${m.vram_gb} GB` }));
@@ -546,6 +583,10 @@ function renderizarModelos() {
     if (filtroProvedorModelo && prov.chave_id !== filtroProvedorModelo) continue;
 
     for (const m of prov.modelos || []) {
+      totalCardsDisponiveis++;
+      const textoBuscaNuvem = `${m.nome} ${m.id} ${prov.nome} ${prov.chave_id} ${(m.papeis || []).join(' ')} ${prov.tier} nuvem`;
+      if (!casouBuscaModelos(textoBuscaNuvem)) continue;
+      cardsExibidos++;
       const badgeTier = isFree ? el("span", { className: "badge badge-free", textContent: "FREE" })
                                : el("span", { className: "badge badge-paid", textContent: "PAID" });
       const header = el("div", { className: "card-header" }, [
@@ -584,107 +625,16 @@ function renderizarModelos() {
     }
   }
 
-  // Mídia (ComfyUI: Fluxos e Modelos .safetensors/.gguf)
+  // Mídia (ComfyUI: Modelos .safetensors/.gguf)
   if ((filtroModeloAtual === "todos" || filtroModeloAtual === "midia") && !filtroProvedorModelo) {
-    const fluxosDetalhados = cacheModelos.midia?.fluxos || [];
     const modelosMidia = cacheModelos.midia?.modelos || [];
 
-    // 1. Fluxos Automatizados (Workflows ComfyUI)
-    for (const fl of fluxosDetalhados) {
-      const isAtivo = fl.ativo !== false;
-      const badgeTipo = isAtivo
-        ? el("span", { className: "badge badge-role", style: "background:rgba(139,92,246,0.2); color:#c4b5fd; border:1px solid rgba(139,92,246,0.4);", textContent: `FLUXO ${(fl.tipo || 'IMAGEM').toUpperCase()}` })
-        : el("span", { className: "badge badge-desativado", textContent: "Desativado" });
-
-      const header = el("div", { className: "card-header" }, [
-        el("div", { className: "card-title-group" }, [
-          el("span", { className: "card-title", textContent: fl.nome }),
-          badgeTipo
-        ]),
-        el("span", { style: "font-family:var(--font-mono); font-size:11px; color:var(--text-dim);", textContent: `${fl.resolucao} · ${fl.detalhe_execucao}` })
-      ]);
-
-      const depsBadges = (fl.modelos_requeridos || []).map(dep => {
-        const faltando = (fl.modelos_faltantes || []).includes(dep);
-        return el("span", {
-          className: "badge badge-role",
-          style: faltando ? "border-color:var(--danger); color:var(--danger);" : "font-size:10px;",
-          title: faltando ? `Modelo ausente no disco: ${dep}` : `Modelo instalado: ${dep}`,
-          textContent: dep.length > 28 ? dep.slice(0, 25) + "..." : dep
-        });
-      });
-
-      const statusDepsTxt = fl.integro
-        ? `✓ Workflow íntegro (${(fl.modelos_requeridos || []).length}/${(fl.modelos_requeridos || []).length} modelos instalados no disco)`
-        : `⚠ Faltam ${(fl.modelos_faltantes || []).length} modelo(s) no disco: ${(fl.modelos_faltantes || []).join(", ")}`;
-
-      const desc = el("div", { className: "card-desc" }, [
-        el("div", {
-          style: `font-size:11px; margin-bottom:6px; color:${fl.integro ? 'var(--success)' : 'var(--warning)'};`,
-          textContent: statusDepsTxt
-        }),
-        el("div", { style: "display:flex; flex-wrap:wrap; gap:4px;" }, depsBadges)
-      ]);
-
-      const salvo = historicoTestesModelos[fl.id];
-      const statusBar = criarBarraStatusTeste(salvo);
-      const btnTestar = el("button", {
-        className: "btn btn-outline btn-sm btn-testar-modelo",
-        textContent: "Verificar",
-        title: `Verificar integridade do workflow ${fl.arquivo} e seus modelos`,
-        onclick: () => testarUmModelo(fl.id, "midia", statusBar, btnTestar)
-      });
-
-      const btnToggle = el("button", {
-        className: "btn btn-outline btn-sm",
-        textContent: isAtivo ? "Desativar" : "Ativar",
-        title: isAtivo ? `Desativar fluxo ${fl.nome}` : `Ativar fluxo ${fl.nome}`,
-        onclick: async () => {
-          try {
-            btnToggle.disabled = true;
-            await api("POST", `/api/modelos/local/${encodeURIComponent(fl.id)}/toggle-ativo`, {});
-            toast(`Fluxo ${fl.nome} ${isAtivo ? 'desativado' : 'ativado'}!`, "info");
-            cacheModelos = null;
-            await carregarModelos();
-          } catch (err) {
-            toast(`Erro: ${err.message}`, "error");
-            btnToggle.disabled = false;
-          }
-        }
-      });
-
-      const btnExcluir = el("button", {
-        className: "btn btn-outline btn-sm",
-        style: "color:var(--danger); border-color:rgba(239,68,68,0.4);",
-        textContent: "Excluir",
-        title: `Excluir workflow ${fl.arquivo} do disco`,
-        onclick: async () => {
-          if (!confirm(`Deseja realmente excluir o fluxo '${fl.arquivo}' do disco?`)) return;
-          try {
-            btnExcluir.disabled = true;
-            await api("DELETE", `/api/modelos/midia/${encodeURIComponent(fl.id)}`);
-            toast(`Fluxo ${fl.nome} excluído com sucesso!`, "success");
-            cacheModelos = null;
-            await carregarModelos();
-          } catch (err) {
-            toast(`Falha ao excluir fluxo: ${err.message}`, "error");
-            btnExcluir.disabled = false;
-          }
-        }
-      });
-
-      const actions = el("div", { className: "card-actions" }, [btnTestar, btnToggle, btnExcluir]);
-      const footer = el("div", { className: "card-meta" }, [
-        actions,
-        el("span", { className: "badge badge-role", textContent: "ComfyUI Workflow" })
-      ]);
-      const cardClasses = ["card"];
-      if (!isAtivo) cardClasses.push("desativado");
-      grid.appendChild(el("div", { className: cardClasses.join(" ") }, [header, desc, statusBar, footer]));
-    }
-
-    // 2. Modelos de Vídeo & Imagem instalados no disco (.safetensors / .gguf)
+    // Modelos de Vídeo & Imagem instalados no disco (.safetensors / .gguf)
     for (const m of modelosMidia) {
+      totalCardsDisponiveis++;
+      const textoBuscaMidia = `${m.nome || ''} ${m.arquivo} ${m.motor} ${m.tipo || ''} midia video imagem`;
+      if (!casouBuscaModelos(textoBuscaMidia)) continue;
+      cardsExibidos++;
       const isAtivo = m.ativo !== false;
       const badgeMotor = isAtivo
         ? el("span", { className: "badge badge-free", textContent: `${m.motor.toUpperCase()}` })
@@ -762,6 +712,34 @@ function renderizarModelos() {
       if (!isAtivo) cardClasses.push("desativado");
       grid.appendChild(el("div", { className: cardClasses.join(" ") }, [header, desc, statusBar, footer]));
     }
+  }
+
+  const elContagem = $("contagem-busca-modelos");
+  if (elContagem) {
+    elContagem.textContent = buscaModelosTermo ? `${cardsExibidos} de ${totalCardsDisponiveis} modelo(s)` : `${totalCardsDisponiveis} modelo(s)`;
+  }
+  const btnLimpar = $("btn-limpar-busca-modelos");
+  if (btnLimpar) {
+    btnLimpar.style.display = buscaModelosTermo ? "block" : "none";
+  }
+
+  if (cardsExibidos === 0) {
+    grid.appendChild(el("div", {
+      className: "card",
+      style: "grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-dim);"
+    }, [
+      el("p", { style: "font-size: 14px; margin-bottom: 8px;", textContent: buscaModelosTermo ? `Nenhum modelo encontrado para "${buscaModelosTermo}".` : "Nenhum modelo cadastrado nesta categoria." }),
+      buscaModelosTermo ? el("button", {
+        className: "btn btn-outline btn-sm",
+        textContent: "Limpar pesquisa",
+        onclick: () => {
+          buscaModelosTermo = "";
+          const inp = $("input-busca-modelos-catalogo");
+          if (inp) inp.value = "";
+          renderizarModelos();
+        }
+      }) : null
+    ].filter(Boolean)));
   }
 }
 
@@ -884,9 +862,45 @@ $$("[data-filter-modelo]").forEach((btn) => {
   });
 });
 
+const inpBuscaCatalogo = $("input-busca-modelos-catalogo");
+if (inpBuscaCatalogo) {
+  inpBuscaCatalogo.addEventListener("input", (e) => {
+    buscaModelosTermo = e.target.value.trim().toLowerCase();
+    renderizarModelos();
+  });
+}
+const btnLimparBuscaCatalogo = $("btn-limpar-busca-modelos");
+if (btnLimparBuscaCatalogo) {
+  btnLimparBuscaCatalogo.addEventListener("click", () => {
+    buscaModelosTermo = "";
+    if (inpBuscaCatalogo) inpBuscaCatalogo.value = "";
+    renderizarModelos();
+  });
+}
+
 // ------------------------------------------------ 3. ROTEADOR
 let dadosRoteadorCache = null;
 let ordemGruposEdicao = {};
+let alteracoesPendentesRoteador = false;
+
+function atualizarEstadoPendenciasRoteador(pendente) {
+  alteracoesPendentesRoteador = Boolean(pendente);
+  const badge = $("badge-roteador-pendente");
+  const banner = $("aviso-banner-roteador-pendente");
+  const btnSalvar = $("btn-salvar-ordem-roteador");
+
+  if (badge) badge.style.display = alteracoesPendentesRoteador ? "inline-flex" : "none";
+  if (banner) banner.style.display = alteracoesPendentesRoteador ? "block" : "none";
+  if (btnSalvar) {
+    if (alteracoesPendentesRoteador) {
+      btnSalvar.classList.add("btn-salvar-pendente");
+      btnSalvar.textContent = "Salvar Grupos *";
+    } else {
+      btnSalvar.classList.remove("btn-salvar-pendente");
+      btnSalvar.textContent = "Salvar Grupos";
+    }
+  }
+}
 
 async function carregarRoteador() {
   const container = $("container-roteador-grupos");
@@ -901,6 +915,7 @@ async function carregarRoteador() {
       ordemGruposEdicao[g.id] = (g.membros || []).map(m => m.nome);
     }
 
+    atualizarEstadoPendenciasRoteador(false);
     renderizarGruposRoteador();
     atualizarSelectGruposTesteRoteador(rot.grupos);
   } catch (e) {
@@ -910,11 +925,31 @@ async function carregarRoteador() {
 
 function atualizarSelectGruposTesteRoteador(grupos) {
   const select = $("select-teste-roteador-grupo");
+  const btn = $("btn-executar-teste-roteador");
   if (!select) return;
-  const valorAtual = select.value || "tudoia-auto";
+  const valorAtual = select.value;
   select.innerHTML = "";
 
-  // 1. Orquestração Inteligente
+  const listaGrupos = grupos || [];
+  if (listaGrupos.length === 0) {
+    const optVazio = document.createElement("option");
+    optVazio.value = "";
+    optVazio.textContent = "Nenhum grupo de roteamento cadastrado";
+    optVazio.disabled = true;
+    optVazio.selected = true;
+    select.appendChild(optVazio);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Nenhum grupo para enviar (:4000)";
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = false;
+  }
+
+  // 1. Orquestração Inteligente (só se houver grupos cadastrados para os quais rotear)
   const gAuto = document.createElement("optgroup");
   gAuto.label = "Orquestração Inteligente (tudoia-auto)";
   const optAuto = document.createElement("option");
@@ -923,53 +958,23 @@ function atualizarSelectGruposTesteRoteador(grupos) {
   gAuto.appendChild(optAuto);
   select.appendChild(gAuto);
 
-  // 2. Grupos de Nuvem (LiteLLM)
-  const gNuvem = document.createElement("optgroup");
-  gNuvem.label = "Grupos de Nuvem (LiteLLM Gateway)";
-  const gruposNuvemCanonicos = ["tudoia-nuvem", "tudoia-codigo", "tudoia-codigo-reserva", "tudoia-visao", "tudoia-max"];
+  // 2. Grupos de Roteamento Efetivamente Cadastrados
+  const gCadastrados = document.createElement("optgroup");
+  gCadastrados.label = `Grupos Cadastrados (${listaGrupos.length})`;
 
-  (grupos || []).filter(g => gruposNuvemCanonicos.includes(g.id)).forEach(g => {
+  listaGrupos.forEach(g => {
     const isAtivo = g.ativo !== false;
     const opt = document.createElement("option");
     opt.value = g.id;
+    const qtdMembros = (ordemGruposEdicao[g.id] || g.membros || []).length;
     const statusTxt = isAtivo ? "" : " [DESATIVADO]";
-    opt.textContent = `${g.id}  ·  ${g.titulo || g.id}${statusTxt}`;
-    gNuvem.appendChild(opt);
+    opt.textContent = `${g.id}  ·  ${g.titulo || g.id} (${qtdMembros} modelo${qtdMembros === 1 ? '' : 's'})${statusTxt}`;
+    gCadastrados.appendChild(opt);
   });
-  select.appendChild(gNuvem);
-
-  // 3. Modelos Locais (Ollama / GPU)
-  const gLocal = document.createElement("optgroup");
-  gLocal.label = "Modelos Locais (Ollama · GPU CUDA)";
-  [
-    { value: "tudoia-local", label: "tudoia-local  ·  Ollama Chat Local (qwen2.5 / llama)" },
-    { value: "tudoia-local-agente", label: "tudoia-local-agente  ·  Ollama Agente Local (Tool Use)" }
-  ].forEach(o => {
-    const opt = document.createElement("option");
-    opt.value = o.value;
-    opt.textContent = o.label;
-    gLocal.appendChild(opt);
-  });
-  select.appendChild(gLocal);
-
-  // 4. Grupos Customizados (se houver)
-  const custom = (grupos || []).filter(g => !gruposNuvemCanonicos.includes(g.id));
-  if (custom.length > 0) {
-    const gCust = document.createElement("optgroup");
-    gCust.label = "Grupos Customizados";
-    custom.forEach(g => {
-      const isAtivo = g.ativo !== false;
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      const statusTxt = isAtivo ? "" : " [DESATIVADO]";
-      opt.textContent = `${g.id}  ·  ${g.titulo || g.id}${statusTxt}`;
-      gCust.appendChild(opt);
-    });
-    select.appendChild(gCust);
-  }
+  select.appendChild(gCadastrados);
 
   // Restaura valor selecionado se existir
-  const existe = Array.from(select.options).some(o => o.value === valorAtual);
+  const existe = Array.from(select.options).some(o => o.value === valorAtual && !o.disabled);
   select.value = existe ? valorAtual : "tudoia-auto";
   atualizarBotaoTesteRoteador();
 }
@@ -978,7 +983,13 @@ function atualizarBotaoTesteRoteador() {
   const select = $("select-teste-roteador-grupo");
   const btn = $("btn-executar-teste-roteador");
   if (!select || !btn) return;
-  const val = select.value || "tudoia-auto";
+  const val = select.value;
+  if (!val) {
+    btn.disabled = true;
+    btn.textContent = "Nenhum grupo para enviar (:4000)";
+    return;
+  }
+  btn.disabled = false;
   btn.textContent = `Enviar para ${val} (:4000)`;
 }
 
@@ -999,7 +1010,28 @@ function renderizarGruposRoteador() {
   ]);
   container.appendChild(info);
 
-  for (const g of rot.grupos || []) {
+  const listaGrupos = rot.grupos || [];
+  if (listaGrupos.length === 0) {
+    const cardVazio = el("div", {
+      style: "text-align:center; padding:36px 16px; background:var(--bg-surface); border:1px dashed var(--border-color); border-radius:var(--radius-md); color:var(--text-muted); font-size:13px;"
+    }, [
+      el("div", { style: "font-size:26px; margin-bottom:8px;", textContent: "📭" }),
+      el("div", { style: "font-weight:600; color:var(--text-primary); margin-bottom:4px; font-size:14px;", textContent: "Nenhum grupo de roteamento cadastrado" }),
+      el("div", { style: "font-size:12px; color:var(--text-dim); margin-bottom:16px; max-width:400px; margin-left:auto; margin-right:auto;", textContent: "Crie grupos de fallback ou utilize a auto-vinculação para definir rotas do LiteLLM Gateway." }),
+      el("button", {
+        className: "btn btn-primary btn-sm",
+        textContent: "+ Criar Primeiro Grupo",
+        onclick: () => {
+          const btnNovo = $("btn-modal-novo-grupo");
+          if (btnNovo) btnNovo.click();
+        }
+      })
+    ]);
+    container.appendChild(cardVazio);
+    return;
+  }
+
+  for (const g of listaGrupos) {
     const membrosNomes = ordemGruposEdicao[g.id] || [];
     const isAtivo = g.ativo !== false;
 
@@ -1059,38 +1091,60 @@ function renderizarGruposRoteador() {
 
     // Lista de membros ativos
     const listaMembros = el("div", { className: "grupo-membros-lista" });
+    const membrosMap = new Map((g.membros || []).map(m => [m.nome, m]));
+
     if (membrosNomes.length === 0) {
       listaMembros.appendChild(el("div", {
-        style: "font-size:11px; color:var(--warning); font-style:italic; padding:6px 0;",
-        textContent: "⚠ Nenhum modelo ativo neste grupo (fallback automático será acionado)."
+        style: "font-size:12px; color:var(--warning); font-style:italic; padding:10px 12px; background:rgba(234, 179, 8, 0.08); border-radius:var(--radius-sm); border:1px dashed rgba(234, 179, 8, 0.3);",
+        textContent: "⚠ Nenhum modelo configurado neste grupo (o LiteLLM acionará o fallback padrão do sistema)."
       }));
     } else {
       membrosNomes.forEach((nomeModelo, idx) => {
-        const itemMembro = el("div", { className: "grupo-membro-item" });
+        const itemMembro = el("div", { className: `grupo-membro-item${idx === 0 ? " principal" : ""}` });
+        const mMeta = membrosMap.get(nomeModelo) || {};
+        const isLocal = mMeta.origem === "local" || mMeta.provedor_id === "local" || nomeModelo.startsWith("local/");
+        const provNome = isLocal ? "Ollama Local" : (mMeta.provedor_nome || "Nuvem");
+        const tierNome = isLocal ? "LOCAL" : (mMeta.tier || "FREE");
+        const papeisTxt = (mMeta.papeis && mMeta.papeis.length) ? mMeta.papeis.join(", ") : "";
+        const ctxTxt = mMeta.contexto ? `${Math.round(mMeta.contexto / 1000)}k ctx` : "";
 
-        const infoMembro = el("div", { style: "display:flex; align-items:center; gap:8px;" }, [
-          el("span", { style: "font-size:10px; color:var(--text-muted); width:20px;", textContent: `#${idx + 1}` }),
-          el("strong", { textContent: nomeModelo }),
+        const badgePrioridade = el("span", {
+          className: idx === 0 ? "badge-prioridade-principal" : "badge-prioridade-fallback",
+          textContent: idx === 0 ? "#1 Principal" : `#${idx + 1} Fallback ${idx}`
+        });
+
+        const badgeOrigem = el("span", {
+          className: isLocal ? "badge-origem-local" : "badge-origem-nuvem",
+          textContent: isLocal ? "🏠 Local" : `🌐 ${provNome} (${tierNome})`
+        });
+
+        const infoMembro = el("div", { style: "display:flex; align-items:center; gap:8px; flex-wrap:wrap;" }, [
+          badgePrioridade,
+          badgeOrigem,
+          el("strong", { style: "color:var(--text-primary); font-size:12px;", textContent: nomeModelo }),
+          ...(papeisTxt || ctxTxt ? [
+            el("span", { style: "font-size:11px; color:var(--text-dim); font-family:var(--font-sans);", textContent: `· [${papeisTxt}] ${ctxTxt}` })
+          ] : [])
         ]);
 
         const btnsAcao = el("div", { style: "display:flex; gap:4px; align-items:center;" }, [
           el("button", {
             className: "btn-ordem",
             textContent: "▲",
-            title: "Subir prioridade",
+            title: "Subir prioridade deste modelo no fallback",
             disabled: idx === 0,
             onclick: () => moverMembroGrupo(g.id, idx, -1)
           }),
           el("button", {
             className: "btn-ordem",
             textContent: "▼",
-            title: "Descer prioridade",
+            title: "Descer prioridade deste modelo no fallback",
             disabled: idx === membrosNomes.length - 1,
             onclick: () => moverMembroGrupo(g.id, idx, 1)
           }),
           el("button", {
             className: "btn-ordem",
-            style: "color:var(--danger); border-color:rgba(239,68,68,0.3); margin-left:4px;",
+            style: "color:var(--danger); border-color:rgba(239,68,68,0.3); margin-left:6px; font-weight:700;",
             textContent: "✕",
             title: "Remover modelo deste grupo",
             onclick: () => removerMembroGrupo(g.id, idx)
@@ -1103,21 +1157,53 @@ function renderizarGruposRoteador() {
       });
     }
 
-    // Área para adicionar novos modelos elegíveis ao grupo
+    // Área para vincular novos modelos ao grupo manualmente
     const membrosSet = new Set(membrosNomes);
     const elegiveis = (g.modelos_elegiveis || []).filter(m => !membrosSet.has(m.nome));
 
-    const formAdicionar = el("div", { style: "display:flex; gap:10px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);" });
+    const formAdicionar = el("div", { style: "display:flex; gap:10px; align-items:center; margin-top:14px; padding-top:12px; border-top:1px dashed var(--border-color); flex-wrap:wrap;" });
 
     if (elegiveis.length > 0) {
       const selectModelos = el("select", {
         className: "select-adicionar-membro",
-        style: "flex:1; font-size:12px;"
+        style: "flex:1; min-width:280px; padding:7px 10px; font-size:12px; font-family:var(--font-mono); border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-surface); color:var(--text-primary);"
       });
 
-      // Agrupa modelos elegíveis por provedor
+      // 1. Modelos Recomendados (casam papel e tier)
+      const recomendados = elegiveis.filter(m => m.recomendado);
+      if (recomendados.length > 0) {
+        const optgroupRec = document.createElement("optgroup");
+        optgroupRec.label = `⭐ Recomendados para este Grupo (${recomendados.length})`;
+        recomendados.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.nome;
+          const papeisTxt = (m.papeis || []).join(", ");
+          const origemTxt = m.origem === "local" ? "Ollama Local" : (m.provedor_nome || "Nuvem");
+          opt.textContent = `⭐ ${m.nome}  ·  [${papeisTxt}] (${origemTxt})`;
+          optgroupRec.appendChild(opt);
+        });
+        selectModelos.appendChild(optgroupRec);
+      }
+
+      // 2. Modelos Locais Ollama (não recomendados diretamente, mas disponíveis)
+      const locaisDisponiveis = elegiveis.filter(m => !m.recomendado && (m.origem === "local" || m.nome.startsWith("local/")));
+      if (locaisDisponiveis.length > 0) {
+        const optgroupLoc = document.createElement("optgroup");
+        optgroupLoc.label = `🏠 Modelos Locais Ollama (${locaisDisponiveis.length})`;
+        locaisDisponiveis.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.nome;
+          const papeisTxt = (m.papeis || []).join(", ");
+          opt.textContent = `🏠 ${m.nome}  ·  [${papeisTxt}] (Ollama Local)`;
+          optgroupLoc.appendChild(opt);
+        });
+        selectModelos.appendChild(optgroupLoc);
+      }
+
+      // 3. Outros Modelos de Nuvem (agrupados por provedor)
+      const outrosNuvem = elegiveis.filter(m => !m.recomendado && m.origem !== "local" && !m.nome.startsWith("local/"));
       const porProvedor = {};
-      elegiveis.forEach(m => {
+      outrosNuvem.forEach(m => {
         const provNome = m.provedor_nome || "Nuvem";
         if (!porProvedor[provNome]) porProvedor[provNome] = [];
         porProvedor[provNome].push(m);
@@ -1126,12 +1212,12 @@ function renderizarGruposRoteador() {
       Object.entries(porProvedor).forEach(([provNome, listaMods]) => {
         const grupoOpt = document.createElement("optgroup");
         const tier = listaMods[0]?.tier || "FREE";
-        grupoOpt.label = `Provedor: ${provNome} (${tier})`;
+        grupoOpt.label = `🌐 Provedor: ${provNome} (${tier})`;
         listaMods.forEach(m => {
           const opt = document.createElement("option");
           opt.value = m.nome;
           const papeisTxt = (m.papeis || []).join(", ");
-          opt.textContent = `${m.nome}  ·  [${papeisTxt}]`;
+          opt.textContent = `🌐 ${m.nome}  ·  [${papeisTxt}]`;
           grupoOpt.appendChild(opt);
         });
         selectModelos.appendChild(grupoOpt);
@@ -1139,8 +1225,8 @@ function renderizarGruposRoteador() {
 
       const btnAdd = el("button", {
         className: "btn btn-primary btn-sm",
-        style: "padding:8px 14px; font-size:12px; white-space:nowrap;",
-        textContent: "+ Adicionar ao Grupo",
+        style: "padding:8px 14px; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:6px;",
+        textContent: "+ Vincular ao Grupo",
         onclick: () => {
           adicionarMembroGrupo(g.id, selectModelos.value);
         }
@@ -1150,8 +1236,8 @@ function renderizarGruposRoteador() {
       formAdicionar.appendChild(btnAdd);
     } else {
       formAdicionar.appendChild(el("span", {
-        style: "font-size:12px; color:var(--text-dim);",
-        textContent: "✓ Todos os modelos compatíveis com este grupo já estão vinculados."
+        style: "font-size:12px; color:var(--text-dim); display:flex; align-items:center; gap:6px;",
+        textContent: "✓ Todos os modelos disponíveis no ecossistema já estão vinculados a este grupo."
       }));
     }
 
@@ -1170,6 +1256,7 @@ function moverMembroGrupo(grupoId, indice, direcao) {
   const temp = lista[indice];
   lista[indice] = lista[novoIndice];
   lista[novoIndice] = temp;
+  atualizarEstadoPendenciasRoteador(true);
   renderizarGruposRoteador();
 }
 
@@ -1177,6 +1264,7 @@ function removerMembroGrupo(grupoId, indice) {
   const lista = ordemGruposEdicao[grupoId];
   if (!lista) return;
   lista.splice(indice, 1);
+  atualizarEstadoPendenciasRoteador(true);
   renderizarGruposRoteador();
 }
 
@@ -1186,6 +1274,7 @@ function adicionarMembroGrupo(grupoId, nomeModelo) {
   if (!lista.includes(nomeModelo)) {
     lista.push(nomeModelo);
     ordemGruposEdicao[grupoId] = lista;
+    atualizarEstadoPendenciasRoteador(true);
     renderizarGruposRoteador();
   }
 }
@@ -1195,7 +1284,8 @@ $("btn-salvar-ordem-roteador").addEventListener("click", async () => {
     toast("Salvando nova composição de grupos do roteador...", "info");
     await api("PUT", "/api/roteador/grupos", { ordem: ordemGruposEdicao });
     toast("✓ Composição dos grupos salva e aplicada no LiteLLM com sucesso!", "success");
-    carregarRoteador();
+    atualizarEstadoPendenciasRoteador(false);
+    await carregarRoteador();
   } catch (e) {
     toast(`Erro ao salvar grupos: ${e.message}`, "error");
   }
@@ -1206,7 +1296,8 @@ $("btn-auto-bind-roteador").addEventListener("click", async () => {
     toast("Executando auto-vinculação de modelos aos grupos por papéis...", "info");
     const r = await api("POST", "/api/roteador/auto-bind");
     toast(`✓ Auto-vinculação concluída! ${r.modelos_vinculados} modelo(s) organizados nos grupos.`, "success");
-    carregarRoteador();
+    atualizarEstadoPendenciasRoteador(false);
+    await carregarRoteador();
   } catch (e) {
     toast(`Erro na auto-vinculação: ${e.message}`, "error");
   }
@@ -3278,17 +3369,32 @@ let escolhaSoFree = true;
 let escolhaNovosProvedor = null;  // null: todos os provedores; senão, só o escolhido no card
 
 function filtrarEscolhaNovos() {
-  const termo = $("input-filtro-escolher-novos").value.trim().toLowerCase();
+  const termoRaw = ($("input-filtro-escolher-novos").value || "").trim().toLowerCase();
+  const termos = termoRaw ? termoRaw.split(/\s+/).filter(Boolean) : [];
   // Dentro do card de um provedor, o filtro FREE não se aplica: o usuário escolheu esse provedor
   const tierOk = (n) => escolhaNovosProvedor !== null || !escolhaSoFree || n.tier === "FREE";
-  return escolhaNovosItens.filter(n =>
-    tierOk(n) &&
-    (!termo || `${n.provedor} ${n.id} ${n.nome}`.toLowerCase().includes(termo)));
+  return escolhaNovosItens.filter(n => {
+    if (!tierOk(n)) return false;
+    if (termos.length === 0) return true;
+    const textoCompleto = `${n.provedor} ${n.id} ${n.nome} ${(n.papeis || []).join(" ")} ${n.tier}`.toLowerCase();
+    return termos.every(t => textoCompleto.includes(t));
+  });
 }
 
 function atualizarContagemEscolha() {
   const marcados = escolhaNovosItens.filter(n => n.marcado).length;
-  $("escolher-novos-contagem").textContent = marcados ? `${marcados} selecionado(s)` : "";
+  const visiveis = filtrarEscolhaNovos().length;
+  const total = escolhaNovosItens.length;
+  const termo = ($("input-filtro-escolher-novos").value || "").trim();
+
+  const btnLimpar = $("btn-limpar-filtro-escolha");
+  if (btnLimpar) {
+    btnLimpar.style.display = termo ? "block" : "none";
+  }
+
+  const infoExibicao = (termo || escolhaSoFree) ? `${visiveis} de ${total} modelos exibidos` : `${total} modelos`;
+  const infoMarcados = marcados ? ` · ${marcados} selecionado(s)` : "";
+  $("escolher-novos-contagem").textContent = `${infoExibicao}${infoMarcados}`;
   $("btn-confirmar-escolha-novos").disabled = marcados === 0;
 }
 
@@ -3362,6 +3468,13 @@ async function confirmarEscolhaNovos() {
 $("btn-sincronizar-novos").addEventListener("click", sincronizarNovosModelos);
 $("btn-escolher-novos").addEventListener("click", () => abrirEscolherNovos());
 $("input-filtro-escolher-novos").addEventListener("input", renderizarEscolhaNovos);
+const btnLimparFiltroEscolha = $("btn-limpar-filtro-escolha");
+if (btnLimparFiltroEscolha) {
+  btnLimparFiltroEscolha.addEventListener("click", () => {
+    $("input-filtro-escolher-novos").value = "";
+    renderizarEscolhaNovos();
+  });
+}
 $("btn-escolher-novos-so-free").addEventListener("click", () => {
   escolhaSoFree = !escolhaSoFree;
   $("btn-escolher-novos-so-free").classList.toggle("active", escolhaSoFree);
@@ -3727,12 +3840,14 @@ async function carregarCatalogoModelos() {
     if (selectImg && cat.imagem) {
       selectImg.replaceChildren();
 
-      // Grupo Nuvem
-      const grpNuvem = el("optgroup", { label: "Modelos em Nuvem (Prontos)" });
-      (cat.imagem.nuvem || []).forEach(m => {
-        grpNuvem.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
-      });
-      selectImg.appendChild(grpNuvem);
+      // Grupo Nuvem (se houver)
+      if ((cat.imagem.nuvem || []).length > 0) {
+        const grpNuvem = el("optgroup", { label: "Modelos em Nuvem (Prontos)" });
+        (cat.imagem.nuvem || []).forEach(m => {
+          grpNuvem.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
+        });
+        selectImg.appendChild(grpNuvem);
+      }
 
       // Grupo Local ComfyUI (Checkpoints)
       const checkpointsLocais = (cat.imagem.locais || []).filter(m => m.tipo === "local");
@@ -3743,16 +3858,6 @@ async function carregarCatalogoModelos() {
         });
         selectImg.appendChild(grpLocal);
       }
-
-      // Grupo Fluxos & Workflows ComfyUI (*.json)
-      const fluxosLocais = (cat.imagem.locais || []).filter(m => m.tipo === "fluxo_comfyui");
-      if (fluxosLocais.length > 0) {
-        const grpFluxos = el("optgroup", { label: " Fluxos Criados no ComfyUI (*.json)" });
-        fluxosLocais.forEach(m => {
-          grpFluxos.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
-        });
-        selectImg.appendChild(grpFluxos);
-      }
     }
 
     // Popula modelos de vídeo
@@ -3760,17 +3865,7 @@ async function carregarCatalogoModelos() {
     if (selectVid && cat.video) {
       selectVid.replaceChildren();
 
-      // 1. Fluxos Principais ComfyUI no topo (MiniMax H3, Wan 2.2 Turbo)
-      const fluxosVid = (cat.video.locais || []).filter(m => m.tipo === "fluxo_comfyui");
-      if (fluxosVid.length > 0) {
-        const grpFluxosVid = el("optgroup", { label: " Fluxos Principais (ComfyUI · GPU)" });
-        fluxosVid.forEach(m => {
-          grpFluxosVid.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
-        });
-        selectVid.appendChild(grpFluxosVid);
-      }
-
-      // 2. Checkpoints brutos
+      // Checkpoints brutos
       const checkpointsVid = (cat.video.locais || []).filter(m => m.tipo === "local");
       if (checkpointsVid.length > 0) {
         const grpLocal = el("optgroup", { label: "Modelos Locais Brutos (*.safetensors)" });
@@ -3780,11 +3875,13 @@ async function carregarCatalogoModelos() {
         selectVid.appendChild(grpLocal);
       }
 
-      const grpNuvem = el("optgroup", { label: "Modelos em Nuvem" });
-      (cat.video.nuvem || []).forEach(m => {
-        grpNuvem.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
-      });
-      selectVid.appendChild(grpNuvem);
+      if ((cat.video.nuvem || []).length > 0) {
+        const grpNuvem = el("optgroup", { label: "Modelos em Nuvem" });
+        (cat.video.nuvem || []).forEach(m => {
+          grpNuvem.appendChild(el("option", { value: m.id, textContent: m.rotulo || m.nome }));
+        });
+        selectVid.appendChild(grpNuvem);
+      }
 
       mapaModelosVideo = {};
       (cat.video.locais || []).forEach(m => { mapaModelosVideo[m.id] = m; });
@@ -4009,7 +4106,7 @@ function atualizarDisponibilidadeModelosInpaint(emModoInpaint) {
 
   let inpaintOpt = null;
   for (const opt of selectModelo.options) {
-    if (opt.value.includes("inpaint") || opt.value === "fluxo:inpaint-tudoia.json") {
+    if (opt.value.includes("inpaint")) {
       inpaintOpt = opt;
       opt.disabled = !emModoInpaint;
       if (!emModoInpaint) {
@@ -4025,8 +4122,8 @@ function atualizarDisponibilidadeModelosInpaint(emModoInpaint) {
   // Se a opção de inpainting ainda não estiver no select, insere dinamicamente
   if (!inpaintOpt) {
     inpaintOpt = el("option", {
-      value: "fluxo:inpaint-tudoia.json",
-      textContent: " Fluxo ComfyUI: Inpaint Tudoia"
+      value: "inpaint-tudoia",
+      textContent: " Inpaint Tudoia (ComfyUI)"
     });
     selectModelo.appendChild(inpaintOpt);
   }
@@ -4035,7 +4132,7 @@ function atualizarDisponibilidadeModelosInpaint(emModoInpaint) {
     inpaintOpt.disabled = false;
     selectModelo.value = inpaintOpt.value;
     selectModelo.disabled = true;
-    selectModelo.title = "Modelo travado para Inpainting: Fluxo ComfyUI: Inpaint Tudoia (GPU)";
+    selectModelo.title = "Modelo travado para Inpainting: Inpaint Tudoia (GPU)";
     selectModelo.style.opacity = "1";
     selectModelo.style.color = "var(--brand-primary)";
     selectModelo.style.fontWeight = "600";
@@ -4058,8 +4155,11 @@ function atualizarDisponibilidadeModelosInpaint(emModoInpaint) {
     selectModelo.style.borderColor = "";
     selectModelo.style.cursor = "";
 
-    if (selectModelo.value.includes("inpaint")) {
-      selectModelo.value = "flux";
+    if (selectModelo.value.includes("inpaint") || !selectModelo.value) {
+      const primeiraOpcaoNormal = Array.from(selectModelo.options).find(o => !o.value.includes("inpaint"));
+      if (primeiraOpcaoNormal) {
+        selectModelo.value = primeiraOpcaoNormal.value;
+      }
     }
     if (selectMotor) {
       selectMotor.disabled = false;
@@ -5334,7 +5434,7 @@ function iniciarMonitoramentoJobVideo(jobId, meta = {}) {
 
   localStorage.setItem("tudoia_active_video_job", JSON.stringify({
     jobId,
-    modelo: meta.modelo || "fluxo:video-minimax-h3",
+    modelo: meta.modelo || "video-minimax-h3",
     duracao: meta.duracao || 5,
     resolucao: meta.resolucao || "720p",
     inicio: meta.inicio || Date.now()
@@ -5430,7 +5530,7 @@ if (btnGerarVideo) {
     }
 
     const motor = $("vid-select-motor") ? $("vid-select-motor").value : "comfyui";
-    const modelo = $("vid-select-modelo") ? $("vid-select-modelo").value : "fluxo:video-minimax-h3.json";
+    const modelo = $("vid-select-modelo") ? $("vid-select-modelo").value : "video-minimax-h3";
     const duracao = parseInt($("vid-select-duracao").value, 10) || 5;
     const resolucao = $("vid-select-resolucao").value;
     const fps = parseInt($("vid-select-fps").value, 10) || 24;
@@ -6060,7 +6160,7 @@ async function encerrarSessao() {
     return;
   }
   if (!sessao.autenticado) {
-    window.location.assign(`/auth/login?retorno=${encodeURIComponent(location.pathname + location.search)}`);
+    redirecionarLogin();
     return;
   }
   preencherMinhaConta(sessao);

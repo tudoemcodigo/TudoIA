@@ -15,17 +15,17 @@ HOST = {"ollama": 11434, "comfyui": 8188}
 ACOES = {"start": ["up", "-d"], "stop": ["stop"], "restart": ["restart"]}
 
 METADADOS = {
-    "litellm": {"titulo": "LiteLLM Gateway", "desc": "Gateway unificado OpenAI-compatible, roteador kNN e quarentena", "porta": 4000, "url": "http://localhost:4000/ui"},
+    "litellm": {"titulo": "LiteLLM Gateway", "desc": "Gateway unificado OpenAI-compatible, roteador kNN e quarentena", "porta": 4000, "url": "http://127.0.0.1:4000/ui"},
     "litellm-db": {"titulo": "LiteLLM Database", "desc": "PostgreSQL para métricas, chaves de API e contagem de tokens", "porta": 5433, "url": None},
-    "cerebro": {"titulo": "Cérebro MCP", "desc": "Servidor MCP de memória persistente, vetores e indexação semântica", "porta": 8765, "url": "http://localhost:8765/saude"},
-    "searxng": {"titulo": "SearXNG Metasearch", "desc": "Buscador de internet local privativo para agentes e Cérebro", "porta": 8080, "url": "http://localhost:8080"},
-    "open-webui": {"titulo": "Open WebUI", "desc": "Interface de chat e agentes com suporte a Whisper e RAG", "porta": 3000, "url": "http://localhost:3000"},
-    "kokoro": {"titulo": "Kokoro TTS", "desc": "Síntese de voz neural ultra-rápida em CPU (FastAPI)", "porta": 8880, "url": "http://localhost:8880/docs"},
-    "n8n": {"titulo": "n8n Workflows", "desc": "Automação visual e orquestração de fluxos de IA", "porta": 5678, "url": "http://localhost:5678"},
-    "keycloak": {"titulo": "Keycloak (login)", "desc": "Provedor de identidade OIDC do painel, do Cérebro e do n8n", "porta": 8180, "url": "http://localhost:8180"},
+    "cerebro": {"titulo": "Cérebro MCP", "desc": "Servidor MCP de memória persistente, vetores e indexação semântica", "porta": 8765, "url": "http://127.0.0.1:8765/saude"},
+    "searxng": {"titulo": "SearXNG Metasearch", "desc": "Buscador de internet local privativo para agentes e Cérebro", "porta": 8080, "url": "http://127.0.0.1:8080"},
+    "open-webui": {"titulo": "Open WebUI", "desc": "Interface de chat e agentes com suporte a Whisper e RAG", "porta": 3000, "url": "http://127.0.0.1:3000"},
+    "kokoro": {"titulo": "Kokoro TTS", "desc": "Síntese de voz neural ultra-rápida em CPU (FastAPI)", "porta": 8880, "url": "http://127.0.0.1:8880/docs"},
+    "n8n": {"titulo": "n8n Workflows", "desc": "Automação visual e orquestração de fluxos de IA", "porta": 5678, "url": "http://127.0.0.1:5678"},
+    "keycloak": {"titulo": "Keycloak (login)", "desc": "Provedor de identidade OIDC do painel, do Cérebro e do n8n", "porta": 8180, "url": "http://127.0.0.1:8180/admin"},
     "keycloak-db": {"titulo": "Keycloak Database", "desc": "PostgreSQL do Keycloak embutido", "porta": None, "url": None},
-    "ollama": {"titulo": "Ollama Local LLMs", "desc": "Motor de inferência local para modelos GGUF acelerados em GPU", "porta": 11434, "url": "http://localhost:11434"},
-    "comfyui": {"titulo": "ComfyUI Portable", "desc": "Estúdio nodal para geração e edição de imagens e vídeos (SDXL, FLUX, Wan e MiniMax)", "porta": 8188, "url": "http://localhost:8188"},
+    "ollama": {"titulo": "Ollama Local LLMs", "desc": "Motor de inferência local para modelos GGUF acelerados em GPU", "porta": 11434, "url": "http://127.0.0.1:11434"},
+    "comfyui": {"titulo": "ComfyUI Portable", "desc": "Estúdio nodal para geração e edição de imagens e vídeos (SDXL, FLUX, Wan e MiniMax)", "porta": 8188, "url": "http://127.0.0.1:8188"},
 }
 
 

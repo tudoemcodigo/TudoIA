@@ -50,6 +50,48 @@ def _assinatura_do_codigo() -> str:
 _ASSINATURA_CARREGADA = _assinatura_do_codigo()
 
 
+def _obter_modelo_local_padrao(ordem: dict[str, list[str]], env: dict[str, str]) -> str:
+    for m in ordem.get("tudoia-local") or []:
+        if m.startswith("local/"):
+            return m.removeprefix("local/")
+    for membros_grupo in ordem.values():
+        for m in membros_grupo:
+            if m.startswith("local/"):
+                return m.removeprefix("local/")
+    try:
+        import httpx
+        ollama_url = env.get("OLLAMA_URL") or "http://127.0.0.1:11434"
+        with httpx.Client(timeout=0.6) as cli:
+            r = cli.get(f"{ollama_url}/api/tags")
+            if r.status_code == 200:
+                for mod in r.json().get("models", []):
+                    nome = mod.get("name", "")
+                    if "embed" not in nome:
+                        return nome
+    except Exception:
+        pass
+    return "tudoia-chat"
+
+
+def _obter_modelo_local_codigo(ordem: dict[str, list[str]], env: dict[str, str], padrao: str) -> str:
+    for m in ordem.get("tudoia-local-agente") or ordem.get("tudoia-codigo") or []:
+        if m.startswith("local/"):
+            return m.removeprefix("local/")
+    try:
+        import httpx
+        ollama_url = env.get("OLLAMA_URL") or "http://127.0.0.1:11434"
+        with httpx.Client(timeout=0.6) as cli:
+            r = cli.get(f"{ollama_url}/api/tags")
+            if r.status_code == 200:
+                for mod in r.json().get("models", []):
+                    nome = mod.get("name", "")
+                    if "coder" in nome or "agente" in nome:
+                        return nome
+    except Exception:
+        pass
+    return "tudoia-agente" if padrao == "tudoia-chat" else padrao
+
+
 def _local(nome_grupo: str, modelo_ollama: str) -> dict:
     # sem raciocínio: no chat o qwen gastava o max_tokens pensando e devolvia resposta vazia; no agente (fallback do
     # Claude Code) o prompt de ~64k já leva ~100 s só de leitura e pensar antes de responder dobrava a espera
@@ -93,6 +135,10 @@ def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
         # FREE ele deixaria só o 1º membro competir e a latência nunca decidiria nada.
         saida = []
         for nome in ordem.get(grupo) or []:
+            if nome.startswith("local/"):
+                mod_local = nome.removeprefix("local/")
+                saida.append(_local(grupo, mod_local))
+                continue
             dep = deployments.get(nome)
             if dep and dep["model_info"]["plano"] == tier:
                 params = dict(dep["litellm_params"])
@@ -101,8 +147,11 @@ def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
                 saida.append({"model_name": grupo, "litellm_params": params, "model_info": dict(dep["model_info"], membro=nome)})
         return saida
 
-    nuvem = membros("tudoia-nuvem", "FREE") or [_local("tudoia-nuvem", "tudoia-chat")]
-    codigo = membros("tudoia-codigo", "FREE") or [_local("tudoia-codigo", "tudoia-agente")]
+    local_padrao = _obter_modelo_local_padrao(ordem, env)
+    local_codigo = _obter_modelo_local_codigo(ordem, env, local_padrao)
+
+    nuvem = membros("tudoia-nuvem", "FREE") or [_local("tudoia-nuvem", local_padrao)]
+    codigo = membros("tudoia-codigo", "FREE") or [_local("tudoia-codigo", local_codigo)]
     reserva = membros("tudoia-codigo-reserva", "FREE")   # outra nuvem quando a NIM inteira trava ou dá 429
     maximo = membros("tudoia-max", "PAID")
     visao = membros("tudoia-visao", "FREE")   # sem membro não existe: o hook então ignora imagem em vez de cair no local
@@ -113,16 +162,25 @@ def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
     for g_nome, g_membros in ordem.items():
         if g_nome not in grupos_padrao and g_nome not in grupos_desativados:
             for m_nome in g_membros:
+                if m_nome.startswith("local/"):
+                    mod_local = m_nome.removeprefix("local/")
+                    custom_membros.append(_local(g_nome, mod_local))
+                    continue
                 dep = deployments.get(m_nome)
                 if dep:
                     custom_membros.append({"model_name": g_nome, "litellm_params": dict(dep["litellm_params"]), "model_info": dict(dep["model_info"], membro=m_nome)})
 
     model_list += nuvem + codigo + reserva + maximo + visao + custom_membros
-    model_list += [
-        _local("tudoia-local", "tudoia-chat"),
-        _local("tudoia-local-agente", "tudoia-agente"),
-        _local("tudoia-auto", "tudoia-chat"),   # o hook roteador.py sempre troca este nome pelo grupo escolhido
-    ]
+
+    nomes_grupos_presentes = {m["model_name"] for m in model_list}
+    if "tudoia-local" not in nomes_grupos_presentes and "tudoia-local" not in grupos_desativados:
+        model_list.append(_local("tudoia-local", local_padrao))
+
+    if "tudoia-local-agente" not in nomes_grupos_presentes and "tudoia-local-agente" not in grupos_desativados:
+        model_list.append(_local("tudoia-local-agente", local_codigo))
+
+    # tudoia-auto sempre presente apontando para o modelo local real
+    model_list.append(_local("tudoia-auto", local_padrao))
 
     fallbacks = [{"tudoia-nuvem": ["tudoia-local"]},
                  {"tudoia-codigo": (["tudoia-codigo-reserva"] if reserva else []) + ["tudoia-local-agente"]}]

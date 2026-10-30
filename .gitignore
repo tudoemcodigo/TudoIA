@@ -24,6 +24,7 @@ __pycache__/
 .playwright-mcp/
 .vscode/
 .idea/
+.aider*
 
 # Dados de runtime e logs
 dados/

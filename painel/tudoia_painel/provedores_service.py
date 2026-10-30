@@ -382,13 +382,33 @@ def _nomes_e_ids_referenciados(caminho_roteamento: Path) -> set[str]:
     return coletar(yaml.safe_load(Path(caminho_roteamento).read_text(encoding="utf-8")) or {})
 
 
+def provedor_configurado(p: dict[str, Any], env: dict[str, str]) -> bool:
+    """Verifica se o provedor possui todas as chaves e variáveis obrigatórias configuradas no .env."""
+    chave = p.get("chave")
+    if chave and not (env.get(chave) or "").strip():
+        return False
+    chaves_extras = p.get("chaves_extras") or ()
+    if isinstance(chaves_extras, (list, tuple)):
+        for k in chaves_extras:
+            if k and not (env.get(k) or "").strip():
+                return False
+    url = p.get("url_modelos") or ""
+    for var in re.findall(r"\{([A-Za-z0-9_]+)\}", url):
+        if not (env.get(var) or "").strip():
+            return False
+    return True
+
+
 def buscar_listagens(caminho_yaml: Path, caminho_env: Path) -> dict[str, list[dict[str, Any]] | Exception]:
     """Consulta a listagem de todo provedor com url_modelos. Só rede, nada de disco além da leitura: quem chama
     faz isto FORA da trava do painel (são ~10 APIs de até 10 s) e passa o resultado a `sincronizar_catalogo`."""
     catalogo_dados = yaml.safe_load(Path(caminho_yaml).read_text(encoding="utf-8")) or {}
+    env = ler_env(caminho_env)
     listagens: dict[str, list[dict[str, Any]] | Exception] = {}
     for pid, p in (catalogo_dados.get("provedores") or {}).items():
         if isinstance(p, dict) and p.get("url_modelos"):
+            if not provedor_configurado(p, env):
+                continue
             try:
                 listagens[pid] = _buscar_modelos_api(p, caminho_env)
             except Exception as e:  # noqa: BLE001 — a falha de um provedor vira resumo dele, não derruba os outros
@@ -472,6 +492,7 @@ def listar_novos_catalogo(caminho_yaml: Path, caminho_env: Path, provedor: str |
     """Modelos novos de todos os provedores com url_modelos (ou só de um), sem gravar nada. Para escolher quais incluir."""
     catalogo_dados = yaml.safe_load(Path(caminho_yaml).read_text(encoding="utf-8")) or {}
     provedores = catalogo_dados.get("provedores") or {}
+    env = ler_env(caminho_env)
     if provedor is not None and provedor not in provedores:
         raise ValueError(f"Provedor '{provedor}' não encontrado no catálogo.")
 
@@ -482,6 +503,11 @@ def listar_novos_catalogo(caminho_yaml: Path, caminho_env: Path, provedor: str |
         if not isinstance(p, dict) or not p.get("url_modelos"):
             if provedor is not None:
                 erros[pid] = "Provedor sem url_modelos configurada: não há listagem para consultar."
+            continue
+        if not provedor_configurado(p, env):
+            if provedor is not None:
+                chave_nome = p.get("chave") or "chaves necessárias"
+                erros[pid] = f"Provedor sem chave configurada no .env ({chave_nome})"
             continue
         try:
             modelos_api = _buscar_modelos_api(p, caminho_env)

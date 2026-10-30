@@ -162,7 +162,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
 
         fluxo_exige_midia = (
             corpo.modo_origem in ("i2v", "v2v")
-            or "i2v" in nome_modelo_lower
+            or ("i2v" in nome_modelo_lower and "ti2v" not in nome_modelo_lower)
             or "image_to_video" in nome_modelo_lower
             or "image-to-video" in nome_modelo_lower
             or "v2v" in nome_modelo_lower

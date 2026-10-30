@@ -1,0 +1,341 @@
+{
+  "id": "a1000001-7d1a-4000-8000-000000000001",
+  "revision": 0,
+  "last_node_id": 22,
+  "last_link_id": 25,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MarkdownNote",
+      "pos": [-520, 40],
+      "size": [470, 680],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "TUDOIA · Fluxo Oficial de Imagem & Inpainting",
+      "properties": {},
+      "widgets_values": [
+        "# 🎨 TUDOIA · Imagem Fotorealista & Inpainting (SDXL)\n\nFluxo oficial do **TudoIA Studio** para geração de imagens (`Txt2Img`) e edição localizada por máscara (`Inpainting`).\n\n## 📦 Modelo Configurado\n- **Checkpoint:** `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors`\n- **Pasta:** `ComfyUI/models/checkpoints/`\n\n## 🖥️ Mapeamento com a Tela `#imagens` do Painel\n- **Prompt Visual (`#estudioImgPrompt`):** Conectado ao `CLIPTextEncode` Positivo (traduzido e enriquecido automaticamente pelo TudoIA).\n- **Prompt Negativo (`#estudioImgPromptNeg`):** Conectado ao `CLIPTextEncode` Negativo.\n- **Proporção (`#estudioImgProporcao`):** Define `width` e `height` no `EmptyLatentImage` (`1024x1024`, `1344x768`, `768x1344`).\n- **Passos (`#estudioImgSteps`) & Seed (`#estudioImgSeed`):** Controlam o `KSampler` (`dpmpp_2m_sde` + `karras`).\n\n## 🖌️ Como funciona o Inpainting (Grupo Inferior)\n1. Na tela `#imagens`, clique em **🖌️ Inpainting (Editar Área)** e pinte sobre a região que deseja modificar.\n2. O Canvas exporta a máscara P&B onde a **área pintada = Branco (`canal red = 255`)** e o **fundo preservado = Preto (`0`)**.\n3. O nó `LoadImageMask` extrai o canal `red` e entrega ao `VAEEncodeForInpaint` (`grow_mask_by = 6` para transição suave sem costura).\n4. No ComfyUI direto, selecione os nós do Grupo 2 e pressione `Ctrl + B` para ativar o Inpainting manual."
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 2,
+      "type": "CheckpointLoaderSimple",
+      "pos": [0, 120],
+      "size": [380, 110],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [1, 11]},
+        {"name": "CLIP", "type": "CLIP", "links": [2, 3, 12, 13]},
+        {"name": "VAE", "type": "VAE", "links": [4, 14, 15]}
+      ],
+      "title": "Carregar Checkpoint SDXL (Juggernaut-XL v9)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "CheckpointLoaderSimple",
+        "models": [
+          {
+            "name": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+            "url": "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9/resolve/main/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+            "directory": "checkpoints"
+          }
+        ]
+      },
+      "widgets_values": ["Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"]
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [440, 60],
+      "size": [420, 170],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 2}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [5]}],
+      "title": "Prompt Positivo (Txt2Img)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        " architectural masterpiece, modern brutalist museum in Sao Paulo at golden hour, dramatic sunlight, photorealistic, 8k uhd, dslr, 35mm lens, sharp focus, natural textures"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [440, 270],
+      "size": [420, 140],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 3}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [6]}],
+      "title": "Prompt Negativo (Txt2Img)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "blurry, lowres, deformed, bad anatomy, extra fingers, watermark, text, signature, jpeg artifacts"
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [440, 450],
+      "size": [310, 110],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [7]}],
+      "title": "Dimensões da Imagem (1024x1024)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "EmptyLatentImage"},
+      "widgets_values": [1024, 1024, 1],
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 6,
+      "type": "KSampler",
+      "pos": [910, 100],
+      "size": [315, 265],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "positive", "type": "CONDITIONING", "link": 5},
+        {"name": "negative", "type": "CONDITIONING", "link": 6},
+        {"name": "latent_image", "type": "LATENT", "link": 7}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [8]}],
+      "title": "KSampler Fotorealista (Txt2Img)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "KSampler"},
+      "widgets_values": [4202026, "randomize", 30, 4.5, "dpmpp_2m_sde", "karras", 1.0]
+    },
+    {
+      "id": 7,
+      "type": "VAEDecode",
+      "pos": [1270, 160],
+      "size": [210, 60],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 8},
+        {"name": "vae", "type": "VAE", "link": 4}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [9]}],
+      "title": "Decodificar VAE (Txt2Img)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "VAEDecode"},
+      "widgets_values": []
+    },
+    {
+      "id": 8,
+      "type": "SaveImage",
+      "pos": [1530, 60],
+      "size": [480, 500],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [{"name": "images", "type": "IMAGE", "link": 9}],
+      "outputs": [],
+      "title": "Salvar Imagem (TUDOIA_Imagem)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "SaveImage"},
+      "widgets_values": ["TUDOIA_Imagem"]
+    },
+    {
+      "id": 10,
+      "type": "LoadImage",
+      "pos": [0, 680],
+      "size": [320, 315],
+      "flags": {},
+      "order": 8,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [16]},
+        {"name": "MASK", "type": "MASK", "links": null}
+      ],
+      "title": "Inpaint · Imagem Base",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "LoadImage"},
+      "widgets_values": ["example.png", "image"]
+    },
+    {
+      "id": 11,
+      "type": "LoadImageMask",
+      "pos": [0, 1040],
+      "size": [320, 315],
+      "flags": {},
+      "order": 9,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [{"name": "MASK", "type": "MASK", "links": [17]}],
+      "title": "Inpaint · Máscara P&B (Canal Red)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "LoadImageMask"},
+      "widgets_values": ["example.png", "red"]
+    },
+    {
+      "id": 12,
+      "type": "VAEEncodeForInpaint",
+      "pos": [440, 1080],
+      "size": [340, 130],
+      "flags": {},
+      "order": 10,
+      "mode": 4,
+      "inputs": [
+        {"name": "pixels", "type": "IMAGE", "link": 16},
+        {"name": "vae", "type": "VAE", "link": 14},
+        {"name": "mask", "type": "MASK", "link": 17}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [18]}],
+      "title": "Codificar Latente para Inpaint (grow_mask_by=6)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "VAEEncodeForInpaint"},
+      "widgets_values": [6]
+    },
+    {
+      "id": 13,
+      "type": "CLIPTextEncode",
+      "pos": [440, 680],
+      "size": [420, 170],
+      "flags": {},
+      "order": 11,
+      "mode": 4,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 12}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [19]}],
+      "title": "Prompt Positivo (Inpainting - O que colocar na área)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "futuristic glass dome and lush vertical garden, photorealistic architectural detail, seamless lighting integration"
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 14,
+      "type": "CLIPTextEncode",
+      "pos": [440, 890],
+      "size": [420, 140],
+      "flags": {},
+      "order": 12,
+      "mode": 4,
+      "inputs": [{"name": "clip", "type": "CLIP", "link": 13}],
+      "outputs": [{"name": "CONDITIONING", "type": "CONDITIONING", "links": [20]}],
+      "title": "Prompt Negativo (Inpainting)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": [
+        "blurry, deformed, ugly, distorted, bad architecture, visible seams, artifacts"
+      ],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 15,
+      "type": "KSampler",
+      "pos": [910, 740],
+      "size": [315, 265],
+      "flags": {},
+      "order": 13,
+      "mode": 4,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 11},
+        {"name": "positive", "type": "CONDITIONING", "link": 19},
+        {"name": "negative", "type": "CONDITIONING", "link": 20},
+        {"name": "latent_image", "type": "LATENT", "link": 18}
+      ],
+      "outputs": [{"name": "LATENT", "type": "LATENT", "links": [21]}],
+      "title": "KSampler Inpainting (Denoise 0.85)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "KSampler"},
+      "widgets_values": [4202026, "randomize", 28, 6.5, "dpmpp_2m_sde", "karras", 0.85]
+    },
+    {
+      "id": 16,
+      "type": "VAEDecode",
+      "pos": [1270, 800],
+      "size": [210, 60],
+      "flags": {},
+      "order": 14,
+      "mode": 4,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 21},
+        {"name": "vae", "type": "VAE", "link": 15}
+      ],
+      "outputs": [{"name": "IMAGE", "type": "IMAGE", "links": [22]}],
+      "title": "Decodificar VAE (Inpainting)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "VAEDecode"},
+      "widgets_values": []
+    },
+    {
+      "id": 17,
+      "type": "SaveImage",
+      "pos": [1530, 700],
+      "size": [480, 500],
+      "flags": {},
+      "order": 15,
+      "mode": 4,
+      "inputs": [{"name": "images", "type": "IMAGE", "link": 22}],
+      "outputs": [],
+      "title": "Salvar Inpainting (TUDOIA_Inpaint)",
+      "properties": {"cnr_id": "comfy-core", "Node name for S&R": "SaveImage"},
+      "widgets_values": ["TUDOIA_Inpaint"]
+    }
+  ],
+  "links": [
+    [1, 2, 0, 6, 0, "MODEL"],
+    [2, 2, 1, 3, 0, "CLIP"],
+    [3, 2, 1, 4, 0, "CLIP"],
+    [4, 2, 2, 7, 1, "VAE"],
+    [5, 3, 0, 6, 1, "CONDITIONING"],
+    [6, 4, 0, 6, 2, "CONDITIONING"],
+    [7, 5, 0, 6, 3, "LATENT"],
+    [8, 6, 0, 7, 0, "LATENT"],
+    [9, 7, 0, 8, 0, "IMAGE"],
+    [11, 2, 0, 15, 0, "MODEL"],
+    [12, 2, 1, 13, 0, "CLIP"],
+    [13, 2, 1, 14, 0, "CLIP"],
+    [14, 2, 2, 12, 1, "VAE"],
+    [15, 2, 2, 16, 1, "VAE"],
+    [16, 10, 0, 12, 0, "IMAGE"],
+    [17, 11, 0, 12, 2, "MASK"],
+    [18, 12, 0, 15, 3, "LATENT"],
+    [19, 13, 0, 15, 1, "CONDITIONING"],
+    [20, 14, 0, 15, 2, "CONDITIONING"],
+    [21, 15, 0, 16, 0, "LATENT"],
+    [22, 16, 0, 17, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "1. TUDOIA · Geração de Imagem Fotorealista (Txt2Img SDXL)",
+      "bounding": [-20, 0, 2050, 590],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "2. TUDOIA · Inpainting com Máscara (Ctrl+B para ativar manualmente no ComfyUI; automático pelo Painel)",
+      "bounding": [-20, 620, 2050, 760],
+      "color": "#2a6f4e",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.65,
+      "offset": [560, 40]
+    },
+    "frontendVersion": "1.49.6"
+  },
+  "version": 0.4
+}

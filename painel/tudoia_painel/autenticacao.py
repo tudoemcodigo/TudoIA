@@ -19,7 +19,7 @@ import secrets
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 from authlib.integrations.base_client.errors import OAuthError
@@ -391,9 +391,16 @@ def registrar_autenticacao(app: FastAPI, config: ConfigAuth | None, arquivo_audi
     async def callback(request: Request):
         if config is None:
             return _sem_config()
+        if _papeis_validos(request.session):
+            destino = request.session.get("retorno") or "/app/"
+            return RedirectResponse(destino, status_code=303)
         try:
             token = await oauth.tudoia.authorize_access_token(request)
         except OAuthError:
+            aceita = request.headers.get("accept", "")
+            if "text/html" in aceita:
+                destino = request.session.get("retorno") or "/app/"
+                return RedirectResponse(f"/auth/login?retorno={quote(destino, safe='/')}", status_code=303)
             # Não devolvemos a descrição do erro: ela pode ecoar parâmetros do IdP.
             return JSONResponse(corpo_erro("login_recusado", "o login foi recusado ou expirou; tente de novo"),
                                 status_code=401)

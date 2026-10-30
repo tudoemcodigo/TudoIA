@@ -25,7 +25,7 @@ A pasta base é `<repositório>\modelos` por padrão. Para mudar, use `--base-di
 | Componente | Pasta (com base em `modelos\`) | Como o TudoIA aponta para ela |
 |---|---|---|
 | Ollama | `ollama\models` | `OLLAMA_MODELS` do servidor. `scripts\tudoia.ps1 up` usa `TUDOIA_OLLAMA_MODELS` do `.env` ou, sem ela, `<raiz>\modelos\ollama\models` |
-| ComfyUI | `comfyui\ComfyUI_windows_portable\ComfyUI\models\<categoria>\` | Os fluxos (`runtime\comfyui\fluxos\*.json`) referenciam os arquivos pelo nome |
+| ComfyUI | `comfyui\ComfyUI_windows_portable\ComfyUI\models\<categoria>\` | O Estúdio referencia os modelos instalados nessa pasta |
 
 Importante sobre o Ollama: `ollama pull` é enviado ao **servidor** Ollama, que grava no `OLLAMA_MODELS` **dele**, e não no
 do cliente. Se o servidor usar outra pasta, o baixador vai reportar o modelo como `ausente` mesmo após o pull. Mantenha

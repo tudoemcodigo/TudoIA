@@ -711,26 +711,78 @@ select option:checked {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-subtle);
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 7px 10px;
+  padding: 8px 12px;
   font-family: var(--font-mono);
   font-size: 12px;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .grupo-membro-item:hover {
   border-color: var(--border-hover);
   background: var(--bg-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.grupo-membro-item.principal {
+  border-left: 3px solid var(--brand-primary);
+}
+
+.badge-prioridade-principal {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--brand-primary);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-prioridade-fallback {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.badge-origem-local {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.badge-origem-nuvem {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .btn-ordem {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  border-radius: 3px;
-  padding: 3px 6px;
+  border-radius: 4px;
+  padding: 4px 8px;
   cursor: pointer;
   font-size: 11px;
   line-height: 1;
@@ -746,6 +798,20 @@ select option:checked {
 .btn-ordem:disabled {
   opacity: 0.2;
   cursor: not-allowed;
+}
+
+.btn-salvar-pendente {
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.5) !important;
+  background: #eab308 !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  animation: pulse-glow 1.8s infinite;
+}
+
+@keyframes pulse-glow {
+  0% { opacity: 1; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.4); }
+  50% { opacity: 0.88; box-shadow: 0 0 0 5px rgba(234, 179, 8, 0.75); }
+  100% { opacity: 1; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.4); }
 }
 
 /* Painel Sticky de Teste */
@@ -1950,6 +2016,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 .servico-nome { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
 .servico-nome .status-dot { margin-top: 7px; }
 .servico-titulo { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+a.servico-titulo-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color var(--transition-fast);
+}
+a.servico-titulo-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .servico-desc { font-size: 13px; color: var(--text-muted); margin-top: 2px; line-height: 1.45; }
 .servico-tipo {
   justify-self: start;
@@ -1973,6 +2052,22 @@ a.servico-porta:hover { color: var(--primary); text-decoration: underline; text-
 .servico-acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
 .servico-acoes-cabecalho { text-align: right; }
 .servico-acoes .btn { white-space: nowrap; }
+.btn-open-ui {
+  background: var(--primary-subtle);
+  color: var(--primary);
+  border: 1px solid rgba(106, 93, 246, 0.35);
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-open-ui:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  text-decoration: none;
+}
 
 @media (max-width: 1000px) {
   .servico-cabecalho { display: none; }

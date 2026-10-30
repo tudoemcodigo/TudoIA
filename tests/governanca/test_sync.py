@@ -244,3 +244,48 @@ def test_opencode_verificar_detecta_divergencia(tmp_path):
     dados["mcp"]["cerebro"]["url"] = "http://outro/mcp"   # alteração à mão fora do painel
     alvo.write_text(json.dumps(dados), encoding="utf-8")
     assert any("opencode:mcp: divergente" in p for p in verificar(raiz, home))
+
+
+def test_aider_gera_config_com_grupos_de_roteamento(tmp_path):
+    raiz, home, _ = _montar(tmp_path, clientes=["aider"])
+    (raiz / "runtime" / "litellm").mkdir(parents=True, exist_ok=True)
+    (raiz / "runtime" / "litellm" / "config.yaml").write_text(
+        "model_list:\n- model_name: tudoia-auto\n- model_name: tudoia-codigo\n- model_name: tudoia-local\n",
+        encoding="utf-8"
+    )
+    res = sincronizar(raiz, home)
+    assert res.get("aider:conf") == "atualizado"
+    assert res.get("aider:metadata") == "atualizado"
+
+    conf_texto = (home / ".aider.conf.yml").read_text(encoding="utf-8")
+    assert "openai-api-base: http://127.0.0.1:4000/v1" in conf_texto
+    assert "tudoia-codigo:openai/tudoia-codigo" in conf_texto
+    assert "codigo:openai/tudoia-codigo" in conf_texto
+    assert "tudoia-auto:openai/tudoia-auto" in conf_texto
+
+    meta_dados = json.loads((home / ".aider.model.metadata.json").read_text(encoding="utf-8"))
+    assert "openai/tudoia-codigo" in meta_dados
+    assert meta_dados["openai/tudoia-codigo"]["max_input_tokens"] == 30000
+
+    # Idempotência
+    res2 = sincronizar(raiz, home)
+    assert res2.get("aider:conf") == "igual"
+    assert res2.get("aider:metadata") == "igual"
+
+
+def test_opencode_sincroniza_modelos_ollama_dinamicamente(tmp_path, monkeypatch):
+    import governanca
+    monkeypatch.setattr(governanca, "_obter_modelos_ollama", lambda: ["qwen2.5-coder:latest", "qwen3.5:latest"])
+    raiz, home, _ = _montar(tmp_path, instancias=OPENCODE_INSTANCIA, mcp=["cerebro"])
+    alvo = _opencode_json(home, {
+        "provider": {"ollama": {"options": {"baseURL": "http://127.0.0.1:11434/v1"}}},
+        "mcp": {}
+    })
+
+    aplicar_mcp_opencode(raiz, home, tmp_path / "bk")
+    dados = json.loads(alvo.read_text(encoding="utf-8"))
+    assert "opencode" in dados["disabled_providers"]
+    assert "qwen2.5-coder:latest" in dados["provider"]["ollama"]["models"]
+    assert "qwen3.5:latest" in dados["provider"]["ollama"]["models"]
+    assert dados["model"] == "ollama/qwen2.5-coder:latest"
+

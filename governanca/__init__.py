@@ -15,6 +15,7 @@ import stat
 import tempfile
 import time
 import tomllib
+import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +28,7 @@ _INI = "<!-- tudoia:inicio (gerado por governanca; edite governanca/regras/) -->
 _FIM = "<!-- tudoia:fim -->"
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _VAR = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
-_CLIENTES = {"antigravity", "claude", "cursor", "codex", "opencode", "workspace"}
+_CLIENTES = {"antigravity", "claude", "cursor", "codex", "opencode", "workspace", "aider"}
 _MANTER_BACKUPS = 10
 # Base dos backups (relativa à home). Os JSON de MCP têm tokens em claro: o backup fica na home e fora de todo
 # workspace, senão um editor que indexa o workspace (D:/ está na lista) leria os tokens das cópias.
@@ -363,12 +364,125 @@ def _escrita_json(caminho: Path, chave: str, desejado: dict, dono: set[str],
     return _Escrita(caminho, gerar, dir_backup, _destino(caminho, mcp.home, mcp.raizes) == "home")
 
 
+def _obter_modelos_ollama() -> list[str]:
+    """Consulta modelos instalados no Ollama local (:11434). Fallback vazio se offline."""
+    try:
+        req = urllib.request.Request("http://127.0.0.1:11434/api/tags", headers={"User-Agent": "TudoIA"})
+        with urllib.request.urlopen(req, timeout=0.5) as resp:
+            dados = json.loads(resp.read().decode("utf-8"))
+            return [m.get("name") for m in dados.get("models", []) if m.get("name")]
+    except Exception:
+        return []
+
+
+def _obter_grupos_roteamento(raiz: Path) -> list[str]:
+    """Extrai grupos de roteamento do LiteLLM de runtime/litellm/config.yaml ou fallback canônico."""
+    cfg_litellm = raiz / "runtime" / "litellm" / "config.yaml"
+    if cfg_litellm.is_file():
+        try:
+            linhas = cfg_litellm.read_text(encoding="utf-8").splitlines()
+            grupos = []
+            for linha in linhas:
+                stripped = linha.strip()
+                if stripped.startswith("- model_name:"):
+                    nome = stripped.split(":", 1)[1].strip()
+                    if nome and nome not in grupos:
+                        grupos.append(nome)
+            if grupos:
+                return grupos
+        except Exception:
+            pass
+    return ["tudoia-auto", "tudoia-codigo", "tudoia-local", "tudoia-local-agente", "tudoia-nuvem"]
+
+
+def _gerar_conteudo_aider_conf(grupos: list[str], env: dict[str, str], em_home: bool) -> str:
+    key_val = env.get("LITELLM_MASTER_KEY", "") if em_home else "${LITELLM_MASTER_KEY}"
+    linhas = [
+        "# Gerado automaticamente pela governança do TudoIA",
+        "openai-api-base: http://127.0.0.1:4000/v1",
+        f"openai-api-key: {key_val}" if key_val else "# openai-api-key: defina LITELLM_MASTER_KEY",
+        "model: openai/tudoia-codigo",
+        "editor-model: openai/tudoia-codigo",
+        "weak-model: openai/tudoia-local",
+        "show-model-warnings: false",
+        "model-metadata-file: ~/.aider.model.metadata.json",
+        "alias:",
+    ]
+    for g in grupos:
+        linhas.append(f"  - {g}:openai/{g}")
+        curto = g.replace("tudoia-", "")
+        if curto != g:
+            linhas.append(f"  - {curto}:openai/{g}")
+    return "\n".join(linhas) + "\n"
+
+
+def _gerar_conteudo_aider_metadata(grupos: list[str]) -> str:
+    dados = {}
+    for g in grupos:
+        dados[f"openai/{g}"] = {
+            "max_input_tokens": 30000,
+            "max_output_tokens": 4096,
+            "input_cost_per_token": 0.0,
+            "output_cost_per_token": 0.0,
+            "litellm_provider": "openai",
+            "mode": "chat",
+            "edit_format": "diff"
+        }
+    return json.dumps(dados, indent=2, ensure_ascii=False) + "\n"
+
+
 def _escritas_claude(mcp: _McpClaude, dono: set[str], dir_backup: Path | None) -> list[_Escrita]:
     return [_escrita_json(c, "mcpServers", _servidores_para(c, mcp), dono, dir_backup, mcp) for c in mcp.caminhos]
 
 
+def _escrita_opencode_json(caminho: Path, desejado_mcp: dict, dono: set[str],
+                           dir_backup: Path | None, mcp: _McpClaude) -> _Escrita:
+    """Atualiza MCP e sincroniza modelos locais instalados no Ollama quando provider ollama estiver configurado."""
+    def gerar(atual: str | None) -> str | None:
+        dados = _cfg_json(caminho, atual, "mcp") or {}
+        servidores = dados.get("mcp", {})
+        novos_mcp = {k: v for k, v in servidores.items() if k not in dono}
+        novos_mcp.update(desejado_mcp)
+
+        resultado = dict(dados)
+        resultado["mcp"] = novos_mcp
+
+        # Se provider ollama estiver configurado, sincroniza os modelos instalados no ecossistema
+        provider = resultado.get("provider")
+        if isinstance(provider, dict) and "ollama" in provider:
+            modelos_locais = _obter_modelos_ollama()
+            if modelos_locais:
+                ollama_cfg = dict(provider["ollama"]) if isinstance(provider["ollama"], dict) else {}
+                ollama_cfg["npm"] = "@ai-sdk/openai-compatible"
+                ollama_cfg["name"] = "Ollama"
+                ollama_cfg["options"] = {"baseURL": "http://127.0.0.1:11434/v1"}
+                ollama_cfg["models"] = {m: {"name": m} for m in modelos_locais}
+                provider["ollama"] = ollama_cfg
+                resultado["provider"] = provider
+
+                disabled = resultado.get("disabled_providers")
+                disabled_list = list(disabled) if isinstance(disabled, list) else []
+                if "opencode" not in disabled_list:
+                    disabled_list.append("opencode")
+                    resultado["disabled_providers"] = disabled_list
+
+                if not resultado.get("model") or not str(resultado.get("model", "")).startswith("ollama/"):
+                    coder = "qwen2.5-coder:latest" if "qwen2.5-coder:latest" in modelos_locais else modelos_locais[0]
+                    resultado["model"] = f"ollama/{coder}"
+
+        novo_json = json.dumps(resultado, indent=2, ensure_ascii=False) + "\n"
+        if atual is not None:
+            try:
+                if json.loads(atual) == resultado:
+                    return atual
+            except Exception:
+                pass
+        return novo_json
+    return _Escrita(caminho, gerar, dir_backup, _destino(caminho, mcp.home, mcp.raizes) == "home")
+
+
 def _escritas_opencode(mcp: _McpClaude, dono: set[str], dir_backup: Path | None) -> list[_Escrita]:
-    return [_escrita_json(c, "mcp", _servidores_opencode(c, mcp), dono, dir_backup, mcp) for c in mcp.opencode]
+    return [_escrita_opencode_json(c, _servidores_opencode(c, mcp), dono, dir_backup, mcp) for c in mcp.opencode]
 
 
 def _para_opencode(mid: str, cfg: dict) -> dict:
@@ -680,7 +794,33 @@ def detectar_instancias(home: Path | None = None, workspaces: list[str] | None =
             "descricao": "Ambiente de execução de regras para Codex CLI"
         })
 
-    # 4. Workspaces & Cursor
+    # 4. OpenCode CLI
+    opencode_dir = home / ".config" / "opencode"
+    if opencode_dir.is_dir() or (opencode_dir / "opencode.json").is_file():
+        detectadas.append({
+            "id": "opencode",
+            "cliente": "opencode",
+            "nome": "OpenCode CLI",
+            "caminho": "~/.config/opencode",
+            "config_json": "~/.config/opencode/opencode.json",
+            "existe_disco": True,
+            "descricao": "Ambiente OpenCode CLI com MCP e modelos locais"
+        })
+
+    # 5. Aider CLI
+    aider_conf = home / ".aider.conf.yml"
+    if aider_conf.is_file() or (home / ".aider").is_dir():
+        detectadas.append({
+            "id": "aider",
+            "cliente": "aider",
+            "nome": "Aider CLI",
+            "caminho": "~",
+            "config_json": "~/.aider.conf.yml",
+            "existe_disco": True,
+            "descricao": "Assistente de código Aider com grupos de roteamento do TudoIA"
+        })
+
+    # 6. Workspaces & Cursor
     if workspaces:
         for ws in workspaces:
             pws = Path(ws)
@@ -817,6 +957,14 @@ def _planejar(raiz: Path, home: Path, dir_backup: Path | None = None,
         # Sempre o global da home: a pasta da instância do Cursor é workspace, onde segredo não entra
         return _resolver_caminho(inst["config_json"], home) if inst.get("config_json") else home / ".cursor" / "mcp.json"
 
+    def config_aider(alvo_prefixo: str, destino_pasta: Path) -> None:
+        grupos = _obter_grupos_roteamento(raiz)
+        em_home = _destino(destino_pasta, home, raizes) == "home"
+        conf_yaml = _gerar_conteudo_aider_conf(grupos, env, em_home)
+        meta_json = _gerar_conteudo_aider_metadata(grupos)
+        fixo(f"{alvo_prefixo}:conf", destino_pasta / ".aider.conf.yml", conf_yaml)
+        fixo(f"{alvo_prefixo}:metadata", destino_pasta / ".aider.model.metadata.json", meta_json)
+
     if instancias:
         # 1. Workspaces sempre recebem AGENTS.md
         for ws in workspaces:
@@ -867,6 +1015,9 @@ def _planejar(raiz: Path, home: Path, dir_backup: Path | None = None,
                 # opencode.json é do painel na seção `mcp` (aplicar_mcp_opencode); o resto do arquivo é do usuário
                 opencode_caminhos[resolvido(_caminho_opencode_json(inst, home))] = None
 
+            elif tipo_cli == "aider":
+                config_aider(f"aider:{cid}", caminho)
+
             elif tipo_cli == "workspace":
                 bloco(f"agents:{cid}", caminho / "AGENTS.md")
 
@@ -890,6 +1041,8 @@ def _planejar(raiz: Path, home: Path, dir_backup: Path | None = None,
         if "codex" in clientes:
             bloco("codex", home / ".codex" / "AGENTS.md")
             mcp_codex("codex:mcp", home / ".codex" / "config.toml")
+        if "aider" in clientes:
+            config_aider("aider", home)
 
     mcp.caminhos, mcp.opencode = list(claude_caminhos), list(opencode_caminhos)
     return plano, mcp, orfas

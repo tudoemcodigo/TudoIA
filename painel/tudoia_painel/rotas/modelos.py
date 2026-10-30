@@ -141,7 +141,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
         tipo = corpo.tipo.strip().lower()
         inicio = time.perf_counter()
 
-        if tipo == "midia" or modelo.startswith(("midia:", "fluxo:")):
+        if tipo == "midia" or modelo.startswith("midia:"):
             try:
                 return verificar_item_midia(raiz, modelo)
             except Exception as e:

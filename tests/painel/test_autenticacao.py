@@ -329,3 +329,41 @@ def test_operador_nao_cria_instancia_nem_sincroniza(app_auth):
         r = c.post("/api/governanca/instancias", json={"id": "minha", "cliente": "claude", "caminho": "C:/Temp/x"})
         assert r.status_code == 403 and r.json()["erro"]["codigo"] == "papel_insuficiente"
         assert c.post("/api/governanca/sincronizar", json={}).status_code == 403
+
+
+def test_callback_com_sessao_ativa_redireciona_direto(app_auth):
+    """Usuário que dá F5 no callback ou volta pelo histórico com sessão ativa não recebe erro."""
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        c.cookies.set("tudoia_sessao", cookie([PAPEL_ADMIN]))
+        r = c.get("/auth/callback?code=expirado&state=xyz")
+        assert r.status_code == 303
+        assert r.headers["location"] == "/app/"
+
+
+def test_callback_recusado_para_navegador_redireciona_login(app_auth, monkeypatch):
+    """Navegador com code expirado ou mismatching_state é redirecionado para novo login limpo."""
+    from authlib.integrations.base_client.errors import OAuthError
+
+    async def _falha_oauth(*args, **kwargs):
+        raise OAuthError("mismatching_state")
+
+    monkeypatch.setattr("authlib.integrations.starlette_client.StarletteOAuth2App.authorize_access_token", _falha_oauth)
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        r = c.get("/auth/callback?code=expirado&state=xyz", headers={"accept": "text/html,application/xhtml+xml"})
+        assert r.status_code == 303
+        assert r.headers["location"].startswith("/auth/login?retorno=")
+
+
+def test_callback_recusado_para_api_devolve_401(app_auth, monkeypatch):
+    """Cliente de API ou chamada sem HTML recebe o erro JSON 401."""
+    from authlib.integrations.base_client.errors import OAuthError
+
+    async def _falha_oauth(*args, **kwargs):
+        raise OAuthError("mismatching_state")
+
+    monkeypatch.setattr("authlib.integrations.starlette_client.StarletteOAuth2App.authorize_access_token", _falha_oauth)
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        r = c.get("/auth/callback?code=expirado&state=xyz", headers={"accept": "application/json"})
+        assert r.status_code == 401
+        assert r.json()["erro"]["codigo"] == "login_recusado"
+

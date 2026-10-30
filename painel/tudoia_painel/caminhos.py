@@ -60,11 +60,6 @@ def comfyui_dir(raiz_: Path) -> Path:
     return comfyui_portable(raiz_) / "ComfyUI"
 
 
-def fluxos_comfyui(raiz_: Path) -> Path:
-    """Grafos de workflow do ComfyUI versionados no projeto (não ficam em modelos/)."""
-    return raiz_ / "runtime" / "comfyui" / "fluxos"
-
-
 def modelfiles_ollama(raiz_: Path) -> Path:
     """Modelfiles versionados para `ollama create`."""
     return raiz_ / "runtime" / "ollama" / "modelfiles"

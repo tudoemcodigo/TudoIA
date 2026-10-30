@@ -94,291 +94,291 @@ modelos:
     notas: "Modelo grande (30B): so para perfis com memoria suficiente. Nao medido: nao esta no disco local. Licenca a confirmar."
   - id: "comfy-juggernaut-xl-v9"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/checkpoints/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/checkpoints/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+    origem: "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9/resolve/main/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
     tamanho_aprox_gb: 6.62
-    licenca: {nome: null, url: null}
+    licenca: {nome: "CreativeML Open RAIL++-M", url: "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9"}
     obrigatorio: false
-    usado_por: "Estudio ComfyUI: sdxl-foto, sdxl-foto-hires, inpaint-tudoia (ckpt_name)"
+    usado_por: "Estudio ComfyUI: TUDOIA_Imagem_e_Inpainting, sdxl-foto, sdxl-foto-hires, inpaint-tudoia (ckpt_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em checkpoints/."
+    notas: "Checkpoint SDXL fotorealista principal para geração de imagens e Inpainting."
   - id: "comfy-yue2-3b-int8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/checkpoints/yue2_3b_int8_convrot.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/checkpoints/yue2_3b_int8_convrot.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/YuE2/resolve/main/checkpoints/yue2_3b_int8_convrot.safetensors"
     tamanho_aprox_gb: 3.69
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/YuE2"}
     obrigatorio: false
-    usado_por: "Estudio ComfyUI: musica-yue2 (ckpt_name)"
+    usado_por: "Estudio ComfyUI: TUDOIA_Musica_TrilhaSonora, musica-yue2 (ckpt_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em checkpoints/."
+    notas: "Modelo YuE 2 3B INT8 para composição musical completa (ABC Planning + Letra + Estilo)."
   - id: "comfy-clip-l"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/clip/clip_l.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/clip/clip_l.safetensors"
+    origem: "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors"
     tamanho_aprox_gb: 0.23
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/comfyanonymous/flux_text_encoders"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: flux-schnell (clip_name2)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em clip/."
+    notas: "CLIP-L encoder para Flux."
   - id: "comfy-t5xxl-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/clip/t5xxl_fp8_e4m3fn.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/clip/t5xxl_fp8_e4m3fn.safetensors"
+    origem: "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors"
     tamanho_aprox_gb: 4.56
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/comfyanonymous/flux_text_encoders"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: flux-schnell (clip_name1)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em clip/."
+    notas: "T5-XXL FP8 text encoder para Flux."
   - id: "comfy-qwen3vl-4b-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"
     tamanho_aprox_gb: 4.88
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/Qwen3-VL"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: GeraImagemTudoIA-KREA2 (clip_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em text_encoders/."
+    notas: "Text encoder Qwen3-VL 4B FP8 para Krea 2."
   - id: "comfy-qwen3vl-32b-minimax"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
     tamanho_aprox_gb: 14.61
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/MiniMax-H3"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-minimax-h3 (clip_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em text_encoders/."
+    notas: "Text encoder Qwen3-VL 32B para MiniMax H3."
   - id: "comfy-qwen3-4b-fp8-mixed"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/text_encoders/qwen_3_4b_fp8_mixed.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/text_encoders/qwen_3_4b_fp8_mixed.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors"
     tamanho_aprox_gb: 5.25
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/z_image_turbo"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: zimage-turbo, zimage-turbo-hires (clip_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em text_encoders/."
+    notas: "Text encoder Qwen 3 4B FP8 para Z-Image Turbo."
   - id: "comfy-umt5-xxl-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
     tamanho_aprox_gb: 6.27
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged"}
     obrigatorio: false
-    usado_por: "Estudio ComfyUI: video-wan14b-t2v, video-wan14b-i2v, video-wan5b (clip_name)"
+    usado_por: "Estudio ComfyUI: TUDOIA_Video_Cinematografico, video-wan14b-t2v, video-wan14b-i2v, video-wan5b (clip_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em text_encoders/."
+    notas: "Text encoder UMT5-XXL FP8 para geração de vídeo Wan 2.1 / Wan 2.2."
   - id: "comfy-krea2-turbo-int8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/krea2_turbo_int8_convrot.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/krea2_turbo_int8_convrot.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/diffusion_models/krea2_turbo_int8_convrot.safetensors"
     tamanho_aprox_gb: 12.57
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/Krea-2"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: GeraImagemTudoIA-KREA2 (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo de difusão Krea 2 Turbo INT8."
   - id: "comfy-minimax-h3-fl2va-int8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors"
     tamanho_aprox_gb: 19.53
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/MiniMax-H3"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-minimax-h3 (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo de difusão MiniMax H3 INT8."
   - id: "comfy-wan22-i2v-high-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
     tamanho_aprox_gb: 13.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-i2v (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Wan 2.2 14B I2V High Noise FP8."
   - id: "comfy-wan22-i2v-low-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
     tamanho_aprox_gb: 13.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-i2v (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Wan 2.2 14B I2V Low Noise FP8."
   - id: "comfy-wan22-t2v-high-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors"
     tamanho_aprox_gb: 13.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-t2v (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Wan 2.2 14B T2V High Noise FP8."
   - id: "comfy-wan22-t2v-low-fp8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors"
     tamanho_aprox_gb: 13.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-t2v (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Wan 2.2 14B T2V Low Noise FP8."
   - id: "comfy-wan22-ti2v-5b-fp16"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors"
     tamanho_aprox_gb: 9.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
-    usado_por: "Estudio ComfyUI: video-wan5b (unet_name)"
+    usado_por: "Estudio ComfyUI: TUDOIA_Video_Cinematografico, video-wan5b (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Wan 2.2 TI2V 5B FP16 para geração de vídeo Texto-para-Vídeo e Imagem-para-Vídeo."
   - id: "comfy-z-image-turbo-int8"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/diffusion_models/z_image_turbo_int8_convrot.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/diffusion_models/z_image_turbo_int8_convrot.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors"
     tamanho_aprox_gb: 5.78
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/z_image_turbo"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: zimage-turbo, zimage-turbo-hires (unet_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em diffusion_models/."
+    notas: "Modelo Z-Image Turbo INT8 para geração rápida de imagens."
   - id: "comfy-flux1-schnell-gguf"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/unet/flux1-schnell-Q4_K_S.gguf"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/unet/flux1-schnell-Q4_K_S.gguf"
+    origem: "https://huggingface.co/city96/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-Q4_K_S.gguf"
     tamanho_aprox_gb: 6.32
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/city96/FLUX.1-schnell-gguf"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: flux-schnell (unet_name; exige o no ComfyUI-GGUF)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em unet/."
+    notas: "Modelo FLUX.1-schnell GGUF Q4_K_S."
   - id: "comfy-ae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/ae.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/ae.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors"
     tamanho_aprox_gb: 0.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/z_image_turbo"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: flux-schnell, zimage-turbo, zimage-turbo-hires (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "Autoencoder VAE (ae.safetensors) para Flux e Z-Image Turbo."
   - id: "comfy-minimax-h3-audio-vae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/minimax_h3_audio_vae_fp32.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/minimax_h3_audio_vae_fp32.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors"
     tamanho_aprox_gb: 0.56
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/MiniMax-H3"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-minimax-h3 (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "Audio VAE para MiniMax H3."
   - id: "comfy-minimax-h3-video-vae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/minimax_h3_video_vae_int8_convrot.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/minimax_h3_video_vae_int8_convrot.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_int8_convrot.safetensors"
     tamanho_aprox_gb: 2.62
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/MiniMax-H3"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-minimax-h3 (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "Video VAE INT8 para MiniMax H3."
   - id: "comfy-qwen-image-vae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/qwen_image_vae.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/qwen_image_vae.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors"
     tamanho_aprox_gb: 0.24
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: GeraImagemTudoIA-KREA2 (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "VAE para Qwen Image / Krea 2."
   - id: "comfy-wan22-vae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/wan2.2_vae.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/wan2.2_vae.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan2.2_vae.safetensors"
     tamanho_aprox_gb: 1.31
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
-    usado_por: "Estudio ComfyUI: video-wan5b (vae_name)"
+    usado_por: "Estudio ComfyUI: TUDOIA_Video_Cinematografico, video-wan5b (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "VAE oficial do Wan 2.2 TI2V 5B."
   - id: "comfy-wan21-vae"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/wan_2.1_vae.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/vae/wan_2.1_vae.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"
     tamanho_aprox_gb: 0.24
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-t2v, video-wan14b-i2v (vae_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em vae/."
+    notas: "VAE para Wan 2.1 / Wan 2.2 14B."
   - id: "comfy-krea2-darkbrush-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/krea2_darkbrush.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/krea2_darkbrush.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/loras/krea2_darkbrush.safetensors"
     tamanho_aprox_gb: 0.44
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/Comfy-Org/Krea-2"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: GeraImagemTudoIA-KREA2 (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA Darkbrush para Krea 2."
   - id: "comfy-minimax-h3-turbo-8step-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
+    origem: "https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors"
     tamanho_aprox_gb: 1.82
-    licenca: {nome: null, url: null}
+    licenca: {nome: null, url: "https://huggingface.co/lightx2v/Minimax-h3-Turbo"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-minimax-h3 (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA Turbo 8-step para MiniMax H3."
   - id: "comfy-wan22-i2v-lightx2v-high-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
     tamanho_aprox_gb: 1.14
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-i2v (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA LightX2V 4-steps High Noise para Wan 2.2 14B I2V."
   - id: "comfy-wan22-i2v-lightx2v-low-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
     tamanho_aprox_gb: 1.14
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-i2v (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA LightX2V 4-steps Low Noise para Wan 2.2 14B I2V."
   - id: "comfy-wan22-t2v-lightx2v-high-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
     tamanho_aprox_gb: 1.14
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-t2v (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA LightX2V 4-steps High Noise para Wan 2.2 14B T2V."
   - id: "comfy-wan22-t2v-lightx2v-low-lora"
     tipo: "comfyui-node-asset"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_low_noise.safetensors"
-    origem: null
+    destino: "ComfyUI/ComfyUI/models/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_low_noise.safetensors"
+    origem: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_t2v_lightx2v_4steps_lora_v1.1_low_noise.safetensors"
     tamanho_aprox_gb: 1.14
-    licenca: {nome: null, url: null}
+    licenca: {nome: "Apache-2.0", url: "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged"}
     obrigatorio: false
     usado_por: "Estudio ComfyUI: video-wan14b-t2v (lora_name)"
     sha256: null
-    notas: "PENDENTE: informar origem (URL https ou repo Hugging Face + nome exato do arquivo). Licenca a confirmar. Presente localmente em loras/."
+    notas: "LoRA LightX2V 4-steps Low Noise para Wan 2.2 14B T2V."

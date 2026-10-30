@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from .caminhos import comfyui_dir, comfyui_portable, fluxos_comfyui
+from .caminhos import comfyui_dir, comfyui_portable
 from . import upstreams
 
 OLLAMA_BASE_URL = f"{upstreams.OLLAMA}"
@@ -155,47 +155,16 @@ CATEGORIAS_COMFY = {
     "loras": "LoRA (Adaptador Rápido)",
 }
 
-CHAVES_MODELOS_WORKFLOW = (
-    "ckpt_name",
-    "unet_name",
-    "vae_name",
-    "clip_name",
-    "clip_name1",
-    "clip_name2",
-    "lora_name",
-    "model_name",
-)
-
-
-def extrair_modelos_do_workflow(dados_json: dict[str, Any]) -> list[str]:
-    """Extrai todos os nomes de arquivos de modelos referenciados nos nós de um workflow ComfyUI."""
-    encontrados: list[str] = []
-    if not isinstance(dados_json, dict):
-        return encontrados
-    for _node_id, node in dados_json.items():
-        if not isinstance(node, dict):
-            continue
-        inputs = node.get("inputs")
-        if not isinstance(inputs, dict):
-            continue
-        for chave in CHAVES_MODELOS_WORKFLOW:
-            val = inputs.get(chave)
-            if isinstance(val, str) and (val.endswith(".safetensors") or val.endswith(".gguf") or val.endswith(".ckpt") or val.endswith(".pt")):
-                if val not in encontrados:
-                    encontrados.append(val)
-    return encontrados
-
 
 def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
-    """Lista detalhadamente todos os modelos de Vídeo & Imagem (ComfyUI) e fluxos JSON."""
+    """Lista detalhadamente todos os modelos de Vídeo & Imagem (ComfyUI)."""
     raiz = Path(raiz)
     desativados = ler_modelos_locais_desativados(raiz)
     pasta_modelos = raiz / "modelos"
 
     modelos_midia: list[dict[str, Any]] = []
-    nomes_arquivos_instalados: set[str] = set()
 
-    # 1. Modelos ComfyUI (em modelos/comfyui/ComfyUI_windows_portable/ComfyUI/models)
+    # Modelos ComfyUI (em modelos/comfyui/ComfyUI_windows_portable/ComfyUI/models)
     dir_comfy_models = comfyui_dir(raiz) / "models"
     if dir_comfy_models.is_dir():
         for pasta_cat, label_cat in CATEGORIAS_COMFY.items():
@@ -212,7 +181,6 @@ def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
                 tam_gb = round(tamanho_bytes / (1024**3), 2)
                 rel_path = arq.relative_to(pasta_modelos).as_posix()
                 rel_id = f"midia:{rel_path}"
-                nomes_arquivos_instalados.add(arq.name)
                 modelos_midia.append({
                     "id": rel_id,
                     "nome": arq.name,
@@ -225,71 +193,15 @@ def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
                     "ativo": rel_id not in desativados and arq.name not in desativados,
                 })
 
-    # 2. Fluxos ComfyUI (versionados em runtime/comfyui/fluxos)
-    dir_fluxos = fluxos_comfyui(raiz)
-    perfis_map: dict[str, Any] = {}
-    arq_perfis = dir_fluxos / "perfis.json"
-    if arq_perfis.is_file():
-        try:
-            perfis_map = json.loads(arq_perfis.read_text(encoding="utf-8"))
-        except Exception:
-            perfis_map = {}
-
-    fluxos_legado: list[str] = []
-    fluxos_detalhados: list[dict[str, Any]] = []
-    if dir_fluxos.is_dir():
-        for arq_fl in sorted(dir_fluxos.glob("*.json")):
-            if arq_fl.name == "perfis.json":
-                continue
-            stem = arq_fl.stem
-            fluxos_legado.append(stem)
-            rel_id = f"fluxo:{arq_fl.name}"
-
-            dados_wf: dict[str, Any] = {}
-            try:
-                dados_wf = json.loads(arq_fl.read_text(encoding="utf-8"))
-            except Exception:
-                dados_wf = {}
-
-            deps = extrair_modelos_do_workflow(dados_wf)
-            perfil = perfis_map.get(stem, {})
-            if not deps and perfil.get("modelo"):
-                deps = [perfil["modelo"]]
-
-            faltantes = [d for d in deps if d not in nomes_arquivos_instalados]
-            tipo_midia = perfil.get("tipo") or ("video" if "video" in stem.lower() or "wan" in stem.lower() else "imagem")
-            res = perfil.get("tamanho") or (f"{perfil['largura']}x{perfil['altura']}" if "largura" in perfil else "Padrão")
-            extra_info = f"{perfil['fps']} FPS" if "fps" in perfil else (f"{perfil['passos']} passos" if "passos" in perfil else f"{len(dados_wf)} nós")
-
-            fluxos_detalhados.append({
-                "id": rel_id,
-                "nome": stem,
-                "arquivo": arq_fl.name,
-                "tipo": tipo_midia,
-                "resolucao": res,
-                "detalhe_execucao": extra_info,
-                "quantidade_nos": len(dados_wf) if isinstance(dados_wf, dict) else 0,
-                "modelos_requeridos": deps,
-                "modelos_faltantes": faltantes,
-                "integro": len(faltantes) == 0 and len(dados_wf) > 0,
-                "ativo": rel_id not in desativados and stem not in desativados,
-            })
-
     return {
-        "comfyui_fluxos": fluxos_legado,
         "modelos": modelos_midia,
-        "fluxos": fluxos_detalhados,
     }
 
 
 def _resolver_caminho_midia(raiz: Path, item_id: str) -> Path:
     raiz = Path(raiz)
     pasta_modelos = (raiz / "modelos").resolve()
-    if item_id.startswith("fluxo:"):
-        nome_arq = item_id.removeprefix("fluxo:").strip()
-        pastas = [fluxos_comfyui(raiz).resolve()]
-        alvo = (pastas[0] / nome_arq).resolve()
-    elif item_id.startswith("midia:"):
+    if item_id.startswith("midia:"):
         rel = item_id.removeprefix("midia:").strip()
         pastas = [pasta_modelos, comfyui_portable(raiz).resolve()]
         alvo = (pasta_modelos / rel).resolve()
@@ -298,55 +210,23 @@ def _resolver_caminho_midia(raiz: Path, item_id: str) -> Path:
 
     if not any(alvo.is_relative_to(pasta) for pasta in pastas):
         raise ValueError("Caminho fora das pastas de mídia permitidas não é permitido.")
-    # Só o que a tela lista: pesos e fluxos. Sem isto a exclusão apagava qualquer arquivo dentro de modelos\,
+    # Só o que a tela lista: pesos. Sem isto a exclusão apagava qualquer arquivo dentro de modelos\,
     # inclusive o código do ComfyUI portable.
-    permitidas = EXT_FLUXO if item_id.startswith("fluxo:") else EXT_PESOS
-    if alvo.suffix.lower() not in permitidas:
-        raise ValueError(f"Só arquivos {', '.join(sorted(permitidas))} podem ser verificados ou excluídos aqui.")
+    if alvo.suffix.lower() not in EXT_PESOS:
+        raise ValueError(f"Só arquivos {', '.join(sorted(EXT_PESOS))} podem ser verificados ou excluídos aqui.")
     return alvo
 
 
 EXT_PESOS = frozenset({".safetensors", ".gguf", ".ckpt", ".pt"})
-EXT_FLUXO = frozenset({".json"})
 
 
 def verificar_item_midia(raiz: Path, item_id: str) -> dict[str, Any]:
-    """Verifica a integridade binária de um modelo .safetensors/.gguf ou dependências de um fluxo ComfyUI."""
+    """Verifica a integridade binária de um modelo .safetensors/.gguf do ComfyUI."""
     inicio = time.perf_counter()
     alvo = _resolver_caminho_midia(raiz, item_id)
     if not alvo.is_file():
         lat = int((time.perf_counter() - inicio) * 1000)
         return {"ok": False, "modelo": item_id, "motor": "midia", "latencia_ms": lat, "erro": "Arquivo não encontrado no disco"}
-
-    if item_id.startswith("fluxo:"):
-        try:
-            dados = json.loads(alvo.read_text(encoding="utf-8"))
-            if not isinstance(dados, dict) or len(dados) == 0:
-                lat = int((time.perf_counter() - inicio) * 1000)
-                return {"ok": False, "modelo": item_id, "motor": "comfyui", "latencia_ms": lat, "erro": "JSON de workflow vazio ou inválido"}
-            info_midia = listar_midia_detalhada(raiz)
-            instalados = {m["arquivo"] for m in info_midia.get("modelos", [])}
-            deps = extrair_modelos_do_workflow(dados)
-            faltantes = [d for d in deps if d not in instalados]
-            lat = int((time.perf_counter() - inicio) * 1000)
-            if faltantes:
-                return {
-                    "ok": False,
-                    "modelo": item_id,
-                    "motor": "comfyui",
-                    "latencia_ms": lat,
-                    "erro": f"Falta(m) {len(faltantes)} modelo(s): {', '.join(faltantes[:2])}",
-                }
-            return {
-                "ok": True,
-                "modelo": item_id,
-                "motor": "comfyui",
-                "latencia_ms": lat,
-                "resposta": f"Íntegro ({len(dados)} nós, {len(deps)}/{len(deps)} modelos OK)",
-            }
-        except Exception as e:
-            lat = int((time.perf_counter() - inicio) * 1000)
-            return {"ok": False, "modelo": item_id, "motor": "comfyui", "latencia_ms": lat, "erro": f"JSON inválido: {e}"}
 
     # Verificação binária de cabeçalho para .safetensors ou .gguf
     try:

@@ -45,7 +45,9 @@
     "antigravity",
     "claude",
     "cursor",
-    "codex"
+    "codex",
+    "opencode",
+    "aider"
   ],
   "instancias": []
 }

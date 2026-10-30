@@ -5,7 +5,7 @@ O Estúdio é a área criativa do painel. Ele gera imagens, faz inpainting (rege
 - **Local (ComfyUI)**: roda na GPU do host, em uma instalação ComfyUI portable que fica fora do Docker. É o único motor de vídeo, música e inpainting.
 - **Nuvem**: imagem apenas. Cloudflare Workers AI (exige chave) e Pollinations (sem chave).
 
-Os endpoints ficam em `painel/tudoia_painel/rotas/estudio_*.py` (catálogo, arquivos, imagem, vídeo e música), a lógica de prompts e grafos em `painel/tudoia_painel/estudio_servico.py`, a interface em `painel/tudoia_painel/static/painel.js` e `index.html`, e os fluxos ComfyUI em `runtime/comfyui/fluxos/`.
+Os endpoints ficam em `painel/tudoia_painel/rotas/estudio_*.py` (catálogo, arquivos, imagem, vídeo e música), a lógica de prompts e grafos em `painel/tudoia_painel/estudio_servico.py`, e a interface em `painel/tudoia_painel/static/painel.js` e `index.html`.
 
 ## Pré-requisitos
 
@@ -69,11 +69,8 @@ A galeria da interface guarda só o que foi gerado nesta sessão da página. Os 
 
 A função `gerar_imagem` (em `rotas/estudio_imagem.py`) segue esta ordem:
 
-1. **Modelo local** (começa com `local:` ou `fluxo:`): exige o ComfyUI online. Se ele estiver fora, responde com `servico_offline`.
-2. **ComfyUI** online e motor `auto` ou `comfyui`, ou modelo local: roda um fluxo no ComfyUI.
-   - `fluxo:<nome>` carrega o JSON pelo nome.
-   - `local:<arquivo>` escolhe `flux-schnell.json`, `zimage-turbo.json` ou `sdxl-foto.json` pelo nome do arquivo.
-   - Qualquer outro valor usa `GeraImagemTudoIA-KREA2.json`.
+1. **Modelo local** (começa com `local:`): exige o ComfyUI online. Se ele estiver fora, responde com `servico_offline`.
+2. **ComfyUI** online e motor `auto` ou `comfyui`, ou modelo local: monta o grafo ComfyUI em memória e submete ao ComfyUI (`executar_comfyui_imagem`).
 3. **Cloudflare Workers AI**, se houver as duas chaves e o modelo for `cf-*`, `flux`, `turbo`, `flux-anime` ou `auto`. Modelos usados: FLUX.1 Schnell, SDXL base 1.0 e DreamShaper 8 LCM.
 4. **Pollinations** (`image.pollinations.ai`), sem chave, **só com `TUDOIA_ESTUDIO_POLLINATIONS=1`** no `.env`. O prompt vai na URL para um serviço público. Entra quando nenhum passo anterior se aplica ao modelo escolhido, ou quando o passo anterior falha.
 5. **SVG de reserva**, gravado com o texto do prompt. Motor `estudio`. Com o Pollinations desligado, a resposta traz `aviso` explicando que nenhum motor respondeu, e a interface mostra esse aviso.
@@ -85,12 +82,12 @@ Cada resultado vai para o histórico visual (últimas 60 entradas, em memória).
 A requisição traz a imagem base (URL `/api/estudio/imagens/...`, `/api/estudio/uploads/...` ou só o nome do arquivo dentro de `imagens`), a máscara em base64 (aceita data URL) e o prompt. O servidor:
 
 1. copia a base e a máscara para `ComfyUI\input`;
-2. carrega `inpaint-tudoia.json` e injeta os valores nos nós de ID 2 (`LoadImage`), 3 (`LoadImageMask`), 5 e 6 (`CLIPTextEncode`) e 7 (`KSampler`);
+2. monta o grafo de inpainting em memória (`LoadImage`, `LoadImageMask`, `CLIPTextEncode`, `KSampler` e `VAEDecode`);
 3. espera até 90 s pelo histórico do ComfyUI e copia o resultado para `dados\estudio\imagens`.
 
 ### Vídeo
 
-- **Escolha do grafo** (`_preparar_grafo_video`): se o nome do modelo tem `minimax` ou `h3`, usa `video-minimax-h3.json`. Se há imagem de referência ou `i2v` no nome, usa `video-wan14b-i2v.json`. Se tem `5b`, usa `video-wan5b.json`. Nos demais casos, cai no MiniMax (se o arquivo existir) ou no `video-wan14b-t2v.json`.
+- **Escolha do grafo** (`_preparar_grafo_video`): monta o grafo em memória conforme o modelo (`minimax`/`h3`, `i2v`, `5b` ou `wan14b-t2v`).
 - **Dimensões:** MiniMax usa 768x768 em 480p e 1344x768 em 720p e 1080p. Wan usa 832x480 em 480p e 1280x704 em 720p e 1080p.
 - **Quadros do MiniMax:** duração x fps, ajustado ao múltiplo exigido pelo nó.
 - **Job:** `POST /prompt` devolve o `prompt_id`, que fica em memória (`_jobs_video`). O servidor consulta `/history/{id}` e copia o vídeo de `ComfyUI\output\video` para `dados\estudio\videos` com prefixo `comfy_vid_`. O tempo máximo de espera é 600 s.
@@ -98,7 +95,7 @@ A requisição traz a imagem base (URL `/api/estudio/imagens/...`, `/api/estudio
 
 ### Música
 
-O servidor submete `musica-yue2.json` com estilo, letra, seed e duração. Espera até 300 s pelo histórico e copia o áudio de `ComfyUI\output\audio` (ou `output`) para `dados\estudio\musicas` com prefixo `comfy_audio_`.
+O servidor monta o grafo YuE 2 em memória com estilo, letra, seed e duração. Espera até 300 s pelo histórico e copia o áudio de `ComfyUI\output\audio` (ou `output`) para `dados\estudio\musicas` com prefixo `comfy_audio_`.
 
 ### Otimização de prompt
 
@@ -111,28 +108,9 @@ Imagem e vídeo usam a mesma lógica (`_otimizar_prompt_visual` e `_otimizar_pro
 
 Com `GROQ_API_KEY` configurada, **o texto do prompt sai da máquina** e vai para a Groq.
 
-## Fluxos (`runtime/comfyui/fluxos/`)
+## Modelos locais do ComfyUI
 
-Os fluxos são JSON no formato de API do ComfyUI e ficam versionados no repositório. Os nomes dos arquivos de modelo são os exatos esperados pelo ComfyUI.
-
-| Fluxo | Tipo | Modelos esperados (nome do arquivo) | Observação |
-|---|---|---|---|
-| `sdxl-foto.json` | imagem | `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors` | checkpoint SDXL |
-| `sdxl-foto-hires.json` | imagem | mesmo checkpoint | acrescenta upscale latente |
-| `flux-schnell.json` | imagem | `flux1-schnell-Q4_K_S.gguf`, `t5xxl_fp8_e4m3fn.safetensors`, `clip_l.safetensors`, `ae.safetensors` | exige `ComfyUI-GGUF` |
-| `zimage-turbo.json` | imagem | `z_image_turbo_int8_convrot.safetensors`, `qwen_3_4b_fp8_mixed.safetensors`, `ae.safetensors` | |
-| `zimage-turbo-hires.json` | imagem | mesmos do anterior | acrescenta upscale latente |
-| `GeraImagemTudoIA-KREA2.json` | imagem | `krea2_turbo_int8_convrot.safetensors`, `krea2_darkbrush.safetensors` (LoRA), `qwen3vl_4b_fp8_scaled.safetensors`, `qwen_image_vae.safetensors` | padrão do servidor quando nenhum outro fluxo é escolhido |
-| `inpaint-tudoia.json` | inpaint | `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors` | nós fixos 2, 3, 5, 6 e 7 |
-| `video-minimax-h3.json` | vídeo com áudio | `minimax_h3_fl2va_pruned_int8_convrot.safetensors`, `minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors` (LoRA), `qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors`, `minimax_h3_video_vae_int8_convrot.safetensors`, `minimax_h3_audio_vae_fp32.safetensors` | nós fixos 104, 114, 15 e 91 |
-| `video-wan14b-t2v.json` | vídeo | `wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors`, `wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors`, LoRAs `wan2.2_t2v_lightx2v_4steps_lora_v1.1_*`, `umt5_xxl_fp8_e4m3fn_scaled.safetensors`, `wan_2.1_vae.safetensors` | |
-| `video-wan14b-i2v.json` | vídeo (imagem para vídeo) | `wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors`, `wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors`, LoRAs `wan2.2_i2v_lightx2v_4steps_lora_v1_*`, `umt5_xxl_fp8_e4m3fn_scaled.safetensors`, `wan_2.1_vae.safetensors` | |
-| `video-wan5b.json` | vídeo | `wan2.2_ti2v_5B_fp16.safetensors`, `umt5_xxl_fp8_e4m3fn_scaled.safetensors`, `wan2.2_vae.safetensors` | |
-| `musica-yue2.json` | música | `yue2_3b_int8_convrot.safetensors` | nós `YuE2GenerateABC` e `YuE2GenerateMusic` |
-
-`perfis.json` descreve cada fluxo (modelo, passos, tamanho e nome do nó de seed). A listagem de modelos do painel lê esse arquivo para rotular os fluxos. A escolha do fluxo e a injeção de valores **não** leem o `perfis.json`: estão escritas no código. Se você mudar um fluxo, confira os IDs de nó citados acima.
-
-O painel também lista os checkpoints e modelos de difusão que existem em `ComfyUI\models\` (`/api/estudio/catalogo-modelos`).
+O painel lista os checkpoints e modelos de difusão que existem em `ComfyUI\models\` (`/api/estudio/catalogo-modelos`).
 
 ## Armazenamento
 
@@ -174,16 +152,13 @@ Estes pontos saem da leitura do código. Alguns são divergências entre o que a
 1. **Upload de até 100 MB de arquivo.** A guarda aceita até 140 MB de corpo em `POST /api/estudio/upload` (`LIMITES_POR_ROTA` em `seguranca.py`), porque o arquivo vai em base64 (cerca de 33% maior). A checagem de 100 MB dentro de `upload_midia_estudio` (`app.py`) vale para o arquivo decodificado. Antes, o teto de 1 MB do corpo recusava qualquer arquivo acima de cerca de 750 KB.
 2. **1080p gera a mesma resolução de 720p** (`estudio_servico.py`, dicionário `res_dims` em `_preparar_grafo_video`).
 3. **As opções "Wan 2.1 Nuvem" e "Stable Video Diffusion (SVD Nuvem)" não têm backend de nuvem.** O servidor só gera vídeo no ComfyUI. Com o ComfyUI ligado, o pedido cai nos grafos locais (MiniMax ou Wan 14B). Com o ComfyUI desligado, responde `servico_offline`. O campo `motor` de `gerar-video` é ignorado.
-4. **Com o ComfyUI ligado e motor Automático, o modelo "FLUX.1 Schnell (Nuvem)" (valor padrão `flux`) é renderizado pelo fluxo local KREA2.** A interface diz "ComfyUI Local se ativo / Nuvem", o que é consistente, mas o modelo escolhido não é o FLUX.
-5. **Caminho de fluxo contido (corrigido).** Em `_executar_comfyui_imagem`, o valor `fluxo:<nome>` só aceita nome de arquivo puro (sem `..`, subpasta ou caminho absoluto) e o arquivo resolvido precisa ficar dentro de `runtime/comfyui/fluxos` ou da pasta de workflows do usuário do ComfyUI (`is_relative_to`).
-6. **Prompts saem da máquina.** A Groq recebe o prompt quando há `GROQ_API_KEY`. O Pollinations recebe o prompt na URL só se `TUDOIA_ESTUDIO_POLLINATIONS=1`; por padrão ele fica desligado.
-7. **Portas fixas.** ComfyUI (8188) e Ollama (11434) não são configuráveis pelo `.env`.
-8. **Jobs de vídeo ficam em memória.** Reiniciar o painel apaga `_jobs_video`. A consulta de estado volta a funcionar pelo histórico do ComfyUI, enquanto ele mantiver o job.
-9. **Campos ignorados.** `modelo` é ignorado em inpaint (sempre `inpaint-tudoia.json`) e em música (sempre `musica-yue2.json`).
-10. **IDs de nó fixos.** Trocar um JSON de fluxo sem ajustar o código quebra o inpaint (nós 2, 3, 5, 6 e 7) e o MiniMax (104, 114, 15 e 91).
-11. **SVG de reserva.** O texto do prompt entra no SVG com `html.escape` (até 60 caracteres). O arquivo é servido como `application/octet-stream` (`servir_imagem_estudio`), então o `<img>` da interface provavelmente não o exibe. Isso é a confirmar no navegador.
-12. **Modelo da Groq.** `qwen/qwen3.8-27b` não aparece em `config/modelos.yaml`. A existência desse modelo na Groq é a confirmar.
-13. **Histórico visual.** As últimas 60 gerações ficam em memória (`HISTORICO_VISUAL`). Não há persistência.
+4. **Prompts saem da máquina.** A Groq recebe o prompt quando há `GROQ_API_KEY`. O Pollinations recebe o prompt na URL só se `TUDOIA_ESTUDIO_POLLINATIONS=1`; por padrão ele fica desligado.
+5. **Portas fixas.** ComfyUI (8188) e Ollama (11434) não são configuráveis pelo `.env`.
+6. **Jobs de vídeo ficam em memória.** Reiniciar o painel apaga `_jobs_video`. A consulta de estado volta a funcionar pelo histórico do ComfyUI, enquanto ele mantiver o job.
+7. **Campos ignorados.** `modelo` é ignorado em inpaint e em música (sempre YuE 2).
+8. **SVG de reserva.** O texto do prompt entra no SVG com `html.escape` (até 60 caracteres). O arquivo é servido como `application/octet-stream` (`servir_imagem_estudio`), então o `<img>` da interface provavelmente não o exibe. Isso é a confirmar no navegador.
+9. **Modelo da Groq.** `qwen/qwen3.8-27b` não aparece em `config/modelos.yaml`. A existência desse modelo na Groq é a confirmar.
+10. **Histórico visual.** As últimas 60 gerações ficam em memória (`HISTORICO_VISUAL`). Não há persistência.
 
 ## Veja também
 

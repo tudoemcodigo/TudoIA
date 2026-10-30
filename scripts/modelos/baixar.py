@@ -46,6 +46,7 @@ BASE_PADRAO = RAIZ_REPO / "modelos"
 VAR_BASE = "TUDOIA_MODELOS_DIR"
 VAR_TOKEN = "HF_TOKEN"
 VAR_OLLAMA = "TUDOIA_OLLAMA_MODELS"
+VAR_COMFYUI = "TUDOIA_COMFYUI_PORTABLE"
 ARQUIVO_ENV = RAIZ_REPO / ".env"
 
 TIPOS = ("ollama", "url", "huggingface", "comfyui-node-asset")
@@ -325,6 +326,13 @@ def resolver_base(base: Path | str | None = None) -> Path:
 def caminho_local(m: Modelo, base: Path | str) -> Path:
     """Destino final de um modelo. Recusa qualquer caminho que saia da pasta base."""
     base_r = Path(base).resolve()
+    if m.tipo == "comfyui-node-asset" and "/ComfyUI/models/" in m.destino:
+        valor_comfy = os.environ.get(VAR_COMFYUI, "").strip() or _valor_arquivo_env(VAR_COMFYUI)
+        if valor_comfy:
+            sufixo = m.destino.split("/ComfyUI/models/", 1)[1]
+            alvo_c = (Path(valor_comfy).expanduser().resolve() / "ComfyUI" / "models" / sufixo).resolve()
+            if alvo_c != base_r and base_r in alvo_c.parents:
+                return alvo_c
     alvo = (base_r / m.destino).resolve()
     if alvo == base_r or base_r not in alvo.parents:
         raise ErroSeguranca(f"{m.id}: destino sai da pasta base")

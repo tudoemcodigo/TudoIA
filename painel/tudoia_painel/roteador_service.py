@@ -7,55 +7,21 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 
 from tudoia_painel.catalogo import carregar_catalogo, provedores_ligados
 from tudoia_painel.envfile import ler_env
 from tudoia_painel.gerador import regenerar_config_litellm
 from tudoia_painel.regras import carregar_modulo_regras
+from tudoia_painel import upstreams
 
 RE_GRUPO_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{1,63}$")
 
-GRUPOS_CANONICOS = {
-    "tudoia-nuvem": {
-        "nome": "tudoia-nuvem",
-        "titulo": "Nuvem Geral (Chat & Raciocínio Rápido)",
-        "descricao": "Respostas rápidas e tarefas gerais de nuvem gratuita roteadas por menor latência.",
-        "papeis": ["chat", "rapido", "raciocinio"],
-        "tier": "FREE",
-    },
-    "tudoia-codigo": {
-        "nome": "tudoia-codigo",
-        "titulo": "Código & Agentes (Tool Use)",
-        "descricao": "Modelos com suporte a ferramentas e chamadas de função (Claude Code, Cursor, Codex).",
-        "papeis": ["codigo", "agente"],
-        "tier": "FREE",
-    },
-    "tudoia-codigo-reserva": {
-        "nome": "tudoia-codigo-reserva",
-        "titulo": "Reserva de Código (Fallback de Nuvem)",
-        "descricao": "Outro provedor de nuvem acionado quando o pool principal de código der 429 ou timeout.",
-        "papeis": ["codigo", "agente", "chat"],
-        "tier": "FREE",
-    },
-    "tudoia-visao": {
-        "nome": "tudoia-visao",
-        "titulo": "Visão Computacional & Multimodal",
-        "descricao": "Acionado automaticamente para prompts que contêm imagens ou capturas de tela.",
-        "papeis": ["visao"],
-        "tier": "FREE",
-    },
-    "tudoia-max": {
-        "nome": "tudoia-max",
-        "titulo": "Modelos Pagos de Alta Inteligência",
-        "descricao": "APIs comerciais (Claude Sonnet/Opus, GPT, DeepSeek) acionadas por #max ou roteamento explícito.",
-        "papeis": ["chat", "codigo", "agente", "raciocinio"],
-        "tier": "PAID",
-    },
-}
+GRUPOS_CANONICOS: dict[str, dict[str, Any]] = {}
 
 # Grupos fundamentais que não podem ser completamente excluídos (apenas desativados se desejado)
-GRUPOS_PROTEGIDOS = {"tudoia-nuvem", "tudoia-codigo"}
+GRUPOS_PROTEGIDOS: set[str] = set()
 
 
 def gravar_yaml_atomico(caminho: Path, dados: dict) -> None:
@@ -99,8 +65,40 @@ def obter_detalhes_grupos_roteador(raiz: Path) -> dict[str, Any]:
                 "papeis": list(m.papeis),
                 "ativo": m.ativo,
                 "tem_chave": tem_chave,
+                "origem": "nuvem",
                 "contexto": m.contexto,
             }
+
+    # Modelos locais reais instalados no Ollama (apenas modelos que existem fisicamente)
+    modelos_locais_nomes: list[str] = []
+    try:
+        ollama_url = env.get("OLLAMA_URL") or upstreams.OLLAMA
+        with httpx.Client(timeout=0.6) as cliente:
+            resp = cliente.get(f"{ollama_url}/api/tags")
+            if resp.status_code == 200:
+                for item in resp.json().get("models", []):
+                    tag_nome = item.get("name", "")
+                    if tag_nome:
+                        nome_com_prefixo = f"local/{tag_nome}"
+                        if nome_com_prefixo not in modelos_locais_nomes:
+                            modelos_locais_nomes.append(nome_com_prefixo)
+    except Exception:
+        pass
+
+    for mlocal in modelos_locais_nomes:
+        papeis_loc = ["codigo", "agente"] if ("agente" in mlocal or "coder" in mlocal) else ["chat"]
+        todos_modelos[mlocal] = {
+            "nome": mlocal,
+            "id": mlocal.removeprefix("local/"),
+            "provedor_id": "local",
+            "provedor_nome": "Ollama Local",
+            "tier": "LOCAL",
+            "papeis": papeis_loc,
+            "ativo": True,
+            "tem_chave": True,
+            "origem": "local",
+            "contexto": 30000,
+        }
 
     # Todos os grupos conhecidos (canônicos + presentes na ordem)
     todos_grupos_chaves = list(GRUPOS_CANONICOS.keys())
@@ -115,6 +113,19 @@ def obter_detalhes_grupos_roteador(raiz: Path) -> dict[str, Any]:
         for nome in membros_nomes:
             if nome in todos_modelos:
                 membros_detalhados.append(todos_modelos[nome])
+            elif nome.startswith("local/"):
+                membros_detalhados.append({
+                    "nome": nome,
+                    "id": nome.removeprefix("local/"),
+                    "provedor_id": "local",
+                    "provedor_nome": "Ollama Local",
+                    "tier": "LOCAL",
+                    "papeis": ["chat"],
+                    "ativo": True,
+                    "tem_chave": True,
+                    "origem": "local",
+                    "contexto": 30000,
+                })
             else:
                 membros_detalhados.append({
                     "nome": nome,
@@ -125,6 +136,7 @@ def obter_detalhes_grupos_roteador(raiz: Path) -> dict[str, Any]:
                     "papeis": [],
                     "ativo": False,
                     "tem_chave": False,
+                    "origem": "nuvem",
                     "contexto": None,
                 })
 
@@ -143,12 +155,26 @@ def obter_detalhes_grupos_roteador(raiz: Path) -> dict[str, Any]:
         for mnome, mdata in todos_modelos.items():
             if mnome in membros_set:
                 continue
-            if mdata["tier"] != tier_alvo:
-                continue
-            if not papeis_alvo or any(p in papeis_alvo for p in mdata["papeis"]):
-                elegiveis.append(mdata)
 
-        elegiveis.sort(key=lambda x: (x["tem_chave"], x["ativo"]), reverse=True)
+            compativel_tier = (mdata.get("tier") == tier_alvo) or (mdata.get("tier") == "LOCAL")
+            compativel_papel = not papeis_alvo or any(p in papeis_alvo for p in mdata.get("papeis", []))
+            recomendado = bool(compativel_tier and compativel_papel)
+
+            copia = dict(mdata)
+            copia["recomendado"] = recomendado
+            elegiveis.append(copia)
+
+        # Ordenar: recomendados primeiro, depois chaves/locais, depois ativos, e alfabético por nome
+        elegiveis.sort(
+            key=lambda x: (
+                1 if x.get("recomendado") else 0,
+                1 if x.get("tem_chave") else 0,
+                1 if x.get("origem") == "local" else 0,
+                1 if x.get("ativo") else 0,
+                x.get("nome", "")
+            ),
+            reverse=True,
+        )
 
         grupos_resultado.append({
             "id": gid,
@@ -237,7 +263,7 @@ def criar_grupo_roteador(
         "titulo": titulo_final,
         "descricao": descricao_final,
         "tier": tier_final,
-        "papeis": d.get("papeis") or ["chat"]
+        "papeis": d.get("papeis") or ["chat", "codigo", "agente", "raciocinio", "rapido"]
     }
 
     regras_modulo = carregar_modulo_regras()
@@ -337,6 +363,7 @@ def auto_vincular_modelos_por_papeis(raiz: Path) -> dict[str, Any]:
 
     provs_ativos = provedores_ligados(catalogo, env)
     ordem = roteamento.setdefault("ordem", {})
+    customizados = roteamento.get("grupos_customizados") or {}
 
     for gid in GRUPOS_CANONICOS:
         if gid not in ordem:
@@ -351,32 +378,14 @@ def auto_vincular_modelos_por_papeis(raiz: Path) -> dict[str, Any]:
 
             papeis_set = set(m.papeis)
 
-            # 1. TudoIA Nuvem (chat / rapido / raciocinio em tier FREE)
-            if prov.tier == "FREE" and (papeis_set.intersection({"chat", "rapido", "raciocinio"})):
-                if m.nome not in ordem["tudoia-nuvem"]:
-                    ordem["tudoia-nuvem"].append(m.nome)
-                    modelos_vinculados_count += 1
-
-            # 2. TudoIA Código (codigo / agente em tier FREE)
-            if prov.tier == "FREE" and (papeis_set.intersection({"codigo", "agente"})):
-                if m.nome not in ordem["tudoia-codigo"]:
-                    ordem["tudoia-codigo"].append(m.nome)
-                    modelos_vinculados_count += 1
-                if "tudoia-codigo-reserva" in ordem and m.nome not in ordem["tudoia-codigo-reserva"] and m.nome != ordem["tudoia-codigo"][0]:
-                    if len(ordem["tudoia-codigo-reserva"]) < 4:
-                        ordem["tudoia-codigo-reserva"].append(m.nome)
-
-            # 3. TudoIA Visão (visao em tier FREE)
-            if prov.tier == "FREE" and "visao" in papeis_set:
-                if m.nome not in ordem["tudoia-visao"]:
-                    ordem["tudoia-visao"].append(m.nome)
-                    modelos_vinculados_count += 1
-
-            # 4. TudoIA Max (tier PAID)
-            if prov.tier == "PAID":
-                if m.nome not in ordem["tudoia-max"]:
-                    ordem["tudoia-max"].append(m.nome)
-                    modelos_vinculados_count += 1
+            for gid, lista_membros in ordem.items():
+                gmeta = GRUPOS_CANONICOS.get(gid) or customizados.get(gid) or {}
+                tier_alvo = gmeta.get("tier", "FREE")
+                papeis_alvo = set(gmeta.get("papeis") or ["chat", "codigo"])
+                if prov.tier == tier_alvo and (not papeis_alvo or papeis_set.intersection(papeis_alvo)):
+                    if m.nome not in lista_membros:
+                        lista_membros.append(m.nome)
+                        modelos_vinculados_count += 1
 
     regras_modulo = carregar_modulo_regras()
     regras_modulo.validar_regras(roteamento)

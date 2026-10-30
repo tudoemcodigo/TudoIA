@@ -307,6 +307,13 @@
           <button class="subtab-btn" data-filter-modelo="midia">Vídeo & Imagem</button>
 </div>
         <div class="subtabs" id="subfiltro-provedores" style="display:none;"></div>
+        <div class="busca-modelos-container" style="display:flex; gap:12px; align-items:center; margin:12px 0 16px 0;">
+          <div style="position:relative; flex:1;">
+            <input type="text" id="input-busca-modelos-catalogo" placeholder="🔍 Pesquisar no catálogo por nome, ID, papéis (ex: coder, vision), família, formato..." style="width:100%; padding:9px 36px 9px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:6px; color:var(--text); outline:none;">
+            <button id="btn-limpar-busca-modelos" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; display:none;" title="Limpar pesquisa">✕</button>
+          </div>
+          <span id="contagem-busca-modelos" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); white-space:nowrap;"></span>
+        </div>
         <div class="grid-cards" id="grid-modelos"></div>
 </section>
 
@@ -315,15 +322,24 @@
         <div class="page-header">
           <div class="page-title">
             <h2>Roteador Inteligente tudoia-auto</h2>
-            <p>Roteamento semântico kNN com quarentena e failover automático para Ollama local.</p>
-</div>
-          <div style="display:flex; gap:8px;">
+            <p>Roteamento semântico kNN com quarentena, failover automático e controle fino de membros locais e nuvem.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="badge-roteador-pendente" class="badge badge-warning" style="display:none; font-size:11px; padding:4px 8px; animation:pulse 2s infinite;">● Alterações pendentes</span>
             <button class="btn btn-outline btn-sm" id="btn-modal-novo-grupo">+ Novo Grupo</button>
             <button class="btn btn-outline btn-sm" id="btn-auto-bind-roteador" title="Vincula modelos ativos automaticamente aos grupos correspondentes aos seus papéis declarados">Auto-Vincular por Papel</button>
             <button class="btn btn-primary btn-sm" id="btn-salvar-ordem-roteador">Salvar Grupos</button>
             <button class="btn btn-outline btn-sm" id="btn-gerar-roteador">Regenerar config.yaml</button>
-</div>
-</div>
+          </div>
+        </div>
+        <div id="aviso-banner-roteador-pendente" class="info-callout" style="display:none; margin-bottom:14px; background:rgba(234, 179, 8, 0.1); border-color:rgba(234, 179, 8, 0.4);">
+          <div class="info-callout-title" style="color:var(--warning);">
+            <span>⚠ Modificações na Composição dos Grupos</span>
+          </div>
+          <p class="info-callout-text" style="font-size:12px; margin-top:2px;">
+            Você adicionou, reordenou ou removeu modelos nesta sessão. Clique no botão <strong>"Salvar Grupos"</strong> acima para aplicar as mudanças e sincronizar com o LiteLLM.
+          </p>
+        </div>
         <div class="roteador-grid-container">
           <div class="card" style="box-shadow:var(--shadow-sm);">
             <div class="card-header" style="border-bottom:1px solid var(--border-color); padding-bottom:12px;">
@@ -347,16 +363,16 @@
             <div class="form-group">
               <label for="select-teste-roteador-grupo">Grupo / Rota de Teste</label>
               <select id="select-teste-roteador-grupo" style="font-family:var(--font-mono); font-size:12px;">
-                <option value="tudoia-auto">tudoia-auto (Automático / kNN semântico + regras)</option>
-</select>
-</div>
+                <option value="" disabled selected>Nenhum grupo cadastrado</option>
+              </select>
+            </div>
             <div class="form-group">
               <label for="input-teste-roteador">Prompt de Teste</label>
               <textarea id="input-teste-roteador" rows="4" placeholder="Ex: Refatore esta função para C# 12 ou Olá, tudo bem?" style="resize:vertical;"></textarea>
-</div>
-            <button class="btn btn-primary" id="btn-executar-teste-roteador" style="width:100%; padding:10px 14px;">
-              Enviar para tudoia-auto (:4000)
-</button>
+            </div>
+            <button class="btn btn-primary" id="btn-executar-teste-roteador" style="width:100%; padding:10px 14px;" disabled>
+              Nenhum grupo para enviar (:4000)
+            </button>
             <div id="resultado-teste-roteador"></div>
 </div>
 </div>
@@ -707,9 +723,6 @@
               <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Modelo / Rota:</span>
               <select id="chat-select-modelo" style="min-width:260px; font-family:var(--font-mono); font-size:12px;">
                 <option value="tudoia-auto">tudoia-auto (Decisão Automática)</option>
-                <option value="tudoia-codigo">tudoia-codigo (Engenharia & Código)</option>
-                <option value="tudoia-nuvem">tudoia-nuvem (Nuvem Geral Free)</option>
-                <option value="tudoia-max">tudoia-max (Modelos Pagos Alta Inteligência)</option>
                 <option value="tudoia-local">tudoia-local (Ollama GPU)</option>
 </select>
 </div>
@@ -762,7 +775,7 @@
             <p>Criação multimodal via ComfyUI Portable (modelos FLUX e SDXL na GPU) e nuvem.</p>
 </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <span class="badge" id="badge-status-comfyui">ComfyUI :8188 verificando...</span>
+            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge" id="badge-status-comfyui" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)" style="text-decoration:none; cursor:pointer;">ComfyUI :8188 verificando...</a>
 </div>
 </div>
 
@@ -817,17 +830,10 @@
 </div>
 
             <div class="form-group">
-              <label for="img-select-modelo">Modelo de IA (Local ou Nuvem)</label>
+              <label for="img-select-modelo">Modelo de IA (Local)</label>
               <select id="img-select-modelo" style="font-size:12px;">
-                <optgroup label="Modelos em Nuvem (Prontos)">
-                  <option value="flux" selected>FLUX.1 Schnell (Nuvem · Rápido & Detalhado)</option>
-                  <option value="flux-realism">FLUX Realism (Nuvem · Fotorrealista)</option>
-                  <option value="flux-anime">FLUX Anime (Nuvem · Ilustração)</option>
-                  <option value="flux-3d">FLUX 3D (Nuvem · Modelagem 3D)</option>
-                  <option value="turbo">SDXL Turbo (Nuvem · Ultra Rápido)</option>
-</optgroup>
                 <optgroup label="Modelos Locais (ComfyUI GPU · Sem Watermark)" id="img-optgroup-locais">
-                  <option value="local:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors">Juggernaut-XL v9 (SDXL Fotorrealista · 7.1 GB)</option>
+                  <option value="local:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors" selected>Juggernaut-XL v9 (SDXL Fotorrealista · 7.1 GB)</option>
                   <option value="local:flux1-schnell-Q4_K_S.gguf">FLUX.1 Schnell GGUF (6.8 GB)</option>
                   <option value="local:z_image_turbo_int8_convrot.safetensors">Z-Image Turbo INT8 (6.2 GB)</option>
 </optgroup>
@@ -973,7 +979,7 @@
             <p>Renderização neural acelerada via ComfyUI (Wan 2.2 Turbo e MiniMax H3 Omni com síntese de áudio nativo).</p>
 </div>
           <div style="display:flex; gap:10px; align-items:center;">
-            <span class="badge badge-free" id="badge-status-comfy-video" style="padding:6px 12px; font-weight:600;">ComfyUI :8188</span>
+            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-video" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 ↗</a>
 </div>
 </div>
 
@@ -1027,14 +1033,10 @@
 </div>
               <select id="vid-select-modelo" style="font-size:12px; width:100%; padding:9px 12px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
                 <optgroup label="Modelos Locais Turbo (ComfyUI · GPU)" id="vid-optgroup-locais">
-                  <option value="fluxo:video-minimax-h3" selected> MiniMax H3 Omni (Vídeo + Áudio Estéreo · Turbo 8 steps)</option>
-                  <option value="fluxo:video-wan14b-t2v"> Wan 2.2 Text-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
-                  <option value="fluxo:video-wan14b-i2v"> Wan 2.2 Image-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
-                  <option value="fluxo:video-wan5b"> Wan 2.2 5B Multimodal (10 GB)</option>
-</optgroup>
-                <optgroup label="Modelos em Nuvem">
-                  <option value="wan2.1-t2v">Wan 2.1 Nuvem (Standard)</option>
-                  <option value="svd">Stable Video Diffusion (SVD Nuvem)</option>
+                  <option value="video-minimax-h3" selected> MiniMax H3 Omni (Vídeo + Áudio Estéreo · Turbo 8 steps)</option>
+                  <option value="video-wan14b-t2v"> Wan 2.2 Text-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
+                  <option value="video-wan14b-i2v"> Wan 2.2 Image-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
+                  <option value="video-wan5b"> Wan 2.2 5B Multimodal (10 GB)</option>
 </optgroup>
 </select>
 </div>
@@ -1223,7 +1225,7 @@
             <p>Composição musical neural com arranjo instrumental, letra e partitura ABC acelerada via ComfyUI (GPU).</p>
 </div>
           <div style="display:flex; gap:10px; align-items:center;">
-            <span class="badge badge-free" id="badge-status-comfy-musica" style="padding:6px 12px; font-weight:600;">ComfyUI :8188 · YuE 2 3B</span>
+            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-musica" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 · YuE 2 3B ↗</a>
 </div>
 </div>
 
@@ -1729,8 +1731,11 @@
           <p class="info-callout-text" id="escolher-novos-erros-msg" style="white-space: pre-line;"></p>
         </div>
         <div id="escolher-novos-conteudo" style="display:none;">
-          <div style="display:flex; gap:10px; margin-bottom:12px;">
-            <input type="text" id="input-filtro-escolher-novos" placeholder="Filtrar por provedor ou ID..." style="flex:1; padding:7px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:4px; color:var(--text);">
+          <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
+            <div style="position:relative; flex:1;">
+              <input type="text" id="input-filtro-escolher-novos" placeholder="🔍 Filtrar modelos por provedor, ID ou papéis (ex: coder, vision)..." style="width:100%; padding:8px 32px 8px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:4px; color:var(--text); outline:none;">
+              <button id="btn-limpar-filtro-escolha" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; display:none;" title="Limpar filtro">✕</button>
+            </div>
             <button class="btn btn-outline btn-sm active" id="btn-escolher-novos-so-free" title="Mostra só provedores de tier FREE">Só FREE</button>
             <button class="btn btn-outline btn-sm" id="btn-escolher-novos-marcar-visiveis">Marcar visíveis</button>
           </div>
@@ -1981,6 +1986,6 @@
   <!-- Container de Toasts -->
   <div id="toast-container"></div>
 
-  <script src="/app/painel.js?v=7" defer></script>
+  <script src="/app/painel.js?v=11" defer></script>
 </body>
 </html>

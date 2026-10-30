@@ -172,8 +172,7 @@ Ao iniciar o Ollama, o painel define `OLLAMA_HOST=127.0.0.1:11434` (só loopback
 Documentação completa do Estúdio: [estudio.md](estudio.md). Rotas em `/api/estudio/*`. O fluxo de imagem está descrito em [arquitetura.md](../arquitetura.md#fluxos). Pontos
 importantes:
 
-- O ComfyUI é acessado em `127.0.0.1:8188`. Se o pedido exige o ComfyUI (motor `comfyui` ou modelo local `local:` e
-  `fluxo:`) e a porta 8188 não responde, o painel devolve erro e não tenta outro motor (`gerar-imagem` em `rotas/estudio_imagem.py`).
+- O ComfyUI é acessado em `127.0.0.1:8188`. Se o pedido exige o ComfyUI (motor `comfyui` ou modelo local `local:`) e a porta 8188 não responde, o painel devolve erro e não tenta outro motor (`gerar-imagem` em `rotas/estudio_imagem.py`).
 - Antes de algumas gerações visuais (imagem, inpaint, vídeo e música), o painel descarrega da VRAM os modelos do Ollama
   (`keep_alive: 0`). Isso libera a GPU para o ComfyUI.
 - O otimizador de prompt usa `GROQ_API_KEY` quando existe, senão um modelo local.

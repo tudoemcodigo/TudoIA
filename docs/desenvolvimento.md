@@ -14,7 +14,7 @@ Guia para quem altera o código do TudoIA. Para usar o sistema, veja [instalacao
 | `infra/` | Template do realm do Keycloak (`keycloak/realm-tudoia.json`) e exemplos de identity provider. |
 | `modelos/` | Pesos e binários locais: pastas do Ollama e do ComfyUI portable. **Não versionado**. |
 | `painel/` | Pacote `tudoia_painel`: `app.py` (monta o app), `rotas/` (um `APIRouter` por domínio), serviços (`estudio_servico.py`, `skills_servico.py`, `mcp_teste.py`, `comfyui.py`), `upstreams.py` (endereços locais), autenticação e estáticos da interface. Ver [componentes/painel.md](componentes/painel.md). |
-| `runtime/` | Serviços executados pelo Docker e configurações deles: `cerebro/` (código-fonte), `comfyui/fluxos/` (grafos), `docker-compose.yml`, `litellm/` (gateway e roteador), `ollama/modelfiles/`, `open-webui/` (`env.py` e ícones) e `searxng/`. |
+| `runtime/` | Serviços executados pelo Docker e configurações deles: `cerebro/` (código-fonte), `docker-compose.yml`, `litellm/` (gateway e roteador), `ollama/modelfiles/`, `open-webui/` (`env.py` e ícones) e `searxng/`. |
 | `scripts/` | Pontos de entrada `tudoia.ps1` (e `tudoia.cmd`) e `tudoia.sh` (Linux), o provisionador do Keycloak (`scripts/keycloak/provisionar.py`), o baixador de modelos (`scripts/modelos/baixar.py`), o backup (`scripts/backup/backup.py` e `restaurar.md`), a conferência do `env.py` do Open WebUI (`scripts/openwebui/verificar_env.py`) e a credencial do n8n (`scripts/n8n/credencial_cerebro.py`). |
 | `.github/workflows/` | CI (`ci.yml`). Ver [Integração contínua](#integração-contínua). |
 | `tests/` | Suites de teste do projeto raiz. A do Cérebro fica em `runtime/cerebro/tests/`. |

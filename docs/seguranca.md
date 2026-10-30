@@ -150,8 +150,7 @@ Arquivo: `painel/tudoia_painel/auditoria.py`, classe `Auditoria`. Ligada em `reg
   exclusão) passa por `arquivo_em` (`estudio_servico.py`). A função resolve a pasta permitida e o alvo e só aceita arquivo que
   existe e fica dentro da pasta resolvida (`is_relative_to`). Isso fecha `..`, `%2F` e caminho absoluto (`C:/...`).
   Uploads aceitam só extensões por tipo (imagem ou vídeo).
-- Mídia do ComfyUI: verificar ou excluir aceita só pesos `.safetensors`, `.gguf`, `.ckpt` e `.pt` (`EXT_PESOS`) e
-  fluxos `.json` (`EXT_FLUXO`), em `painel/tudoia_painel/modelos_service.py`, `_resolver_caminho_midia`. Antes, a
+- Mídia do ComfyUI: verificar ou excluir aceita só pesos `.safetensors`, `.gguf`, `.ckpt` e `.pt` (`EXT_PESOS`), em `painel/tudoia_painel/modelos_service.py`, `_resolver_caminho_midia`. Antes, a
   exclusão apagava qualquer arquivo dentro de `modelos\`.
 - Modelos de entrada da API usam Pydantic. Erros de validação saem com código `validacao` e a lista de campos.
 - Interface: texto vindo de fora (resposta de modelo, erro de provedor) passa por `esc()` antes de entrar em

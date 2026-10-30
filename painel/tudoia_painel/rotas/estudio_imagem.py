@@ -1,7 +1,6 @@
 """Estúdio: geração, otimização de prompt e inpaint de imagem."""
 import base64
 import html
-import json
 import shutil
 import time
 from typing import Any
@@ -12,7 +11,7 @@ from fastapi import APIRouter
 
 from ..envfile import ler_env
 from .. import comfyui
-from ..caminhos import comfyui_dir, fluxos_comfyui
+from ..caminhos import comfyui_dir
 from .. import servicos as infra
 from ..ambiente import Contexto
 from ..erros import ErroApi
@@ -45,11 +44,11 @@ def criar_router(ctx: Contexto) -> APIRouter:
         prompt_efetivo, foi_otimizado, msg_otimizado = otimizar_prompt_visual(corpo.prompt, raiz)
 
         comfy_online = infra.porta_aberta(8188)
-        is_modelo_local = corpo.modelo.startswith("local:") or corpo.modelo.startswith("fluxo:")
+        is_modelo_local = corpo.modelo.startswith("local:")
         motor_efetivo = "comfyui" if is_modelo_local else corpo.motor
 
         if (motor_efetivo == "comfyui" or is_modelo_local) and not comfy_online:
-            raise ErroApi(503, "servico_offline", f"O serviço ComfyUI (:8188) está offline no host. Inicie-o para carregar o modelo/fluxo '{corpo.modelo}'.", extras={"servico_offline": "comfyui", "modelo_solicitado": corpo.modelo, "porta": 8188})
+            raise ErroApi(503, "servico_offline", f"O serviço ComfyUI (:8188) está offline no host. Inicie-o para carregar o modelo '{corpo.modelo}'.", extras={"servico_offline": "comfyui", "modelo_solicitado": corpo.modelo, "porta": 8188})
 
         # 1. Se ComfyUI estiver online e for selecionado ou modelo local
         if comfy_online and (motor_efetivo in ("comfyui", "auto") or is_modelo_local):
@@ -283,31 +282,37 @@ def criar_router(ctx: Contexto) -> APIRouter:
         shutil.copy2(caminho_base, comfy_input / nome_base_comfy)
         (comfy_input / nome_mask_comfy).write_bytes(mascara_bytes)
 
-        # 4. Carrega o fluxo de inpainting e otimiza o prompt para difusão
-        pasta_fluxos = fluxos_comfyui(raiz)
-        arq_fluxo = pasta_fluxos / "inpaint-tudoia.json"
-        if not arq_fluxo.is_file():
-            c_cand = fluxos_comfyui(raiz) / "inpaint-tudoia.json"
-            if c_cand.is_file():
-                arq_fluxo = c_cand
-            else:
-                raise ErroApi(404, "nao_encontrado", "Fluxo inpaint-tudoia.json não encontrado em modelos/comfyui/fluxos.")
-
-        grafo = json.loads(arq_fluxo.read_text(encoding="utf-8"))
+        # 4. Monta o grafo de inpainting e otimiza o prompt para difusão
         seed_final = corpo.seed or int(time.time() * 1000) % 1_000_000_000
 
         # Tradução e enriquecimento visual automático para o motor de difusão
         prompt_efetivo, foi_otimizado, msg_otimizado = otimizar_prompt_visual(corpo.prompt, raiz)
 
-        # Injeta nos nós
-        grafo["2"]["inputs"]["image"] = nome_base_comfy
-        grafo["3"]["inputs"]["image"] = nome_mask_comfy
-        grafo["5"]["inputs"]["text"] = prompt_efetivo
-        if corpo.prompt_negativo:
-            grafo["6"]["inputs"]["text"] = corpo.prompt_negativo
-        grafo["7"]["inputs"]["seed"] = seed_final
-        grafo["7"]["inputs"]["steps"] = corpo.steps
-        grafo["7"]["inputs"]["denoise"] = corpo.denoise
+        neg = corpo.prompt_negativo or "blurry, deformed, ugly, distorted, bad architecture"
+        ckpt_inpaint = "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+        if corpo.modelo and corpo.modelo.startswith("local:"):
+            cand_ckpt = corpo.modelo.replace("local:", "").strip()
+            if cand_ckpt.endswith((".safetensors", ".ckpt")) and "yue" not in cand_ckpt.lower():
+                if (comfyui_dir(raiz) / "models" / "checkpoints" / cand_ckpt).is_file():
+                    ckpt_inpaint = cand_ckpt
+        grafo: dict[str, Any] = {
+            "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt_inpaint}},
+            "2": {"class_type": "LoadImage", "inputs": {"image": nome_base_comfy}},
+            "3": {"class_type": "LoadImageMask", "inputs": {"image": nome_mask_comfy, "channel": "red"}},
+            "4": {"class_type": "VAEEncodeForInpaint", "inputs": {"pixels": ["2", 0], "vae": ["1", 2], "mask": ["3", 0], "grow_mask_by": 6}},
+            "5": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt_efetivo, "clip": ["1", 1]}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["1", 1]}},
+            "7": {
+                "class_type": "KSampler",
+                "inputs": {
+                    "seed": seed_final, "steps": corpo.steps, "cfg": 6.5, "sampler_name": "dpmpp_2m_sde",
+                    "scheduler": "karras", "denoise": corpo.denoise, "model": ["1", 0], "positive": ["5", 0],
+                    "negative": ["6", 0], "latent_image": ["4", 0],
+                },
+            },
+            "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["1", 2]}},
+            "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "inpaint_tudoia", "images": ["8", 0]}},
+        }
 
         # 5. Arbitrador de VRAM e Disparo /prompt no ComfyUI
         _arbitrar_vram_para_estudio()
@@ -334,7 +339,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
         # 6. Polling do resultado
         inicio_wait = time.time()
         with httpx.Client(timeout=15.0) as cliente:
-            while time.time() - inicio_wait < 90:
+            while time.time() - inicio_wait < 180:
                 try:
                     h_resp = cliente.get(f"{upstreams.COMFYUI}/history/{prompt_id}")
                     if h_resp.status_code == 200:

@@ -2,7 +2,6 @@
 import collections
 from dataclasses import dataclass
 from datetime import datetime
-import json
 import re
 import shutil
 import time
@@ -18,7 +17,7 @@ from .modelos_service import (
     obter_modelos_em_vram,
 )
 from . import comfyui
-from .caminhos import comfyui_dir, fluxos_comfyui
+from .caminhos import comfyui_dir
 from . import upstreams
 
 HISTORICO_VISUAL: collections.deque = collections.deque(maxlen=60)
@@ -176,28 +175,9 @@ def _preparar_grafo_video(
     caminho_ref: Path | None,
     pasta_comfy_input: Path
 ) -> tuple[dict[str, Any], str, bool]:
-    pasta_fluxos = fluxos_comfyui(raiz)
     nome_modelo_lower = modelo_id.lower()
     eh_minimax = "minimax" in nome_modelo_lower or "h3" in nome_modelo_lower
     eh_i2v = caminho_ref is not None or "i2v" in nome_modelo_lower or "image_to_video" in nome_modelo_lower
-
-    if eh_minimax:
-        arq_grafo = pasta_fluxos / "video-minimax-h3.json"
-    elif eh_i2v:
-        arq_grafo = pasta_fluxos / "video-wan14b-i2v.json"
-    elif "5b" in nome_modelo_lower:
-        arq_grafo = pasta_fluxos / "video-wan5b.json"
-    else:
-        arq_grafo = pasta_fluxos / "video-minimax-h3.json" if (pasta_fluxos / "video-minimax-h3.json").is_file() else (pasta_fluxos / "video-wan14b-t2v.json")
-
-    if not arq_grafo.is_file():
-        for cand in (pasta_fluxos / "video-minimax-h3.json", pasta_fluxos / "video-wan14b-t2v.json"):
-            if cand.is_file():
-                arq_grafo = cand
-                eh_minimax = "minimax" in arq_grafo.stem
-                break
-
-    grafo = json.loads(arq_grafo.read_text(encoding="utf-8"))
 
     res_dims = {
         "480p": (768, 768) if eh_minimax else (832, 480),
@@ -214,50 +194,95 @@ def _preparar_grafo_video(
         except Exception:
             nome_arquivo_comfy = caminho_ref.name
 
-    if eh_minimax:
-        if "104" in grafo and "inputs" in grafo["104"]:
-            grafo["104"]["inputs"]["prompt"] = prompt_texto
-            grafo["104"]["inputs"]["width"] = largura
-            grafo["104"]["inputs"]["height"] = altura
-            qtd_frames = max(5, round(duracao_s * fps))
-            grid_length = qtd_frames + (5 - (qtd_frames % 17)) % 17
-            grafo["104"]["inputs"]["length"] = grid_length
-            if nome_arquivo_comfy:
-                grafo["114"] = {
-                    "inputs": {"image": nome_arquivo_comfy},
-                    "class_type": "LoadImage"
-                }
-                grafo["104"]["inputs"]["first_frame"] = ["114", 0]
-            elif "first_frame" in grafo["104"]["inputs"]:
-                del grafo["104"]["inputs"]["first_frame"]
-        if "15" in grafo and "inputs" in grafo["15"]:
-            grafo["15"]["inputs"]["noise_seed"] = seed
-        if "91" in grafo and "inputs" in grafo["91"]:
-            grafo["91"]["inputs"]["fps"] = fps
-    else:
-        for _nid, node in grafo.items():
-            if not isinstance(node, dict):
-                continue
-            ct = node.get("class_type", "")
-            inputs = node.get("inputs", {})
-            if ct == "CLIPTextEncode" and "text" in inputs:
-                inputs["text"] = prompt_texto
-            elif ct == "LoadImage" and nome_arquivo_comfy and "image" in inputs:
-                inputs["image"] = nome_arquivo_comfy
-            elif ct in ("KSampler", "KSamplerAdvanced", "RandomNoise"):
-                if "noise_seed" in inputs:
-                    inputs["noise_seed"] = seed
-                elif "seed" in inputs:
-                    inputs["seed"] = seed
-            elif ct == "EmptyHunyuanLatentVideo":
-                if "width" in inputs:
-                    inputs["width"] = largura
-                if "height" in inputs:
-                    inputs["height"] = altura
-                if "length" in inputs:
-                    inputs["length"] = max(17, int(duracao_s * fps))
+    neg_wan = "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
 
-    return grafo, arq_grafo.name, eh_minimax
+    if eh_minimax:
+        nome_grafo = "video-minimax-h3"
+        qtd_frames = max(5, round(duracao_s * fps))
+        grid_length = qtd_frames + (5 - (qtd_frames % 17)) % 17
+        grafo: dict[str, Any] = {
+            "6": {"class_type": "UNETLoader", "inputs": {"unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors", "weight_dtype": "default"}},
+            "121": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["6", 0], "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors", "strength_model": 1.0}},
+            "13": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "type": "minimax", "device": "default"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"}},
+            "24": {"class_type": "VAELoader", "inputs": {"vae_name": "minimax_h3_audio_vae_fp32.safetensors"}},
+            "104": {"class_type": "MiniMaxH3ImageToVideo", "inputs": {"clip": ["13", 0], "vae": ["11", 0], "prompt": prompt_texto, "width": largura, "height": altura, "length": grid_length}},
+            "16": {"class_type": "BasicGuider", "inputs": {"model": ["121", 0], "conditioning": ["104", 0]}},
+            "17": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "res_multistep"}},
+            "9": {"class_type": "BasicScheduler", "inputs": {"model": ["121", 0], "scheduler": "simple", "steps": 8, "denoise": 1.0}},
+            "15": {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}},
+            "14": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["15", 0], "guider": ["16", 0], "sampler": ["17", 0], "sigmas": ["9", 0], "latent_image": ["104", 1]}},
+            "10": {"class_type": "VAEDecode", "inputs": {"samples": ["14", 0], "vae": ["11", 0]}},
+            "23": {"class_type": "VAEDecodeAudio", "inputs": {"samples": ["14", 0], "vae": ["24", 0]}},
+            "91": {"class_type": "CreateVideo", "inputs": {"images": ["10", 0], "audio": ["23", 0], "fps": fps, "bit_depth": 8, "color_space": "sRGB", "codec": "none"}},
+            "92": {"class_type": "SaveVideo", "inputs": {"video": ["91", 0], "filename_prefix": "video/MiniMax_H3", "format": "auto", "codec": "auto"}},
+        }
+        if nome_arquivo_comfy:
+            grafo["114"] = {"class_type": "LoadImage", "inputs": {"image": nome_arquivo_comfy}}
+            grafo["104"]["inputs"]["first_frame"] = ["114", 0]
+    elif "5b" in nome_modelo_lower or "ti2v" in nome_modelo_lower:
+        nome_grafo = "video-wan5b"
+        qtd_frames_5b = max(17, round(duracao_s * fps))
+        length_5b = ((qtd_frames_5b - 1) // 4) * 4 + 1
+        grafo = {
+            "4": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_ti2v_5B_fp16.safetensors", "weight_dtype": "default"}},
+            "10": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "wan2.2_vae.safetensors"}},
+            "12": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["4", 0], "shift": 8.0}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": prompt_texto}},
+            "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": neg_wan}},
+            "5": {"class_type": "Wan22ImageToVideoLatent", "inputs": {"vae": ["11", 0], "width": largura, "height": altura, "length": length_5b, "batch_size": 1}},
+            "3": {"class_type": "KSampler", "inputs": {"model": ["12", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": seed, "steps": 20, "cfg": 5.0, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1.0}},
+            "8": {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["3", 0], "vae": ["11", 0], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}},
+            "18": {"class_type": "CreateVideo", "inputs": {"images": ["8", 0], "fps": float(fps)}},
+            "9": {"class_type": "SaveVideo", "inputs": {"video": ["18", 0], "filename_prefix": "video/video-wan5b", "format": "auto", "format.codec": "auto"}},
+        }
+        if nome_arquivo_comfy:
+            grafo["20"] = {"class_type": "LoadImage", "inputs": {"image": nome_arquivo_comfy}}
+            grafo["5"]["inputs"]["start_image"] = ["20", 0]
+    elif eh_i2v:
+        nome_grafo = "video-wan14b-i2v"
+        grafo = {
+            "4": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+            "12": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+            "13": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["4", 0], "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors", "strength_model": 1.0}},
+            "14": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["12", 0], "lora_name": "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors", "strength_model": 1.0}},
+            "15": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["13", 0], "shift": 5.0}},
+            "16": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["14", 0], "shift": 5.0}},
+            "10": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": prompt_texto}},
+            "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": neg_wan}},
+            "20": {"class_type": "LoadImage", "inputs": {"image": nome_arquivo_comfy or "exemplo.png"}},
+            "5": {"class_type": "WanImageToVideo", "inputs": {"positive": ["6", 0], "negative": ["7", 0], "vae": ["11", 0], "start_image": ["20", 0], "width": 640, "height": 640, "length": 81, "batch_size": 1}},
+            "3": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["15", 0], "positive": ["5", 0], "negative": ["5", 1], "latent_image": ["5", 2], "add_noise": "enable", "noise_seed": seed, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 2, "return_with_leftover_noise": "enable"}},
+            "17": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["16", 0], "positive": ["5", 0], "negative": ["5", 1], "latent_image": ["3", 0], "add_noise": "disable", "noise_seed": seed, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 2, "end_at_step": 4, "return_with_leftover_noise": "disable"}},
+            "8": {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["17", 0], "vae": ["11", 0], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}},
+            "18": {"class_type": "CreateVideo", "inputs": {"images": ["8", 0], "fps": 16.0}},
+            "9": {"class_type": "SaveVideo", "inputs": {"video": ["18", 0], "filename_prefix": "video/video-wan14b-i2v", "format": "auto", "format.codec": "auto"}},
+        }
+    else:
+        nome_grafo = "video-wan14b-t2v"
+        grafo = {
+            "4": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+            "12": {"class_type": "UNETLoader", "inputs": {"unet_name": "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors", "weight_dtype": "default"}},
+            "13": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["4", 0], "lora_name": "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors", "strength_model": 1.0}},
+            "14": {"class_type": "LoraLoaderModelOnly", "inputs": {"model": ["12", 0], "lora_name": "wan2.2_t2v_lightx2v_4steps_lora_v1.1_low_noise.safetensors", "strength_model": 1.0}},
+            "15": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["13", 0], "shift": 5.0}},
+            "16": {"class_type": "ModelSamplingSD3", "inputs": {"model": ["14", 0], "shift": 5.0}},
+            "10": {"class_type": "CLIPLoader", "inputs": {"clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors", "type": "wan", "device": "default"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "wan_2.1_vae.safetensors"}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": prompt_texto}},
+            "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["10", 0], "text": neg_wan}},
+            "5": {"class_type": "EmptyHunyuanLatentVideo", "inputs": {"width": largura, "height": altura, "length": max(17, int(duracao_s * fps)), "batch_size": 1}},
+            "3": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["15", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0], "add_noise": "enable", "noise_seed": seed, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 0, "end_at_step": 2, "return_with_leftover_noise": "enable"}},
+            "17": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["16", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["3", 0], "add_noise": "disable", "noise_seed": seed, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "start_at_step": 2, "end_at_step": 4, "return_with_leftover_noise": "disable"}},
+            "8": {"class_type": "VAEDecodeTiled", "inputs": {"samples": ["17", 0], "vae": ["11", 0], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8}},
+            "18": {"class_type": "CreateVideo", "inputs": {"images": ["8", 0], "fps": 16.0}},
+            "9": {"class_type": "SaveVideo", "inputs": {"video": ["18", 0], "filename_prefix": "video/video-wan14b-t2v", "format": "auto", "format.codec": "auto"}},
+        }
+
+    return grafo, nome_grafo, eh_minimax
 
 
 def _submeter_comfyui_video(
@@ -464,35 +489,35 @@ def _executar_comfyui_musica(
     modo: str,
     pasta_estudio_musicas: Path
 ) -> dict[str, Any]:
-    pasta_fluxos = fluxos_comfyui(raiz)
-    arq_grafo = pasta_fluxos / "musica-yue2.json"
-
-    if not arq_grafo.is_file():
-        return {"ok": False, "erro": "Fluxo 'musica-yue2.json' não encontrado em modelos/comfyui/fluxos."}
-
-    try:
-        grafo = json.loads(arq_grafo.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"ok": False, "erro": f"Falha ao carregar fluxo ComfyUI '{arq_grafo.name}': {e}"}
-
-    # Nó 2: YuE2GenerateABC
-    if "2" in grafo and "inputs" in grafo["2"]:
-        grafo["2"]["inputs"]["style"] = style_texto
-        grafo["2"]["inputs"]["lyrics"] = lyrics_texto or "[instrumental]"
-        grafo["2"]["inputs"]["seed"] = seed
-        grafo["2"]["inputs"]["mode"] = modo
-
-    # Nó 3: YuE2GenerateMusic
-    if "3" in grafo and "inputs" in grafo["3"]:
-        grafo["3"]["inputs"]["style"] = style_texto
-        grafo["3"]["inputs"]["lyrics"] = lyrics_texto or "[instrumental]"
-        grafo["3"]["inputs"]["seed"] = seed
-        grafo["3"]["inputs"]["mode"] = modo
-        grafo["3"]["inputs"]["max_duration"] = float(duracao_s)
-
-    # Nó 6: KSampler
-    if "6" in grafo and "inputs" in grafo["6"]:
-        grafo["6"]["inputs"]["seed"] = seed
+    letra = lyrics_texto or "[instrumental]"
+    grafo: dict[str, Any] = {
+        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "yue2_3b_int8_convrot.safetensors"}},
+        "2": {
+            "class_type": "YuE2GenerateABC",
+            "inputs": {
+                "clip": ["1", 1], "style": style_texto, "lyrics": letra, "seed": seed, "mode": modo,
+                "max_abc_tokens": 4096, "temperature": 0.7, "top_p": 0.9, "top_k": 30, "repetition_penalty": 1.005, "penalty_window": 100,
+            },
+        },
+        "3": {
+            "class_type": "YuE2GenerateMusic",
+            "inputs": {
+                "clip": ["1", 1], "style": style_texto, "lyrics": letra, "abc": ["2", 0], "seed": seed, "mode": modo,
+                "max_duration": float(duracao_s), "temperature": 1.0, "top_p": 0.95, "top_k": 100, "repetition_penalty": 1.2, "cfg_scale": 1.0,
+            },
+        },
+        "4": {"class_type": "EmptyYuE2LatentAudio", "inputs": {"seconds": ["3", 1], "batch_size": 1}},
+        "5": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["3", 0]}},
+        "6": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["1", 0], "positive": ["3", 0], "negative": ["5", 0], "latent_image": ["4", 0],
+                "seed": seed, "steps": 32, "cfg": 1.0, "sampler_name": "dpm_2", "scheduler": "sgm_uniform", "denoise": 1.0,
+            },
+        },
+        "7": {"class_type": "VAEDecodeAudio", "inputs": {"samples": ["6", 0], "vae": ["1", 2]}},
+        "8": {"class_type": "SaveAudio", "inputs": {"audio": ["7", 0], "filename_prefix": "audio/YuE2_TudoIA"}},
+    }
 
     try:
         with httpx.Client(timeout=15.0) as cliente:
@@ -551,7 +576,7 @@ def _executar_comfyui_musica(
                                                     "nome_arquivo": nome_local,
                                                     "bytes_len": c.stat().st_size,
                                                     "prompt_id": prompt_id,
-                                                    "grafo_usado": arq_grafo.name
+                                                    "grafo_usado": "musica-yue2"
                                                 }
                                             except Exception:
                                                 pass
@@ -566,7 +591,7 @@ def _executar_comfyui_musica(
                                                 "nome_arquivo": nome_local,
                                                 "bytes_len": len(a_resp.content),
                                                 "prompt_id": prompt_id,
-                                                "grafo_usado": arq_grafo.name
+                                                "grafo_usado": "musica-yue2"
                                             }
             except Exception:
                 pass
@@ -608,74 +633,47 @@ def arquivo_em(pastas, nome_arquivo: str) -> Path | None:
 
 
 def executar_comfyui_imagem(raiz: Path, pasta_estudio_imagens: Path, modelo_id: str, prompt_pos: str, prompt_neg: str, seed: int, largura: int, altura: int, steps: int) -> dict[str, Any]:
-    pasta_fluxos = fluxos_comfyui(raiz)
-    pasta_user_wf = comfyui_dir(raiz) / "user" / "default" / "workflows"
+    nome_ckp = modelo_id.replace("local:", "") if modelo_id.startswith("local:") else modelo_id
+    nl = nome_ckp.lower()
+    neg = prompt_neg or "blurry, lowres, deformed, bad anatomy, extra fingers, watermark, text, signature, jpeg artifacts"
 
-    caminho_grafo = None
-    if modelo_id.startswith("fluxo:"):
-        nome_limpo = modelo_id.replace("fluxo:", "")
-        # Nome de arquivo puro, dentro de uma das duas pastas: nada de "..", subpasta ou caminho absoluto.
-        if Path(nome_limpo).name != nome_limpo or nome_limpo in ("", ".", ".."):
-            raise ValueError(f"nome de fluxo inválido: {nome_limpo!r}")
-        for pasta in (pasta_fluxos, pasta_user_wf):
-            for p in (pasta / nome_limpo, pasta / f"{nome_limpo}.json"):
-                if p.is_file() and p.resolve().is_relative_to(pasta.resolve()):
-                    caminho_grafo = p
-                    break
-            if caminho_grafo:
-                break
-    elif modelo_id.startswith("local:"):
-        nome_ckp = modelo_id.replace("local:", "")
-        if "flux" in nome_ckp.lower():
-            caminho_grafo = pasta_fluxos / "flux-schnell.json"
-        elif "z_image" in nome_ckp.lower() or "zimage" in nome_ckp.lower():
-            caminho_grafo = pasta_fluxos / "zimage-turbo.json"
-        else:
-            caminho_grafo = pasta_fluxos / "sdxl-foto.json"
-
-    if not caminho_grafo or not caminho_grafo.is_file():
-        caminho_grafo = pasta_fluxos / "GeraImagemTudoIA-KREA2.json"
-        if not caminho_grafo.is_file():
-            caminho_grafo = pasta_fluxos / "sdxl-foto.json"
-
-    try:
-        grafo = json.loads(caminho_grafo.read_text(encoding="utf-8"))
-    except Exception as e:
-        return {"ok": False, "erro": f"Falha ao ler fluxo ComfyUI '{caminho_grafo.name}': {e}"}
-
-    # Injeção específica para o Krea-2 Subgraph se presente
-    if "30:19" in grafo and "inputs" in grafo["30:19"]:
-        grafo["30:19"]["inputs"]["value"] = prompt_pos
-    if "30:3" in grafo and "inputs" in grafo["30:3"]:
-        grafo["30:3"]["inputs"]["seed"] = seed
-
-    # Injeção genérica nos nós do grafo
-    for _nid, node in grafo.items():
-        if not isinstance(node, dict):
-            continue
-        ct = node.get("class_type", "")
-        inputs = node.get("inputs", {})
-        if ct == "KSampler":
-            if "seed" in inputs:
-                inputs["seed"] = seed
-            if "steps" in inputs and steps > 0 and "krea" not in caminho_grafo.name.lower():
-                inputs["steps"] = steps
-        elif ct == "CLIPTextEncode":
-            txt = str(inputs.get("text", "")).lower()
-            if any(w in txt for w in ["blurry", "bad", "lowres", "watermark", "deformed"]):
-                if prompt_neg:
-                    inputs["text"] = prompt_neg
-            else:
-                inputs["text"] = prompt_pos
-        elif ct == "EmptyLatentImage":
-            if "width" in inputs:
-                inputs["width"] = largura
-            if "height" in inputs:
-                inputs["height"] = altura
-        elif ct == "CheckpointLoaderSimple" and modelo_id.startswith("local:"):
-            inputs["ckpt_name"] = modelo_id.replace("local:", "")
-        elif ct == "UNETLoader" and modelo_id.startswith("local:"):
-            inputs["unet_name"] = modelo_id.replace("local:", "")
+    if "flux" in nl and modelo_id.startswith("local:"):
+        grafo: dict[str, Any] = {
+            "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": steps if steps > 0 else 4, "cfg": 1, "sampler_name": "euler", "scheduler": "simple", "denoise": 1, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+            "4": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": nome_ckp}},
+            "5": {"class_type": "EmptySD3LatentImage", "inputs": {"width": largura, "height": altura, "batch_size": 1}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt_pos, "clip": ["10", 0]}},
+            "7": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+            "10": {"class_type": "DualCLIPLoader", "inputs": {"clip_name1": "t5xxl_fp8_e4m3fn.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "ae.safetensors"}},
+            "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["11", 0]}},
+            "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "flux-schnell", "images": ["8", 0]}},
+        }
+    elif "z_image" in nl or "zimage" in nl:
+        unet = nome_ckp if modelo_id.startswith("local:") else "z_image_turbo_int8_convrot.safetensors"
+        grafo = {
+            "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": steps if steps > 0 else 8, "cfg": 1, "sampler_name": "res_multistep", "scheduler": "simple", "denoise": 1, "model": ["12", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+            "4": {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}},
+            "5": {"class_type": "EmptySD3LatentImage", "inputs": {"width": largura, "height": altura, "batch_size": 1}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt_pos, "clip": ["10", 0]}},
+            "7": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["6", 0]}},
+            "10": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_4b_fp8_mixed.safetensors", "type": "lumina2", "device": "default"}},
+            "11": {"class_type": "VAELoader", "inputs": {"vae_name": "ae.safetensors"}},
+            "12": {"class_type": "ModelSamplingAuraFlow", "inputs": {"shift": 3, "model": ["4", 0]}},
+            "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["11", 0]}},
+            "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "zimage-turbo", "images": ["8", 0]}},
+        }
+    else:
+        ckpt = nome_ckp if modelo_id.startswith("local:") else "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
+        grafo = {
+            "3": {"class_type": "KSampler", "inputs": {"seed": seed, "steps": steps if steps > 0 else 30, "cfg": 4.5, "sampler_name": "dpmpp_2m_sde", "scheduler": "karras", "denoise": 1, "model": ["4", 0], "positive": ["6", 0], "negative": ["7", 0], "latent_image": ["5", 0]}},
+            "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt}},
+            "5": {"class_type": "EmptyLatentImage", "inputs": {"width": largura, "height": altura, "batch_size": 1}},
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt_pos, "clip": ["4", 1]}},
+            "7": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["4", 1]}},
+            "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+            "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "sdxl-foto", "images": ["8", 0]}},
+        }
 
     try:
         with httpx.Client(timeout=15.0) as cliente:
@@ -693,7 +691,7 @@ def executar_comfyui_imagem(raiz: Path, pasta_estudio_imagens: Path, modelo_id: 
 
     inicio_wait = time.time()
     with httpx.Client(timeout=15.0) as cliente:
-        while time.time() - inicio_wait < 90:
+        while time.time() - inicio_wait < 180:
             try:
                 h_resp = cliente.get(f"{upstreams.COMFYUI}/history/{prompt_id}")
                 if h_resp.status_code == 200:
