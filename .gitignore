@@ -26,20 +26,14 @@ __pycache__/
 .idea/
 .aider*
 
-# Dados de runtime e logs
+# Dados de runtime, modelos e logs locais (nunca versionar)
 dados/
+modelos/
 .tudoia-instalacao.json
 ferramentas/
 
-# Pesos de modelos e binários pesados locais
-modelos/ollama/models/
-modelos/comfyui/ComfyUI_windows_portable/
-
 # Configurações dinâmicas geradas pelo painel
 runtime/litellm/config.yaml*
-
-# Modelos de IA: pesos de cada máquina (baixados por scripts/modelos/baixar.py). Nunca versionar.
-/modelos/
 
 # Saída do empacotamento do instalador (scripts/empacotar)
 dist/

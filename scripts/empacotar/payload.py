@@ -28,8 +28,9 @@ INCLUIR = (".env.example", ".gitattributes", ".gitignore", ".python-version", "L
 EXCLUIR = ("*/__pycache__/*", "__pycache__/*", "*.pyc", "*/.pytest_cache/*", "*/.ruff_cache/*", "*/.venv/*",
            "*/node_modules/*", "*.bak", "*.tmp", "*.log", "*.db", "*.sqlite", "*.sqlite3", "*.pem", "*.key",
            "runtime/litellm/config.yaml", "runtime/litellm/config.yaml.*", "instalador/dados/*", "build/*", "dist/*",
-           "*/.serena/*", "*/.claude/*", "*/.cursor/*", "*/.codex/*", "*/.gemini/*", "*.egg-info/*")
-EXCLUIR_NOMES = {".env", "auditoria.jsonl", "cerebro.db", "estado.json"}
+           "*/.serena/*", "*/.claude/*", "*/.cursor/*", "*/.codex/*", "*/.gemini/*", "*.egg-info/*",
+           "dados/*", "*/dados/*", "modelos/*", "*/modelos/*", ".aider*", "*/.aider*")
+EXCLUIR_NOMES = {".env", "auditoria.jsonl", "cerebro.db", "estado.json", "dados", "modelos"}
 TIMESTAMP_FIXO = (1980, 1, 1, 0, 0, 0)   # zip reproduzível: mesmo código = mesmo sha256
 
 
