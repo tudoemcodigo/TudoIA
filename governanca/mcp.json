@@ -18,12 +18,14 @@
       "command": "npx",
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@0.15.0"
+        "@supabase/mcp-server-supabase@0.15.0",
+        "--read-only",
+        "--project-ref=${SUPABASE_PROJECT_REF}"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       },
-      "description": "Gerenciamento e inspeção de banco de dados, schemas, Auth e Storage do Supabase"
+      "description": "Inspeção do banco, schemas, Auth e Storage de UM projeto Supabase, somente leitura (--read-only e --project-ref). Token de escopo mínimo em SUPABASE_ACCESS_TOKEN."
     },
     "cerebro": {
       "type": "http",
@@ -34,15 +36,12 @@
       "description": "Servidor local de busca semântica, arquivos e memória persistente do usuário"
     },
     "github": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-github@2025.4.8"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
-      "description": "Integração oficial com GitHub para gestão de repositórios, issues, pull requests e branches"
+      "description": "Servidor MCP oficial do GitHub (remoto): repositórios, issues, pull requests e branches. Use um token fine-grained com escopo mínimo; o pacote npm anterior está depreciado."
     },
     "playwright": {
       "command": "npx",
@@ -59,18 +58,6 @@
         "-y",
         "@modelcontextprotocol/server-sequential-thinking@2.0.0"
       ]
-    },
-    "desktop-commander": {
-      "description": "Execução de comandos no terminal, gerenciamento de processos locais, leitura de logs e edição direta de arquivos e código no sistema.",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@wonderwhy-er/desktop-commander@0.3.1"
-      ],
-      "env": {
-        "npm_config_ignore_scripts": "true",
-        "DESKTOP_COMMANDER_DISABLE_TELEMETRY": "1"
-      }
     },
     "fetch": {
       "description": "Converte qualquer página web ou documentação externa em Markdown limpo de forma leve, sem precisar abrir o navegador do Playwright.",
