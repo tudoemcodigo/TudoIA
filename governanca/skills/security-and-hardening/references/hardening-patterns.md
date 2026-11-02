@@ -1,5 +1,7 @@
 # Hardening Patterns
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 Code patterns and decision aids for the `security-and-hardening` skill. The skill states each rule; this file shows one concrete implementation of it. Open the section you need when you reach that code — it is not meant to be read top to bottom.
 
 Shared checklists (threat modeling, pre-commit checks, security headers, CORS, the package-manager matrix, install-script gate, and the OWASP quick-reference tables) live in `../../../references/security-checklist.md`.
@@ -24,7 +26,7 @@ const user = await prisma.user.findUnique({ where: { id: userId } });
 ### Broken Authentication
 
 ```typescript
-// Password hashing
+// Password hashing (outside .NET TEC; in TEC services use the hash of TEC.Core.Cryptography, CMP-AUD-06)
 import { hash, compare } from 'bcrypt';
 
 const SALT_ROUNDS = 12;
@@ -169,7 +171,7 @@ const CreateTaskSchema = z.object({
 app.post('/api/tasks', async (req, res) => {
   const result = CreateTaskSchema.safeParse(req.body);
   if (!result.success) {
-    return res.status(422).json({
+    return res.status(422).json({  // TEC services: 400 with `field` (ARQ-SEG-19)
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Invalid input',
@@ -289,7 +291,7 @@ if (!success) return res.status(429).end();
 **Always check before committing:**
 ```bash
 # Check for accidentally staged secrets
-git diff --cached | grep -i "password\|secret\|api_key\|token"
+git diff --cached | grep -qiE "password|secret|api_key|token" && echo "possible secret in the staged diff"  # never print the matching lines (IA-PRV-03)
 ```
 
 **If a secret is ever committed, rotate it.** Deleting the line or rewriting history is not enough — assume it's compromised the moment it reaches a remote. Revoke and reissue the key first, then purge it from history.

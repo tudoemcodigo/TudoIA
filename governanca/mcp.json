@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TudoHaS Canonical MCP Servers Manifest",
-  "description": "Configuração canônica e portável de servidores MCP para o ecossistema TudoHaS",
+  "title": "TudoIA Canonical MCP Servers Manifest",
+  "description": "Configuração canônica e portável de servidores MCP para o ecossistema TudoIA",
   "mcpServers": {
     "context7": {
       "command": "npx",
@@ -18,7 +18,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@supabase/mcp-server-supabase@latest"
+        "@supabase/mcp-server-supabase@0.15.0"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
@@ -37,7 +37,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-github"
+        "@modelcontextprotocol/server-github@2025.4.8"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -48,7 +48,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@playwright/mcp@latest"
+        "@playwright/mcp@0.0.84"
       ],
       "description": "Servidor MCP oficial do Playwright para automação de navegador, screenshots e testes de ponta a ponta (E2E)"
     },
@@ -57,7 +57,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        "@modelcontextprotocol/server-sequential-thinking@2.0.0"
       ]
     },
     "desktop-commander": {
@@ -65,7 +65,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@wonderwhy-er/desktop-commander@latest"
+        "@wonderwhy-er/desktop-commander@0.3.1"
       ]
     },
     "fetch": {
@@ -73,7 +73,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@tokenizin/mcp-npx-fetch"
+        "@tokenizin/mcp-npx-fetch@1.0.0"
       ]
     },
     "vercel": {
@@ -86,7 +86,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "mcp-remote",
+        "mcp-remote@0.16.0",
         "https://learn.microsoft.com/api/mcp"
       ],
       "description": "Servidor MCP oficial da Microsoft para documentação técnica e viva do Azure, .NET, Windows e IA."

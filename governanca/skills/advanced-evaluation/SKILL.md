@@ -371,7 +371,7 @@ strictness: "balanced"
 
 ## Integration
 
-This skill owns judge design and bias mitigation. In TudoIA, run judges through the LiteLLM gateway and pick a judge from a different model family than the generator (self-enhancement bias). Free-tier providers may train on the prompts you send: do not put personal or confidential data in evaluation sets sent to them.
+This skill owns judge design and bias mitigation. In TudoIA, run judges through the LiteLLM gateway and pick a judge from a different model family than the generator (self-enhancement bias). Free-tier providers may train on the prompts you send: do not put personal or confidential data in evaluation sets sent to them. The judge runs on a local model by default: the LiteLLM gateway may resend to the cloud a request that does not fit the local model's context window (IA-PRV-01/02), so shorten the context or call Ollama directly when data must not leave the machine. Evaluation sets must not contain real e-mails or phone numbers (IA-PRV-05); use synthetic data.
 
 ## References
 

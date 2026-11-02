@@ -137,11 +137,11 @@ Use a different model family for evaluation than generation:
 def get_evaluator_model(generator_model):
     """Select evaluator to avoid self-enhancement bias."""
     if 'gpt' in generator_model.lower():
-        return 'claude-4-5-sonnet'
+        return '<modelo>'  # a model from another family; local by default (IA-PRV-01)
     elif 'claude' in generator_model.lower():
-        return 'gpt-5.2'
+        return '<modelo>'
     else:
-        return 'gpt-5.2'  # Default
+        return '<modelo>'  # Default
 ```
 
 ### Mitigation: Blind Evaluation

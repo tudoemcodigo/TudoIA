@@ -2,8 +2,10 @@
 name: microsoft-docs
 description: Understand Microsoft technologies by querying official documentation. Use whenever the user asks how something works, wants tutorials, needs configuration options, limits, quotas, or best practices for any Microsoft technology (Azure, .NET, M365, Windows, Power Platform, etc.)—even if they don't mention "docs." If the question is about understanding a concept rather than writing code, this is the right skill.
 context: fork
-compatibility: Primarily uses the Microsoft Learn MCP Server (https://learn.microsoft.com/api/mcp); if that is unavailable, fall back to the mslearn CLI (`npx @microsoft/learn-cli`).
+compatibility: Primarily uses the Microsoft Learn MCP Server (https://learn.microsoft.com/api/mcp); if that is unavailable, report it (the mslearn CLI is used only on explicit user request, see CLI Alternative).
 ---
+
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
 
 # Microsoft Docs
 
@@ -61,14 +63,14 @@ Fetch after search when:
 
 ## CLI Alternative
 
-If the Learn MCP server is not reachable, use the `mslearn` CLI from the command line instead:
+If the Learn MCP server is not reachable, say so. Do not download or run the `mslearn` CLI on your own (IA-FER-02, IA-OPS-01): use it only if the user asks, with a pinned version whose package was read first (`@microsoft/learn-cli@<version>`):
 
 ```sh
-# Run directly (no install needed)
-npx @microsoft/learn-cli search "azure functions timeout"
+# Only on explicit user request, pinned version
+npx @microsoft/learn-cli@<version> search "azure functions timeout"
 
-# Or install globally, then run
-npm install -g @microsoft/learn-cli
+# Or install globally (also only on request), then run
+npm install -g @microsoft/learn-cli@<version>
 mslearn search "azure functions timeout"
 ```
 

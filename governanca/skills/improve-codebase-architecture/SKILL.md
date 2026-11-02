@@ -3,6 +3,9 @@ name: improve-codebase-architecture
 description: Applies deep module design principles (Ousterhout standard), eliminating shallow wrappers, pass-through classes, and fragmented logic. Use when reviewing code structure, designing new services, refactoring sprawling codebases, or consolidating scattered domain rules into cohesive, deep modules.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+> In .NET TEC services the structure of ARQ-EST/ARQ-APL and ADR 0008 (layers, one type per file, validator per command) prevails over the consolidation advice below.
+
 # Codebase Architecture Guidelines (Deep Modules & Ousterhout Standard)
 
 ## Overview
@@ -79,6 +82,8 @@ Before extracting a new class, file, or helper, ask:
 3. *If this module is deleted tomorrow, does the system lose a capability or just an unnecessary intermediary?*
 
 ### Concrete Before & After
+
+*Not applicable to TEC services: there, ARQ-EST/ARQ-APL and ADR 0008 require the layers, a validator per command, one type per file and external effects by event/Outbox (ARQ-APL-18). The example illustrates the principle outside TEC; in TEC apply depth inside each layer and in `TEC.*` components (minimal public surface, CMP-EST-08).*
 
 #### ❌ Shallow & Fragmented (Anti-Pattern):
 ```

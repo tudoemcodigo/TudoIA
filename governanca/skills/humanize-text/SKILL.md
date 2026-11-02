@@ -26,6 +26,7 @@ Large Language Models (LLMs) suffer from predictable statistical convergence: re
 2. **Dynamic Rhythm & Metric Variety:** AI prose clusters around identical sentence lengths (18–25 words). Real human writing alternates between punchy statements and descriptive clauses.
 3. **Restraint and Emotional Grounding:** Resist breathless cheerleading. If something is effective, demonstrate it through facts, measurable numbers, and code examples — never through empty superlatives.
 4. **Preserve Exact Technical Precision:** Never modify code blocks, variable names, URLs, commit hashes, formulas, architectural boundaries, or cited benchmark numbers.
+5. **Leave Doctrine formats untouched:** never rewrite `## Regras` blocks, rule IDs (`FAM-XXX-NN`), the ` — ` separator, front-matter, or the ADR and index tables of a doctrine (the validator requires that exact format).
 
 ---
 

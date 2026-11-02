@@ -4,6 +4,8 @@ description: Guide for creating high-quality MCP (Model Context Protocol) server
 license: Complete terms in LICENSE.txt
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 <!-- Adaptado para o TudoIA em 27/10/2026 a partir do original (anthropics/skills@ef74077, skills/mcp-builder). Mudanças descritas em governanca/ORIGEM.md. -->
 
 # MCP Server Development Guide
@@ -25,7 +27,7 @@ Creating a high-quality MCP server involves four main phases:
 #### 1.1 Understand Modern MCP Design
 
 **API Coverage vs. Workflow Tools:**
-Balance comprehensive API endpoint coverage with specialized workflow tools. Workflow tools can be more convenient for specific tasks, while comprehensive coverage gives agents flexibility to compose operations. Performance varies by client—some clients benefit from code execution that combines basic tools, while others work better with higher-level workflows. When uncertain, prioritize comprehensive API coverage.
+Balance comprehensive API endpoint coverage with specialized workflow tools. Workflow tools can be more convenient for specific tasks, while comprehensive coverage gives agents flexibility to compose operations. Performance varies by client—some clients benefit from code execution that combines basic tools, while others work better with higher-level workflows. When uncertain, prioritize comprehensive API coverage. In TEC, implement only the operations the current use case needs, reads before writes, with `destructiveHint` on destructive tools (IA-MIN-01, IA-FER-05).
 
 **Tool Naming and Discoverability:**
 Clear, descriptive tool names help agents find the right tools quickly. Use consistent prefixes (e.g., `github_create_issue`, `github_list_repos`) and action-oriented naming.
@@ -72,7 +74,7 @@ Key pages to review:
 Review the service's API documentation to identify key endpoints, authentication requirements, and data models. Use web search and WebFetch as needed.
 
 **Tool Selection:**
-Prioritize comprehensive API coverage. List endpoints to implement, starting with the most common operations.
+Prioritize comprehensive API coverage. List endpoints to implement, starting with the most common operations. In TEC, list only the operations the use case needs (reads first; annotate `destructiveHint`).
 
 ---
 
@@ -137,7 +139,7 @@ Review for:
 
 **TypeScript:**
 - Run `npm run build` to verify compilation
-- Test with MCP Inspector: `npx @modelcontextprotocol/inspector`
+- Test with MCP Inspector only if the user asks for it, with a pinned version whose package was read first (it downloads and runs remote code; IA-FER-02): `npx @modelcontextprotocol/inspector@<version>`
 
 **Python:**
 - Verify syntax: `python -m py_compile your_server.py`

@@ -3,13 +3,15 @@ name: code-review-and-quality
 description: Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple dimensions before it enters the main branch. Use when asked to review a diff or a pull request, even when the diff is pasted inline.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Code Review and Quality
 
 ## Overview
 
 Multi-dimensional code review with quality gates. Every change gets reviewed before merge — no exceptions. Review covers five axes: correctness, readability, architecture, security, and performance.
 
-**The approval standard:** Approve a change when it definitely improves overall code health, even if it isn't perfect. Perfect code doesn't exist — the goal is continuous improvement. Don't block a change because it isn't exactly how you would have written it. If it improves the codebase and follows the project's conventions, approve it.
+**The approval standard:** Approve a change when it definitely improves overall code health, even if it isn't perfect. Perfect code doesn't exist — the goal is continuous improvement. Don't block a change because it isn't exactly how you would have written it. If it improves the codebase and follows the project's conventions, approve it. Exception in TEC: a violation of a Doctrine MUST rule without an accepted ADR is Critical and blocks approval, citing the rule ID (ECO-ADO-04, ECO-CON-06).
 
 ## When to Use
 
@@ -276,7 +278,7 @@ When reviewing code — whether written by you, another agent, or a human:
 - **Don't soften real issues.** "This might be a minor concern" when it's a bug that will hit production is dishonest.
 - **Quantify problems when possible.** "This N+1 query will add ~50ms per item in the list" is better than "this could be slow."
 - **Push back on approaches with clear problems.** Sycophancy is a failure mode in reviews. If the implementation has issues, say so directly and propose alternatives.
-- **Accept override gracefully.** If the author has full context and disagrees, defer to their judgment. Comment on code, not people — reframe personal critiques to focus on the code itself.
+- **Accept override gracefully.** If the author has full context and disagrees, defer to their judgment (not for a Doctrine MUST violation, which only an ADR can authorize). Comment on code, not people — reframe personal critiques to focus on the code itself.
 
 ## Dependency Discipline
 

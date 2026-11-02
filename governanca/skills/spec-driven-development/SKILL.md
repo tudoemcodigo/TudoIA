@@ -3,6 +3,9 @@ name: spec-driven-development
 description: Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when drafting a PRD or requirements document with objectives and scope, or when requirements are unclear, ambiguous, or only exist as a vague idea. Use when a single requirement spans several independently testable capabilities and needs decomposing into a capability map of modules before specifying.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+> Applies to cross-cutting changes (ARQ-PRI-08/09) or when the user asks; trivial and contained changes proceed directly.
+
 # Spec-Driven Development
 
 ## Overview
@@ -18,6 +21,8 @@ Write a structured specification before writing any code. The spec is the shared
 - The task would take more than 30 minutes to implement
 
 **When NOT to use:** Single-line fixes, typo corrections, or changes where requirements are unambiguous and self-contained.
+
+**In TEC services and components** the file-count and duration triggers above do not apply: use this skill for cross-cutting changes (public contract, data model, auth, concurrency, infra, new dependency; ARQ-PRI-08/09) or when the user asks. Trivial and contained changes proceed directly. Outside TEC the triggers above stand.
 
 ## The Gated Workflow
 
@@ -197,7 +202,7 @@ Break the plan into discrete, implementable tasks:
 - Each task has explicit acceptance criteria
 - Each task includes a verification step (test, build, manual check)
 - Tasks are ordered by dependency, not by perceived importance
-- No task should require changing more than ~5 files
+- No task should require changing more than ~5 files (outside TEC; in TEC, one reviewable, verifiable slice, see `planning-and-task-breakdown`)
 
 > Follow `planning-and-task-breakdown` for the full task-sizing and dependency-ordering mechanics; it is the canonical source. The template below is a lightweight inline form; if they ever diverge, `planning-and-task-breakdown` takes precedence.
 

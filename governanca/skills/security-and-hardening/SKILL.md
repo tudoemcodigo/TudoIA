@@ -3,6 +3,8 @@ name: security-and-hardening
 description: Hardens code against vulnerabilities. Use when auditing an input handler for vulnerabilities, when handling user input, authentication, data storage, or external integrations, or when checking a login flow is safe against the OWASP Top Ten. Use when building any feature that accepts untrusted data, manages user sessions, or interacts with third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or assessing supply-chain risk in a new package. Use when personal data or privacy compliance (GDPR, CCPA) is involved.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Security and Hardening
 
 ## Overview
@@ -47,7 +49,7 @@ If you can't name the trust boundaries for a feature, you're not ready to secure
 - **Parameterize all database queries** — never concatenate user input into SQL
 - **Encode output** to prevent XSS (use framework auto-escaping, don't bypass it)
 - **Use HTTPS** for all external communication
-- **Hash passwords** with bcrypt/scrypt/argon2 (never store plaintext)
+- **Hash passwords** with bcrypt/scrypt/argon2 (never store plaintext); in .NET TEC services use the hash of `TEC.Core.Cryptography` (CMP-AUD-06)
 - **Set security headers** (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
 - **Use httpOnly, secure, sameSite cookies** for sessions
 - **Run the detected package manager's native audit** against the committed lockfile before every release
@@ -86,7 +88,7 @@ Patterns: [Injection](references/hardening-patterns.md#injection), [XSS](referen
 
 ### Authentication and sessions
 
-- Hash passwords with bcrypt (≥12 rounds), scrypt, or argon2. The session secret comes from the environment, never from code.
+- Hash passwords with bcrypt (≥12 rounds), scrypt, or argon2 (in .NET TEC services: the hash of `TEC.Core.Cryptography`, CMP-AUD-06). The session secret comes from the environment, never from code (in TEC services: from `TEC.Vault`, ARQ-SEG-10).
 - Session cookies are `httpOnly`, `secure`, and `sameSite: 'lax'` or `'strict'` (the CSRF defense; `'none'` sends the cookie on cross-site requests), with a bounded `maxAge`.
 
 Pattern: [Authentication](references/hardening-patterns.md#broken-authentication).
@@ -101,7 +103,7 @@ Patterns: [Misconfiguration](references/hardening-patterns.md#security-misconfig
 
 ### Input validation and uploads
 
-- Validate at the boundary with a schema: allowlisted shape, lengths, enums, formats. Reject with 422 and structured details; downstream code uses only the parsed, typed value.
+- Validate at the boundary with a schema: allowlisted shape, lengths, enums, formats. Reject with 422 and structured details (in TEC services: 400 with `field`, ARQ-SEG-19); downstream code uses only the parsed, typed value.
 - Uploads: allowlist MIME types, cap size, verify content (magic bytes) when it matters. The extension proves nothing.
 
 Patterns: [Schema validation](references/hardening-patterns.md#schema-validation-at-boundaries), [File upload](references/hardening-patterns.md#file-upload-safety).
@@ -126,7 +128,7 @@ Pattern: [Rate limiting](references/hardening-patterns.md#rate-limiting).
 
 ### Secrets
 
-Secrets come from the environment. `.env.example` is committed with placeholders; real `.env*` files and key material are gitignored; grep the staged diff before committing. **A secret that reaches a remote is compromised the moment it lands: rotate it first, then purge history.**
+Secrets come from the environment. `.env.example` is committed with placeholders; real `.env*` files and key material are gitignored; check the staged diff before committing without printing the matching lines (IA-PRV-03). **A secret that reaches a remote is compromised the moment it lands: rotate it first, then purge history.** In TEC services the secret value comes from the `TEC.Vault` vault and `appsettings` holds only its name (ARQ-SEG-10); the environment and `.env` apply only to Development and to the agent itself.
 
 Pattern: [Secrets management](references/hardening-patterns.md#secrets-management).
 
