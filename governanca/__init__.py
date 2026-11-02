@@ -892,6 +892,14 @@ def _planejar(raiz: Path, home: Path, dir_backup: Path | None = None,
                 if len(v) >= _MIN_SEGREDO and (k in referenciadas or _NOME_SEGREDO.search(k))}
 
     instancias = cfg.get("instancias")
+    # Setup da máquina (nomes de contas e pastas pessoais) não vai para o repositório: `instancias.local.json`, ignorado
+    # pelo git, tem precedência sobre a lista versionada. Malformado = erro (nunca vira lista vazia em silêncio).
+    local = g / "instancias.local.json"
+    if local.is_file():
+        bruto = _json(local).get("instancias")
+        if not isinstance(bruto, list):
+            raise ErroGovernanca(f"{local}: 'instancias' deve ser uma lista")
+        instancias = bruto
     if not (instancias and isinstance(instancias, list)):
         instancias = None
 
