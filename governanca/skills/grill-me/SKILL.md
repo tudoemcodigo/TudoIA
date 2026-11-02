@@ -3,6 +3,8 @@ name: grill-me
 description: Technical alignment and critical interview protocol before executing architectural changes, major new features, infrastructure refactorings, or external library additions. Challenges underlying assumptions, surfaces hidden trade-offs, prevents scope creep and yes-man sycophancy, and forces explicit alignment.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Grill-Me Protocol (Critical Architectural Alignment & Hypothesis Interrogation)
 
 ## Overview
@@ -15,7 +17,7 @@ Instead, the agent activates this protocol to rigorously challenge assumptions, 
 
 ## When to Use
 
-- **Major Feature Requests:** Any task estimated to touch more than 3 files or introduce new domain entities.
+- **Major Feature Requests:** Any task estimated to touch more than 3 files or introduce new domain entities. In TEC services and components, use the blast radius instead of the file count: cross-cutting changes (contract, data model, auth, concurrency, infra, new dependency; ARQ-PRI-08) or when the user asks; trivial and contained changes proceed directly, with few objective questions (IA-POS-04).
 - **Architectural Refactorings:** Splitting services, migrating databases, rewriting subsystem core logic.
 - **Dependency Ingestion:** Introducing a new third-party framework, NuGet package, NPM dependency, or distributed service.
 - **Vague or Dubious Prompts:** Requests containing implicit trade-offs, potential security risks, or concurrency bottlenecks.

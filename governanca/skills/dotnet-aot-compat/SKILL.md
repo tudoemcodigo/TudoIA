@@ -11,6 +11,8 @@ description: >
 license: MIT
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 <!-- Adaptado para o TudoIA em 27/10/2026 a partir do original (dotnet/skills@05aeb65, plugins/dotnet-upgrade/skills/dotnet-aot-compat). Mudanças descritas em governanca/ORIGEM.md. -->
 
 # dotnet-aot-compat
@@ -61,6 +63,8 @@ The trimmer tracks `[DynamicallyAccessedMembers]` annotations through assignment
 > **Do not explore the codebase up-front.** The build warnings tell you exactly which files and lines need changes. Follow a tight loop: **build → pick a warning → open that file at that line → apply the fix recipe → rebuild**. Reading or analyzing source files beyond what a specific warning points you to is wasted effort and leads to timeouts. Let the compiler guide you.
 >
 > ❌ Do NOT run `find`, `ls`, or `grep` to understand the project structure before building, and do not read README or architecture docs to "understand the system" first. Your first action should be Step 1 (enable AOT analysis), then build. Project rules files (AGENTS.md, CLAUDE.md, .cursor/rules) still apply and are not exploration.
+
+> In TEC repositories your first action is to read `Directory.Build.props` and `build/Tec.Build.props` (IA-VER-06). `IsAotCompatible` is already `true` by default in `TEC.*` components (CMP-EST-13) and the canonical props file is not edited (CMP-EST-02), so skip Step 1 there.
 
 ### Step 1: Enable AOT analysis in the .csproj
 
@@ -202,7 +206,7 @@ public void LoadPlugin(string assemblyName) {
 }
 ```
 
-This propagates to callers — they must also be annotated with `[RequiresUnreferencedCode]`. Use sparingly; it marks the entire call chain as trim-incompatible.
+This propagates to callers — they must also be annotated with `[RequiresUnreferencedCode]`. Use sparingly; it marks the entire call chain as trim-incompatible. For public `TEC.*` APIs see Stop Signals.
 
 ### Step 5: Rebuild and repeat
 
@@ -225,7 +229,7 @@ dotnet build <project.csproj>  # builds all TFMs
 - **Start fixing after one build.** Do not do a second analysis pass — begin implementing fixes for the most common warning pattern immediately after Step 3 triage.
 - Stop after achieving **0 IL warnings** for net8.0+ TFMs. Don't optimize or refactor already-clean annotations.
 - If a warning requires **architectural refactoring** beyond annotation flow fixes (e.g., replacing an entire serialization layer), document it and stop — don't rewrite large subsystems.
-- Limit to **3 build-fix iterations** per warning. If annotation flow doesn't resolve it after 3 attempts, escalate to `[RequiresUnreferencedCode]`.
+- Limit to **3 build-fix iterations** per warning. If annotation flow doesn't resolve it after 3 attempts, escalate to `[RequiresUnreferencedCode]`. In public APIs of `TEC.*` components, stop after 3 attempts and report the diagnosis instead (ARQ-PRI-11): the annotation propagates IL2026 to consumers and is a contract change (CMP-EST-08/10). Use it there only on `internal` members or with a recorded decision (ADR/CHANGELOG).
 - Don't chase warnings in **third-party dependencies** you can't modify. Note them and move on.
 - If the user asked a scoped question (e.g., "fix warnings in this file"), don't expand to the entire project.
 

@@ -3,6 +3,8 @@ name: incremental-implementation
 description: Delivers changes incrementally in thin, verifiable slices. Use when implementing any feature or change that touches more than one file, or when picking up the next task from a plan. Use when rolling a change out behind a feature flag, when you're about to write a large amount of code at once, or when a task feels too big to land in one step.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Incremental Implementation
 
 ## Overview
@@ -38,7 +40,7 @@ For each slice:
 1. **Implement** the smallest complete piece of functionality
 2. **Test** — run the test suite (or write a test if none exists)
 3. **Verify** — confirm the slice works as expected (tests pass, build succeeds, manual check)
-4. **Commit** -- save your progress with a descriptive message (see `git-workflow-and-versioning` for atomic commit guidance)
+4. **Commit point** -- if the user asked for commits (IA-OPS-03), save your progress with a descriptive message (see `git-workflow-and-versioning` for atomic commit guidance); otherwise leave the verified slice uncommitted and flag the commit point
 5. **Move to the next slice** — carry forward, don't restart
 
 ## Slicing Strategies
@@ -205,7 +207,7 @@ After each increment, verify with the repository's own commands via `desktop-com
 - [ ] The build succeeds with zero warnings (`dotnet build`, `npm run build`, etc.)
 - [ ] Type checking and linting pass
 - [ ] The new functionality works as expected
-- [ ] The change is committed with a descriptive message (following `git-workflow-and-versioning`)
+- [ ] If the user asked for commits, the change is committed with a descriptive message (following `git-workflow-and-versioning`)
 
 **Note:** Run each verification command after a change that could affect it. After a successful run, don't repeat the same command unless the code has changed since — re-running on unchanged code adds no information.
 
@@ -237,11 +239,11 @@ After each increment, verify with the repository's own commands via `desktop-com
 
 After completing all increments for a task:
 
-- [ ] Each increment was individually tested and committed
+- [ ] Each increment was individually tested (and committed, if the user asked for commits)
 - [ ] The full test suite passes
 - [ ] The build is clean
 - [ ] The feature works end-to-end as specified
-- [ ] No uncommitted changes remain
+- [ ] No unverified changes remain (verified but uncommitted work is expected unless the user asked for commits, IA-OPS-03)
 
 ## See Also
 

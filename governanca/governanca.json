@@ -27,7 +27,8 @@
     "dotnet-aot-compat",
     "security-threat-model",
     "advanced-evaluation",
-    "n8n-expression-syntax"
+    "n8n-expression-syntax",
+    "doutrina-tec"
   ],
   "mcp": [
     "context7",

@@ -3,6 +3,8 @@ name: git-workflow-and-versioning
 description: Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, splitting uncommitted work in a messy working tree into clean atomic commits, opening or reviewing a pull request (PR), pushing to a remote, or when you need to organize work across multiple parallel streams. Use when cutting a release, choosing a semantic version bump, tagging, or writing a changelog.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Git Workflow and Versioning
 
 ## Overview
@@ -35,9 +37,11 @@ This is the recommended default. Teams using gitflow or long-lived branches can 
 
 Each successful increment gets its own commit. Don't accumulate large uncommitted changes.
 
+In TEC services and components, commit and push only when the user asks (IA-OPS-03); without that request, leave the verified slice uncommitted and flag the commit point. When asked, commit one slice at a time on a branch off the default branch. Outside TEC, the text above stands.
+
 ```
 Work pattern:
-  Implement slice → Test → Verify → Commit → Next slice
+  Implement slice → Test → Verify → Commit (when the user asked for commits) → Next slice
 
 Not this:
   Implement everything → Hope it works → Giant commit
@@ -186,7 +190,7 @@ Agent starts work
     └── Feature complete → All commits form a clean history
 ```
 
-This pattern means you never lose more than one increment of work. If an agent goes off the rails, `git reset --hard HEAD` takes you back to the last successful state.
+This pattern means you never lose more than one increment of work. In the diagram, "Commit" means "commit when the user asked for commits" (IA-OPS-03), and "Revert" means undoing only what the agent changed. If an agent goes off the rails, revert only the files the agent itself changed (undo its edits, or `git restore <own paths>` after inspecting `git status`). Never run `git reset --hard`, `git stash`, `git checkout -- <file>` or `git clean` over changes the agent did not make (IA-OPS-04); when the tree holds someone else's work, use a dedicated worktree. `git reset --hard HEAD` is acceptable only in a worktree or clone the agent created.
 
 ## Change Summaries
 
@@ -216,8 +220,8 @@ Before every commit:
 # 1. Check what you're about to commit
 git diff --staged
 
-# 2. Ensure no secrets
-git diff --staged | grep -i "password\|secret\|api_key\|token"
+# 2. Ensure no secrets (never print the matching lines: IA-PRV-03)
+git diff --staged | grep -qiE "password|secret|api_key|token" && echo "possible secret in the staged diff"
 
 # 3. Run tests
 npm test
@@ -294,6 +298,8 @@ git push origin v1.4.0
 
 Derive the version from the tag rather than hand-editing it in scattered files, so the artifact, the tag, and the changelog can never disagree.
 
+In repositories with an automated release (TEC components: CMP-PUB-05/06, CMP-EST-04), follow the repository's process instead: the version lives in `Directory.Build.props`, the tag and the Release are created by the publish workflow, and a tag is never created or pushed by hand; component versions follow CMP-EST-10 (0.0.1 while ADR 0003 applies), not a literal "breaking means major". The manual commands above apply to repositories without automated release, and only when the user asks (IA-OPS-01, IA-OPS-03).
+
 ### Keep a changelog written for humans
 
 A changelog is not `git log`. It's the curated, consumer-facing answer to "what changed and do I care?" — grouped by `Added / Changed / Fixed / Deprecated / Removed / Security`, newest on top, every entry phrased around user impact, not internal mechanics.
@@ -351,5 +357,5 @@ For every commit:
 For every release (anything with consumers):
 
 - [ ] The version bump matches the change: breaking → major, additive → minor, fix → patch
-- [ ] The release is tagged, and the version is derived from the tag, not hand-edited out of sync
+- [ ] The release is tagged, and the version is derived from the tag, not hand-edited out of sync (in TEC components, by the publish workflow)
 - [ ] The changelog has a curated, human-readable entry grouped by impact for this version

@@ -3,6 +3,8 @@ name: using-agent-skills
 description: Discovers and invokes agent skills. Use when starting a session, or when you need to decide which skill or workflow applies to the piece of work at hand. This is the meta-skill that governs how all other skills are discovered and invoked.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Using Agent Skills
 
 ## Overview
@@ -13,11 +15,12 @@ Agent Skills is a canonical collection of engineering and architectural workflow
 
 ## Canonical Skill Discovery (TudoIA Catalog)
 
-When a task arrives, identify the development phase and apply the corresponding skill from the 14 active skills in the catalog:
+When a task arrives, identify the development phase and apply the corresponding skill from the 22 active skills in the catalog, plus `doutrina-tec` (23 in total):
 
 ```
 Task arrives
     │
+    ├── TEC service or component work? ────────────────────→ doutrina-tec (load first)
     ├── Architectural change / Major feature / New tech? ──→ grill-me
     ├── Specifying a project, feature, or change? ────────→ spec-driven-development
     ├── Breaking a spec or user request into tasks? ───────→ planning-and-task-breakdown
@@ -30,8 +33,18 @@ Task arrives
     ├── Reviewing code quality & architectural health? ─────→ code-review-and-quality
     │   └── Hardening inputs, auth, or secrets (OWASP)? ───→ security-and-hardening
     ├── Committing, branching, PRs, or release tagging? ───→ git-workflow-and-versioning
-    └── Polishing prose, removing AI cliches & slop? ───────→ humanize-text
+    ├── Polishing prose, removing AI cliches & slop? ───────→ humanize-text
+    ├── Personal data / LGPD / incidents? ─────────────────→ lgpd-compliance
+    ├── Logging, metrics, tracing, alerts? ────────────────→ observability-and-instrumentation
+    ├── Recording a decision (ADR) or documenting? ────────→ documentation-and-adrs
+    ├── Building an MCP server? ───────────────────────────→ mcp-builder
+    ├── Native AOT / trimming (IL warnings)? ──────────────→ dotnet-aot-compat
+    ├── Explicit threat-model request? ────────────────────→ security-threat-model
+    ├── LLM-as-judge / evaluating model outputs? ──────────→ advanced-evaluation
+    └── n8n expressions (`{{ }}`)? ────────────────────────→ n8n-expression-syntax
 ```
+
+In work on a TEC service or component, load `doutrina-tec` first, before any other skill. Precedence is that of ECO-PRE-07: the Doctrine prevails over every skill in this catalog; run only the part of the skill that is compatible and report the conflict with the rule ID and the passage of the skill.
 
 ---
 
@@ -97,4 +110,13 @@ Every skill includes runtime verification. A task is never complete until verifi
 | **Review** | [`security-and-hardening`](file:///D:/TudoIA/governanca/skills/security-and-hardening/SKILL.md) | OWASP defense, input validation, secret leakage protection, fail-closed boundaries |
 | **Ship** | [`git-workflow-and-versioning`](file:///D:/TudoIA/governanca/skills/git-workflow-and-versioning/SKILL.md) | Atomic commits, short-lived branches, and clean git history |
 | **Refine** | [`humanize-text`](file:///D:/TudoIA/governanca/skills/humanize-text/SKILL.md) | Eradicates synthetic AI slop, clichés, and cadence in both English and Portuguese prose |
+| **Align** | [`doutrina-tec`](file:///D:/TudoIA/governanca/skills/doutrina-tec/SKILL.md) | Routes to the TEC Doctrine by family and standard; loaded first in TEC work, it prevails over the other skills (ECO-PRE-07) |
+| **Specify** | [`documentation-and-adrs`](file:///D:/TudoIA/governanca/skills/documentation-and-adrs/SKILL.md) | Architecture decision records and documentation of design reasoning |
+| **Build** | [`mcp-builder`](file:///D:/TudoIA/governanca/skills/mcp-builder/SKILL.md) | Design of MCP servers: tool naming, pagination, errors, annotations, evaluation |
+| **Build** | [`dotnet-aot-compat`](file:///D:/TudoIA/governanca/skills/dotnet-aot-compat/SKILL.md) | Native AOT and trimming compatibility by resolving IL warnings |
+| **Build** | [`n8n-expression-syntax`](file:///D:/TudoIA/governanca/skills/n8n-expression-syntax/SKILL.md) | Validating n8n expression syntax and data mapping between nodes |
+| **Build** | [`observability-and-instrumentation`](file:///D:/TudoIA/governanca/skills/observability-and-instrumentation/SKILL.md) | Structured logs, RED/USE metrics, OpenTelemetry tracing, alerts |
+| **Verify** | [`advanced-evaluation`](file:///D:/TudoIA/governanca/skills/advanced-evaluation/SKILL.md) | LLM-as-judge: direct scoring, pairwise comparison, bias mitigation |
+| **Review** | [`lgpd-compliance`](file:///D:/TudoIA/governanca/skills/lgpd-compliance/SKILL.md) | LGPD from the code up: data map, legal basis, data subject rights, incidents |
+| **Review** | [`security-threat-model`](file:///D:/TudoIA/governanca/skills/security-threat-model/SKILL.md) | Repository-grounded threat model, only when explicitly requested |
 | **Orchestrate** | [`using-agent-skills`](file:///D:/TudoIA/governanca/skills/using-agent-skills/SKILL.md) | Meta-skill for discovering and applying the appropriate skill |

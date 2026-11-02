@@ -3,6 +3,8 @@ name: lgpd-compliance
 description: Brings a software project in line with Brazil's LGPD (Lei 13.709/2018) and the ANPD resolutions, from the code up. Use when code collects, stores, logs, shares, or deletes personal data of people in Brazil; when designing a feature that touches personal data; when asked "como estamos de LGPD", "auditar LGPD", "base legal", "direitos do titular", "exclusão de conta", "retenção de dados", "vazamento", "incidente", "comunicar a ANPD", "encarregado/DPO", "transferência internacional", "dados de menores", "ECA Digital"; or in English "are we privacy-safe", "data breach", "right to be forgotten". Also use when personal data is sent to an LLM, analytics, or cloud vendor. Trigger even if the word LGPD is not used.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # LGPD Compliance
 
 ## Overview
@@ -39,7 +41,7 @@ You are not a lawyer. You give factual readings of the norms, cite the article f
 > "Qual cenário descreve o projeto?
 > **A)** Novo (privacy by design desde o início) · **B)** Em produção, precisa de auditoria e correção · **C)** Misto · **D)** Houve um incidente agora"
 
-**D wins over everything:** go straight to [Incident path](#incident-path-scenario-d). For A, run the steps in order before shipping. For B, run Step 1 and Step 8 first (map and gaps), then fix in priority order. For C, run B on the existing base and A on new features.
+**D wins over everything** (priority of the work order only; every action that changes production, accounts or permissions still needs the user's confirmation, IA-OPS-01): go straight to [Incident path](#incident-path-scenario-d). For A, run the steps in order before shipping. For B, run Step 1 and Step 8 first (map and gaps), then fix in priority order. For C, run B on the existing base and A on new features.
 
 Create `.lgpd/STATUS.md` with: project, scenario, start date, owner/encarregado (or "pendente"), checklist of the steps below, next step.
 
@@ -141,7 +143,7 @@ Prioritize gaps by severity × effort: critical and cheap first (no legal basis,
 Time starts when the team learns the incident affected personal data. Read the deadlines in the reference file now.
 
 1. **Record the timestamp** of that knowledge. Call the encarregado.
-2. **Contain without destroying evidence:** revoke credentials and tokens, close the exposure, snapshot logs and systems.
+2. **Contain without destroying evidence:** propose each action below and ask the user to confirm it before running it (IA-OPS-01, human decision): revoke credentials and tokens, close the exposure, snapshot logs and systems.
 3. **Assess:** data categories, number of people (separate children, teenagers, elderly), cause, whether risk or relevant damage is plausible.
 4. **Decide notification** with the ANPD criteria in the reference file. Write the decision and its reasons down, whatever it is. ⏸ Human decision.
 5. **Communicate** to the ANPD and to the affected people within the deadline, with the mandatory content, in plain language. ⏸ Checkpoint on the texts.

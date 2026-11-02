@@ -3,6 +3,8 @@ name: debugging-and-error-recovery
 description: Guides systematic root-cause debugging. Use when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need to figure out what broke and why — a systematic approach to finding and fixing the root cause rather than guessing.
 ---
 
+> **Precedence in TEC:** In TEC services and components, the TEC Doctrine (skill `doutrina-tec`) prevails over this skill (ECO-PRE-07): run only the compatible part and report the conflict with the rule ID and the passage of this skill.
+
 # Debugging and Error Recovery
 
 ## Overview
@@ -75,6 +77,9 @@ Cannot reproduce on demand:
 For test failures (execute via `desktop-commander` using the repository's stack, following `disciplined-tdd`):
 ```bash
 # .NET / C#
+# TUnit on Microsoft.Testing.Platform (TEC): --filter is not supported there. Zero tests run is not a pass (IA-VER-02)
+dotnet test --project <proj> --treenode-filter "/*/*/<Class>/<Method>"
+# VSTest projects only:
 dotnet test --filter "FullyQualifiedName~TestName" --logger "console;verbosity=detailed"
 
 # Node / TypeScript

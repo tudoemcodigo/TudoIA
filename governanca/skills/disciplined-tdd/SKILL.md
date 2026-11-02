@@ -3,7 +3,7 @@ name: disciplined-tdd
 description: Enforces disciplined Test-Driven Development (Red-Green-Refactor) with public seam agreement, zero tautological mocks, zero verification theater, and mandatory adversarial path coverage. Use when implementing any logic, bug fix, behavior change, or refactoring.
 ---
 
-# Disciplined Test-Driven Development (Canonical TudoHaS TDD Standard)
+# Disciplined Test-Driven Development (Canonical TudoIA TDD Standard)
 
 ## Overview
 
