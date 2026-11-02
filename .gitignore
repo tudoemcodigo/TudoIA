@@ -41,3 +41,6 @@ build/
 
 # Serena (MCP de código): cache de language server e memórias que os agentes escrevem
 .serena/
+
+# Instâncias de cliente desta máquina (setup local da governança)
+governanca/instancias.local.json
