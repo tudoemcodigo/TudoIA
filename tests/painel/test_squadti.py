@@ -187,3 +187,12 @@ def test_token_recusado_e_erro_5xx_viram_503_sem_vazar_corpo(operador, api_falsa
 
 def test_estado_no_ar(operador, api_falsa):
     assert operador.get("/api/squadti/estado").json()["no_ar"] is True
+
+
+# ---------------------------------------------------------------- interface
+def test_interface_serve_os_arquivos_e_tem_menu_e_tela(operador):
+    assert operador.get("/app/squadti.js").status_code == 200
+    assert operador.get("/app/squadti.css").status_code == 200
+    html = operador.get("/app/").text
+    assert 'data-view="squadti"' in html and 'id="view-squadti"' in html and "/app/squadti.js" in html
+    assert operador.get("/app/squadti.py").status_code == 404
