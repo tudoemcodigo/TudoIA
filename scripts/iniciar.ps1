@@ -10,6 +10,10 @@ $arquivoEnv = Join-Path $raiz '.env'
 
 . "$PSScriptRoot\_comum.ps1"
 
+# O painel e o painel de controle: sobe SEMPRE, mesmo que o Docker, o Ollama ou o compose falhem (ai ele mostra o que esta fora).
+# Os passos 1 a 3 rodam sob try; o erro e guardado e relancado depois que o painel subiu.
+$erroInfra = $null
+try {
 # 1. Docker Desktop
 docker info *> $null
 if ($LASTEXITCODE -ne 0) {
@@ -44,9 +48,15 @@ if ($comfy -and -not (PortaAberta 8188)) {
 $projeto = ValorEnv 'TUDOIA_COMPOSE_PROJETO' 'tudoia'
 docker compose -p $projeto -f (Join-Path $raiz 'runtime\docker-compose.yml') --env-file $arquivoEnv up -d --wait --wait-timeout 300
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up falhou.' }
+} catch { $erroInfra = $_ }
 
 # 4. Painel
-if (-not (IniciarPainel)) { throw 'O painel nao respondeu na porta 3100.' }
+if (-not (IniciarPainel)) { throw 'O painel nao respondeu na porta 3100; veja dados\logs\painel.err.log.' }
+if ($erroInfra) {
+    Write-Warning ('O painel esta no ar, mas a infraestrutura nao subiu por completo: ' + $erroInfra.Exception.Message)
+    if (-not $SemNavegador) { Start-Process 'http://127.0.0.1:3100/app/' }
+    exit 1
+}
 
 # 5. API da Squad (opcional)
 if ($ComSquadti -and -not (IniciarSquadti)) { Write-Warning 'A API da SquadTI nao subiu; veja: docker logs squadti.' }

@@ -45,14 +45,20 @@ function CmdDoProcesso([int]$processo) {
     return ''
 }
 
+# Donos da porta (PIDs > 0; PID 0 e entrada fantasma/TimeWait). NAO filtra por estado: em alguns Windows o Get-NetTCPConnection
+# devolve State vazio, e `-State Listen` nao acha nada (foi o que fez o parar.ps1 deixar o painel no ar). Quem tem socket com
+# LocalPort = porta e o servidor; os clientes usam portas efemeras.
+function DonosDaPorta([int]$porta) {
+    return @(Get-NetTCPConnection -LocalPort $porta -ErrorAction SilentlyContinue |
+        Where-Object { $_.OwningProcess -gt 0 } | Select-Object -ExpandProperty OwningProcess -Unique)
+}
+
 # Encerra quem escuta na porta, SEM tocar nos demais processos. Ignora PID 0 (entrada fantasma). Se $deveConter for dado,
 # so encerra o processo cuja linha de comando contem o texto (nao mata outro programa que ocupe a mesma porta).
 # Devolve quantos processos encerrou.
 function PararPorta([int]$porta, [string]$deveConter = '') {
     $n = 0
-    $donos = Get-NetTCPConnection -State Listen -LocalPort $porta -ErrorAction SilentlyContinue |
-        Where-Object { $_.OwningProcess -gt 0 } | Select-Object -ExpandProperty OwningProcess -Unique
-    foreach ($dono in $donos) {
+    foreach ($dono in (DonosDaPorta $porta)) {
         if ($deveConter -and -not ((CmdDoProcesso $dono) -like "*$deveConter*")) {
             Write-Warning "Porta ${porta}: o processo $dono nao e o esperado ($deveConter); nao foi encerrado."
             continue
@@ -61,6 +67,23 @@ function PararPorta([int]$porta, [string]$deveConter = '') {
         $pai = (Get-CimInstance Win32_Process -Filter "ProcessId=$dono" -ErrorAction SilentlyContinue).ParentProcessId
         Stop-Process -Id $dono -Force -ErrorAction SilentlyContinue; $n++
         if ($pai -and $deveConter -and ((CmdDoProcesso $pai) -like "*$deveConter*")) { Stop-Process -Id $pai -Force -ErrorAction SilentlyContinue }
+    }
+    return $n
+}
+
+# Encerra os processos cuja linha de comando contem o texto (comparacao literal, sem curingas), exceto este proprio script.
+# Rede de seguranca para quando a porta nao revela o dono (launcher do venv sem socket, enumeracao de portas falhando).
+# Devolve quantos processos encerrou.
+function PararPorLinhaDeComando([string]$trecho) {
+    if (-not $trecho) { return 0 }
+    $n = 0
+    $alvos = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine.Contains($trecho) })
+    foreach ($p in $alvos) {
+        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+        # O processo ainda aparece por instantes depois do Stop-Process: espera a saida antes de contar.
+        Wait-Process -Id $p.ProcessId -Timeout 5 -ErrorAction SilentlyContinue
+        if (-not (Get-Process -Id $p.ProcessId -ErrorAction SilentlyContinue)) { $n++ }
     }
     return $n
 }
@@ -78,11 +101,32 @@ function IniciarPainel {
     return (Esperar { PainelNoAr } 90)
 }
 
+# `python -m tudoia_painel painel`: o python do venv e um launcher que gera o processo real, que e quem escuta.
+$script:LinhaDoPainel = '-m tudoia_painel painel'
+
 function PararPainel {
     $n = PararPorta $script:PortaPainel 'tudoia_painel'
+    # Quem sobrou (launcher sem socket, ou porta que o Windows nao soube atribuir): pela linha de comando do proprio painel.
+    $n += PararPorLinhaDeComando $script:LinhaDoPainel
     [void](Esperar { -not (PainelNoAr) } 15 1)
     return $n
 }
+
+# ---------------------------------------------------------------- servicos do host (Ollama, ComfyUI)
+# Para um servico do host: primeiro quem escuta na porta (so se a linha de comando contem $deveConter) e, sobrando algo (launcher,
+# bandeja, processo filho), quem tem uma das $linhas na linha de comando. Devolve quantos processos encerrou.
+function PararServicoDoHost([int]$porta, [string]$deveConter, [string[]]$linhas) {
+    $n = PararPorta $porta $deveConter
+    foreach ($linha in $linhas) { $n += PararPorLinhaDeComando $linha }
+    [void](Esperar { -not (PortaAberta $porta) } 15 1)
+    return $n
+}
+
+# `ollama serve` (porta 11434), o aplicativo da bandeja que o relanca e os runners dos modelos carregados.
+function PararOllama { return (PararServicoDoHost 11434 'ollama' @('ollama.exe', 'ollama app.exe')) }
+
+# ComfyUI portable (porta 8188): `python_embeded\python.exe ... ComfyUI\main.py`.
+function PararComfyui { return (PararServicoDoHost 8188 'ComfyUI' @('ComfyUI\main.py')) }
 
 # ---------------------------------------------------------------- SquadTI (container "squadti", perfil de compose "squadti", porta 8790)
 function ComposeSquadti([string[]]$argumentos) {

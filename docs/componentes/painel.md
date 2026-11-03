@@ -21,7 +21,20 @@ Outras formas de chamar, equivalentes:
 - `uv run --project . python -m tudoia_painel painel --porta 3100` com `PYTHONPATH` apontando para a raiz e para
   `painel\`. O `--porta` existe no `cli.py` (padrão 3100), mas o `tudoia.ps1 painel` não o repassa.
 
-O painel não é iniciado pelo `tudoia.ps1 up`. Você sobe o painel separadamente.
+### Ligar e desligar
+
+- `scripts\iniciar.ps1` e `scripts	udoia.ps1 up` **sobem o painel** em segundo plano (sem janela; logs em
+  `dados\logs\painel.out.log` e `painel.err.log`). O `iniciar.ps1` sobe o painel mesmo que o Docker, o Ollama ou o
+  compose falhem, para a tela mostrar o que ficou fora; nesse caso termina com aviso e código 1.
+- `scripts\parar.ps1` desliga o **ecossistema inteiro**: painel, API da Squad, todos os serviços Docker (inclusive os de
+  perfil opcional, com `--profile '*'`), Ollama (3 processos: servidor, bandeja e runners) e ComfyUI. Não depende de
+  variáveis do `.env`. Só encerra um processo se a linha de comando for a do serviço esperado, confirma que as portas 3100,
+  11434 e 8188 fecharam e sai com código 1 se algo continuar no ar. Dados e volumes ficam.
+- `scriptseiniciar.ps1` reinicia só o painel (e a Squad, se estava ligada), sem tocar nos demais serviços.
+
+O `parar.ps1` acha o painel pela porta (dono do socket em `3100`) e, como rede de segurança, pela linha de comando
+`-m tudoia_painel painel`. Não filtra por estado `Listen`: em alguns Windows o `Get-NetTCPConnection` devolve o estado
+vazio, e foi isso que fez o painel sobreviver ao `parar.ps1`.
 
 ## Seções da interface
 

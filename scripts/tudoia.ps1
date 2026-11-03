@@ -15,6 +15,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path $PSScriptRoot -Parent
 $env:PYTHONPATH = "$raiz;$raiz\painel"
+. "$PSScriptRoot\_comum.ps1"   # PortaAberta e IniciarPainel (o mesmo ciclo de vida de iniciar.ps1)
 # No PowerShell 5.1, $ErrorActionPreference='Stop' NÃO para quando um executável nativo sai com código diferente de 0.
 # Nativo roda o executável e, se ele falhar, encerra o script com o mesmo código (um sync que falha não deixa o up seguir).
 function Nativo {
@@ -32,7 +33,7 @@ function Compose { Nativo docker compose -p $projeto -f "$raiz\runtime\docker-co
 switch ($Comando) {
     'up' {
         # Ollama e ComfyUI são processos do host (a GPU fica fora do Docker). Pastas e binários vêm do .env.
-        if (-not (Get-NetTCPConnection -State Listen -LocalPort 11434 -ErrorAction SilentlyContinue)) {
+        if (-not (PortaAberta 11434)) {
             $env:OLLAMA_HOST = "127.0.0.1:11434"
             # Pasta de pesos: TUDOIA_OLLAMA_MODELS do .env, ou o padrão do repositório.
             $linhaPesos = Select-String -Path "$raiz\.env" -Pattern '^TUDOIA_OLLAMA_MODELS=(.+)$' -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -41,7 +42,9 @@ switch ($Comando) {
         }
         Py sync
         Compose up -d --build
-        Write-Host 'Painel: .\tudoia.ps1 painel  ->  http://127.0.0.1:3100/app/'
+        # O painel sobe em segundo plano (sem janela); `tudoia.ps1 painel` continua existindo para rodar em primeiro plano.
+        if (-not (IniciarPainel)) { Write-Error 'O painel nao respondeu na porta 3100; veja dados\logs\painel.err.log.'; exit 1 }
+        Write-Host 'Painel no ar: http://127.0.0.1:3100/app/'
     }
     'down'           { Compose down }
     'status'         { Compose ps }
