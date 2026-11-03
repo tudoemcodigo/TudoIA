@@ -1,223 +1,471 @@
-# Painel
+---
+titulo: Painel de controle
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-O painel é o ponto de controle do TudoIA. É uma aplicação FastAPI que serve uma SPA estática e uma API em `/api`.
-Pelo painel você sobe e para serviços, testa chaves de provedores, vê o uso de modelos, edita o roteamento, distribui a
-governança e gera o `config.yaml` do LiteLLM. Ele também tem o Estúdio (chat, imagens, vídeos e músicas).
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🖥️ Painel
 
-Código: `painel/tudoia_painel/`. Configuração: [configuracao.md](../configuracao.md).
+# 🖥️ Painel de controle
 
-## Como rodar
+> Para quem opera e mantém o TudoIA. Responde: o que o painel é, como subir e desligar, quais rotas expõe, quem pode
+> chamar cada uma, que erro devolve e o que ele grava em disco.
 
-```powershell
-.\scripts\tudoia.ps1 painel
+## 📑 Sumário
+
+- [🎯 Visão geral](#-visão-geral)
+- [🚀 Uso](#-uso)
+- [🤖 Tela SquadTI](#-tela-squadti)
+- [⚙️ Opções](#️-opções)
+- [🔌 API](#-api)
+- [🧩 Serviços controlados](#-serviços-controlados)
+- [🏛️ Integração com a Doutrina](#️-integração-com-a-doutrina)
+- [💾 O que o painel grava](#-o-que-o-painel-grava)
+- [❌ Erros e diagnóstico](#-erros-e-diagnóstico)
+- [🛡️ Segurança](#️-segurança)
+- [🧪 Testes](#-testes)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
+
+---
+
+## 🎯 Visão geral
+
+O painel é uma aplicação FastAPI (`painel/tudoia_painel/`) que serve uma SPA estática em `/app/` e uma API JSON em `/api`.
+Por ele você sobe e para serviços, edita provedores e segredos, ajusta o roteador `tudoia-auto`, distribui a governança
+aos clientes de IA, acompanha o uso e usa o Estúdio (chat, imagem, vídeo, música). A OpenAPI e a documentação
+interativa estão desligadas (`docs_url`, `redoc_url` e `openapi_url` são `None` em `app.py`).
+
+```mermaid
+flowchart LR
+    U["Navegador<br/>127.0.0.1:3100"] --> G["GuardaApi<br/>Host, Origin, corpo"]
+    G --> A["Autenticação OIDC<br/>sessão ou Bearer"]
+    A --> R["Routers em rotas/*.py"]
+    R --> L["LiteLLM :4000"]
+    R --> O["Ollama :11434"]
+    R --> C["ComfyUI :8188"]
+    R --> D["docker compose"]
+    R --> S["SquadTI :8790"]
+    R --> F[".env, config/, governanca/, dados/"]
+    A -. valida .-> K["Keycloak (IdP OIDC)"]
 ```
 
-Esse comando executa `python -m tudoia_painel painel` dentro do ambiente do projeto. O painel sobe em
-`http://127.0.0.1:3100/app/`. O uvicorn escuta só em `127.0.0.1`, com log em nível `warning`.
+Estrutura do código:
 
-Outras formas de chamar, equivalentes:
+- `app.py`: monta o `Contexto` (`ambiente.py`: raiz, home, serviços e a trava de escrita em `.env`, `governanca.json`,
+  `mcp.json` e catálogo), inclui os routers da tupla `ROTAS`, registra a autenticação e liga a `GuardaApi`.
+- `rotas/`: um `APIRouter` por domínio (`servicos`, `segredos`, `governanca`, `modelos`, `roteador`, `telemetria`,
+  `provedores`, `hardware`, `estudio_catalogo`, `estudio_arquivos`, `estudio_imagem`, `estudio_video`,
+  `estudio_musica`, `squadti`, `chat`, `ui`).
+- Regra de negócio fora das rotas: `servicos.py`, `provedores_service.py`, `modelos_service.py`, `roteador_service.py`,
+  `gerador.py`, `estudio_servico.py`, `skills_servico.py`, `mcp_teste.py`, `doutrina_servico.py`, `limites.py`.
+- Endereços dos upstreams (todos loopback): `upstreams.py` (LiteLLM `4000`, Ollama `11434`, ComfyUI `8188`).
 
-- `scripts\tudoia.cmd painel`. O `.cmd` só repassa os argumentos para o `tudoia.ps1`.
-- `uv run --project . python -m tudoia_painel painel --porta 3100` com `PYTHONPATH` apontando para a raiz e para
-  `painel\`. O `--porta` existe no `cli.py` (padrão 3100), mas o `tudoia.ps1 painel` não o repassa.
+## 🚀 Uso
 
-### Ligar e desligar
+### Subir
 
-- `scripts\iniciar.ps1` e `scripts	udoia.ps1 up` **sobem o painel** em segundo plano (sem janela; logs em
-  `dados\logs\painel.out.log` e `painel.err.log`). O `iniciar.ps1` sobe o painel mesmo que o Docker, o Ollama ou o
-  compose falhem, para a tela mostrar o que ficou fora; nesse caso termina com aviso e código 1.
-- `scripts\parar.ps1` desliga o **ecossistema inteiro**: painel, API da Squad, todos os serviços Docker (inclusive os de
-  perfil opcional, com `--profile '*'`), Ollama (3 processos: servidor, bandeja e runners) e ComfyUI. Não depende de
-  variáveis do `.env`. Só encerra um processo se a linha de comando for a do serviço esperado, confirma que as portas 3100,
-  11434 e 8188 fecharam e sai com código 1 se algo continuar no ar. Dados e volumes ficam.
-- `scriptseiniciar.ps1` reinicia só o painel (e a Squad, se estava ligada), sem tocar nos demais serviços.
+| Comando | Efeito |
+|---|---|
+| `.\scripts\tudoia.ps1 painel` | Roda `python -m tudoia_painel painel` em primeiro plano, em `http://127.0.0.1:3100/app/`. Não repassa `--porta`. |
+| `.\scripts\painel.ps1` | Se o painel não responde na porta 3100, sobe-o em segundo plano; abre o navegador (`-SemNavegador` desliga). |
+| `.\scripts\iniciar.ps1` | Liga Docker, Ollama, ComfyUI, serviços e painel (em segundo plano, sem janela). O painel sobe **sempre**, mesmo que Docker, Ollama ou o compose falhem (ele mostra o que ficou fora); nesse caso o script avisa e sai com 1. `-ComSquadti` liga também a API da Squad. |
+| `.\scripts\tudoia.ps1 up` | Sobe a pilha Docker (`compose up -d --build`) e o painel em segundo plano. |
+| `.\scripts\reiniciar.ps1` | Reinicia só o painel (e a Squad, se estava ligada). `-Tudo` desliga e liga tudo. Use depois de mudar código de rota ou serviço. |
+| `.\scripts\parar.ps1` | Desliga o ecossistema (ver abaixo). |
 
-O `parar.ps1` acha o painel pela porta (dono do socket em `3100`) e, como rede de segurança, pela linha de comando
-`-m tudoia_painel painel`. Não filtra por estado `Listen`: em alguns Windows o `Get-NetTCPConnection` devolve o estado
-vazio, e foi isso que fez o painel sobreviver ao `parar.ps1`.
+O uvicorn escuta só em `127.0.0.1`, com `log_level="warning"` (`cli.py`). Em segundo plano os logs ficam em
+`dados\logs\painel.out.log` e `painel.err.log`.
 
-## Seções da interface
+`parar.ps1` encerra painel, API da Squad, todos os serviços Docker (`compose --profile '*' stop`, inclusive os de perfil
+opcional), Ollama e ComfyUI. Só mata um processo cuja linha de comando seja a do serviço esperado, confere que as portas
+3100, 11434 e 8188 fecharam e sai com código 1 se algo continuar no ar. Dados e volumes ficam.
 
-A navegação está em `painel/tudoia_painel/static/index.html`:
+> [!WARNING]
+> `parar.ps1`, `reiniciar.ps1 -Tudo` e a ação "todos" do painel derrubam o Ollama e o ComfyUI. Nenhuma tarefa em
+> andamento nesses serviços sobrevive. Reiniciar só o painel (`reiniciar.ps1` sem `-Tudo`) não os toca.
 
-| Grupo | Seção (`data-view`) | Para que serve |
+### CLI (`python -m tudoia_painel <comando>`)
+
+Definida em `cli.py`. Os comandos passam por `.\scripts\tudoia.ps1 <comando>` quando existe o mesmo nome no `ValidateSet`.
+
+| Comando | O que faz |
+|---|---|
+| `painel [--porta N]` | Sobe o painel (padrão `3100`). Grava a porta em `TUDOIA_PAINEL_PORTA` para a guarda de Host. |
+| `sync` | Distribui regras, skills e MCP aos clientes de IA (`governanca.sincronizar`). |
+| `verificar` | Lista divergências (drift) sem escrever. Código de saída 1 se houver. |
+| `segredos` | Preenche no `.env` os segredos internos que estiverem vazios. Nunca troca um valor existente. |
+| `gerar-config` | Gera `runtime/litellm/config.yaml` a partir do catálogo, do roteamento e do `.env`. |
+
+Segredos gerados por `segredos`: `WEBUI_SECRET_KEY`, `SEARXNG_SECRET`, `N8N_ENCRYPTION_KEY`, `LITELLM_MASTER_KEY`
+(prefixo `sk-`), `LITELLM_DB_PASSWORD`, `TUDOIA_SESSAO_SEGREDO` e
+`CEREBRO_TOKEN_ESTATICO`. Com o perfil `keycloak` em `COMPOSE_PROFILES`, também `TUDOIA_KEYCLOAK_ADMIN_PASSWORD` e
+`KEYCLOAK_DB_PASSWORD`; com o perfil `squadti`, também `TUDOIA_SQUADTI_TOKEN`. O comando imprime só os nomes.
+
+### Telas
+
+A navegação (`static/index.html`) agrupa as telas por contexto. O cabeçalho tem três botões: **Iniciar Stack**,
+**Desligar** (ambos chamam a ação "todos" de [Serviços controlados](#-serviços-controlados)) e **Sincronizar IAs**
+(`governanca/sincronizar`).
+
+| Grupo do menu | Tela (`data-view`) e rótulo | Para que serve |
 |---|---|---|
-| Estúdio de criação | `chat` | Chat com modelos. Usa o LiteLLM (`/api/chat/completions`). |
-| Estúdio de criação | `imagens` | Geração de imagens, pelo ComfyUI ou por motor de nuvem. Inclui otimização de prompt e inpaint. |
-| Estúdio de criação | `videos` | Geração de vídeo pelo ComfyUI (fluxos Wan e MiniMax). |
-| Estúdio de criação | `musicas` | Geração de música pelo ComfyUI (fluxo YuE). |
-| Plataforma | `servicos` | Estado e ações (start, stop, restart) dos containers e dos processos do host. |
-| Plataforma | `hardware` | Uso de GPU, VRAM e fila do ComfyUI. Permite descarregar modelos da VRAM. |
-| Roteamento e modelos | `modelos` | Catálogo de modelos, testes de chave e modelos locais (Ollama). |
-| Roteamento e modelos | `roteador` | Grupos do roteador `tudoia-auto`, membros de cada grupo e geração do `config.yaml`. |
-| Agentes | `squadti` | Squad de agentes (SquadTI): inicia tarefas, responde à entrevista, conversa com o CHEFE, acompanha o cockpit, configura os agentes, aprova a especificação e o release, lê os arquivos gerados. Ver [squadti.md](squadti.md). |
-| Governança e segurança | `governanca` | Regras, skills, MCP e instâncias dos clientes. Dispara o `sync`. |
-| Governança e segurança | `segredos` | Chaves do `.env`, mascaradas, com teste e edição. |
-| Governança e segurança | `limites` | Limites e consumo de tokens por provedor (`/api/limites-tokens`). |
-| Governança e segurança | `telemetria` | Tráfego e ao vivo, a partir de `eventos.jsonl` e do LiteLLM. |
+| Estúdio de criação | `chat` ("Chat Playground"), `imagens` ("Gerador de Imagens"), `videos` ("Gerador de Vídeos"), `musicas` ("Gerador de Músicas") | Estúdio. Ver [estudio.md](estudio.md). |
+| Plataforma | `servicos` ("Serviços & Runtime"; tela inicial) | Estado e ações dos serviços; "Reiniciar Todos os Serviços". |
+| Plataforma | `hardware` ("Hardware & VRAM") | GPU, VRAM e fila do ComfyUI; "Limpar VRAM". |
+| Roteamento e modelos | `modelos` ("Modelos & Motores") | Catálogo por origem (Locais, Nuvem Free, Nuvem Pagos, Vídeo & Imagem), teste de modelos, modelos do Ollama e provedores de nuvem (novo provedor, escolher e sincronizar modelos novos). |
+| Roteamento e modelos | `roteador` ("Roteador LiteLLM") | Grupos do `tudoia-auto`, membros, auto-vínculo e geração do `config.yaml`. Ver [roteador.md](roteador.md). |
+| Governança e segurança | `governanca` ("Governança Canônica") | Regras, skills, MCP, instâncias e Doutrina. Ver [governanca.md](governanca.md). |
+| Governança e segurança | `segredos` ("Cofre de Segredos") | Chaves do `.env` mascaradas, filtradas por categoria (`FREE`, `PAID`, `GOVERNANCA`, `SISTEMA`); gravar, revelar e testar. |
+| Governança e segurança | `limites` ("Limites & Tokens"), `telemetria` ("Telemetria & Logs") | Consumo de tokens por provedor; tráfego ao vivo. |
+| Agentes | `squadti` ("SquadTI") | Duas abas: **Tarefas** (lista, nova tarefa, cockpit e conversa com o CHEFE) e **Agentes** (configuração; só o admin salva). Ver [Tela SquadTI](#-tela-squadti) e [squadti.md](squadti.md). |
+| Conta | `usuario` ("Minha conta") | Sessão atual e papéis. Aparece no menu depois do login. |
 
-Os textos da interface estão em português. Os nomes técnicos (`tudoia-auto`, `LITELLM_MASTER_KEY`) aparecem como estão.
+Os ícones do menu são SVG em linha no `index.html` (traço Lucide, ver [terceiros.md](../terceiros.md)); os criados por
+script vêm do mapa `ICONES` em `static/painel.js`. Arquivos estáticos servidos em `/app/{arquivo}`: `painel.js`,
+`painel.css`, `squadti.js`, `squadti.css`, `fontes.css`, `logo.svg`, `favicon.ico`, `logo-512.png` e `fonte-N.woff2`
+(1 a 2 dígitos). Qualquer outro nome responde 404.
 
-## Autenticação
+## 🤖 Tela SquadTI
 
-Login por OpenID Connect contra o IdP configurado (Keycloak por padrão). Detalhes do fluxo e dos controles estão em
-[seguranca.md](../seguranca.md#autenticação-oidc). Resumo:
+`static/squadti.js` (carregado depois de `painel.js`) e `static/squadti.css`. Todo texto que vem da API entra por
+`textContent`: briefing, mensagens, log e arquivos são conteúdo de modelo ou de usuário, nunca marcação.
 
-- `GET /auth/login` redireciona ao IdP. `GET /auth/callback` recebe o código, troca por tokens e cria a sessão.
-- `POST /auth/logout` encerra a sessão e leva ao logout do IdP.
-- `GET /api/sessao` diz à SPA se a autenticação está configurada, se há sessão e quais papéis ela tem. Essa rota não exige
-  login.
-- `GET /saude` responde `{"ok": true}` sem login e fora da guarda. Serve para launcher e healthcheck.
-- Cliente de serviço: com `TUDOIA_API_BEARER_CLIENTES`, o painel aceita `Authorization: Bearer <JWT>` do Keycloak em
-  `/api` (ver [seguranca.md](../seguranca.md#autenticação-oidc)).
+- **Aba Tarefas.** Lista de tarefas com a situação em português (aguardando respostas, aprovar especificação, aprovar
+  release, em andamento, concluída, bloqueada, escalada, escalada por QA ou por revisão). A lista atualiza a cada 5 s
+  enquanto a tela está aberta. **Nova tarefa** pede identificador, briefing, perfil, stack (automática por padrão) e
+  orçamento opcional; perfil diferente de `local-estrito` mostra o aviso de que o texto pode sair da máquina e exige o
+  consentimento.
+- **Cockpit** (ao abrir uma tarefa): trilha dos nós (analista, arquiteto, dba, dev_backend, dev_frontend, qa_testes,
+  revisor, appsec, devops, documentacao, release) com status pendente, rodando, ok ou falhou; barras de consumo dos três
+  eixos do orçamento (tokens, tempo, chamadas); log ao vivo (lido a cada 2 s enquanto a execução roda, até 500 eventos);
+  auditoria e proveniência; arquivos gerados; botões de responder, aprovar especificação, aprovar release e **continuar**
+  (tarefa escalada; permite ajustar os tetos, e não pula aprovações nem portões).
+- **Conversa com o CHEFE.** Canal único com a Squad (até 4 000 caracteres por mensagem; Enter envia). `status` pede um
+  resumo; `/ajuste <texto>` registra uma instrução, tratada como dado, para as próximas fases, sem alterar aprovações,
+  portões nem configuração. Durante a entrevista, responder ali ou no formulário vale igual.
+- **Aba Agentes.** Perfil, temperatura e máximo de tokens por agente (`chefe`, `analista`, `arquiteto`, `dba`, `backend`,
+  `frontend`, `revisor`, `senior`, `hacker`, `mantenedor`, `documentacao`), modo de revisão, validação em execução e
+  orçamento padrão. Perfis que podem sair da máquina ganham o selo "pode sair da máquina". Leitor e operador veem, **só o
+  admin salva** (`POST /api/squadti/agentes`).
+
+> [!WARNING]
+> Os perfis `local-estrito` (padrão), `hibrido` e `local` da Squad mapeiam para os modelos `tudoia-local-estrito`,
+> `tudoia-hibrido` e `tudoia-local` do gateway (`runtime/squadti/orquestrador/perfis.py`). O gerador do `config.yaml` desta
+> versão ([roteador.md](roteador.md)) só cria `tudoia-local`; os outros dois dependem de uma seção `perfis` em
+> `config/roteamento.yaml` que não existe aqui. Inferido do código; não executado.
+
+O que a Squad faz com cada agente está em [squadti.md](squadti.md).
+
+## ⚙️ Opções
+
+Variáveis lidas do `.env` pelo código do painel (valores nunca vão para este documento). Lista completa e padrões em
+[configuracao.md](../configuracao.md).
+
+| Variável | Padrão | Efeito |
+|---|---|---|
+| `TUDOIA_OIDC_ISSUER` | vazio | URL do realm OIDC (`http://` ou `https://`). Sem ela, OIDC fica desligado. |
+| `TUDOIA_OIDC_CLIENT_ID` / `TUDOIA_OIDC_CLIENT_SECRET` | vazio | Cliente do painel no IdP. |
+| `TUDOIA_OIDC_SCOPE` | `openid email profile` | Escopos pedidos no login. |
+| `TUDOIA_SESSAO_SEGREDO` | vazio | Assina o cookie de sessão. Mínimo de 32 caracteres. |
+| `TUDOIA_COOKIE_SEGURO` | `0` | `1`, `true` ou `sim` marca o cookie como `Secure`. |
+| `TUDOIA_API_BEARER_CLIENTES` | vazio | Lista (vírgula) de clientes de serviço (`azp`) aceitos com `Authorization: Bearer`. Vazio desliga o Bearer. |
+| `TUDOIA_SQUADTI_TOKEN` | vazio | Token (32+ caracteres) da API da Squad. Sem ele, `/api/squadti/*` responde 503. |
+| `TUDOIA_SQUADTI_URL` | `http://127.0.0.1:8790` | Só `http` em `127.0.0.1` ou `localhost`. |
+| `TUDOIA_COMPOSE_PROJETO` | `tudoia` | Nome do projeto no `docker compose -p`. |
+| `TUDOIA_COMFYUI_PORTABLE`, `TUDOIA_OLLAMA_MODELS` | ver `caminhos.py` | Pasta do ComfyUI portable e dos pesos do Ollama. |
+| `TUDOIA_ESTUDIO_POLLINATIONS` | desligado | `1` permite o motor Pollinations no Estúdio. |
+| `DOUTRINA_TEC` | vazio | Pasta da Doutrina TEC (precisa de `gerado/manifesto.json`). |
+| `LITELLM_MASTER_KEY` | gerada por `segredos` | Chave com que o painel fala com o LiteLLM. |
+
+## 🔌 API
+
+Tabela gerada dos decoradores em `painel/tudoia_painel/rotas/*.py` e `autenticacao.py` (conferida em 2026-11-03).
+Papel mínimo para alterar (`POST`, `PUT`, `PATCH`, `DELETE`): `operador`, salvo onde indicado. Todo `GET` exige apenas
+sessão válida (qualquer papel), salvo onde indicado. Regra completa em [Papéis](#papéis).
+
+### Sessão e interface
+
+| Método | Rota | Papel | O que faz |
+|---|---|---|---|
+| GET | `/auth/login` | nenhum | Redireciona ao IdP (PKCE S256). |
+| GET | `/auth/callback` | nenhum | Troca o código por tokens e cria a sessão. |
+| POST | `/auth/logout` | sessão | Encerra a sessão e leva ao logout do IdP. |
+| GET | `/api/sessao` | nenhum | Diz se o OIDC está configurado, se há sessão e quais papéis. |
+| GET | `/` | nenhum | Redireciona para `/app/`. |
+| GET | `/app/`, `/app/{arquivo}`, `/favicon.ico` | nenhum | SPA e estáticos. |
+| GET | `/saude` | nenhum | `{"ok": true}`. Fora de `/api` e sem login: launcher e healthcheck. |
+
+### Serviços, hardware e telemetria
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/servicos` | Lista serviços Docker e do host com `ativo`. |
+| POST | `/api/servicos/todos/{acao}` | `start`, `stop` ou `restart` de tudo. Outra ação: 422. |
+| POST | `/api/servicos/{nome}/{acao}` | Ação em um serviço. Nome desconhecido: 404. |
+| GET | `/api/hardware` | GPU, VRAM e fila do ComfyUI. |
+| POST | `/api/hardware/limpar-vram` | Descarrega modelos do Ollama da VRAM. |
+| GET | `/api/telemetria` | Tráfego e feed ao vivo (últimas 24 h do LiteLLM + `eventos.jsonl`). |
+| GET | `/api/limites-tokens?periodo=` | Consumo por provedor. `periodo`: `total`, `Nh` ou `Nd` (padrão `24h`). Outro valor cai em 24 h. |
+
+### Modelos, provedores e roteador
+
+| Método | Rota | Papel | O que faz |
+|---|---|---|---|
+| GET | `/api/modelos` | leitor | Catálogo e modelos locais. |
+| POST | `/api/modelos/testar` | operador | Testa modelos. Responde 200 mesmo com teste negativo. |
+| POST | `/api/modelos/local/baixar` | admin | Baixa modelo no Ollama. |
+| DELETE | `/api/modelos/local/{nome_modelo}` | operador | Remove modelo local. |
+| POST | `/api/modelos/local/{nome_modelo}/descarregar` | operador | Descarrega da VRAM. |
+| POST | `/api/modelos/local/{nome_modelo}/toggle-ativo` | operador | Liga ou desliga o modelo no catálogo. |
+| DELETE | `/api/modelos/midia/{item_id}` | operador | Remove item de mídia do catálogo do Estúdio. |
+| POST | `/api/provedores` | admin | Cadastra provedor (catálogo e chave no `.env`). |
+| GET | `/api/provedores/{provedor_id}/descobrir-modelos` | admin | Lista modelos na API do provedor. |
+| POST | `/api/provedores/{provedor_id}/modelos` | admin | Inclui modelos. |
+| GET | `/api/provedores/novos` | admin | Modelos novos desde a última sincronização. |
+| POST | `/api/provedores/sincronizar` | admin | Sincroniza catálogo com as APIs. |
+| POST | `/api/provedores/modelos-lote` | admin | Inclusão em lote. |
+| GET | `/api/roteador` | leitor | Estado do roteador. |
+| GET | `/api/roteador/detalhes` | leitor | Grupos e membros. |
+| POST | `/api/roteador/testar` | operador | Testa um pedido contra o `tudoia-auto`. |
+| POST | `/api/roteador/gerar` | operador | Grava `runtime/litellm/config.yaml`. Não reinicia o LiteLLM. |
+| PUT | `/api/roteador/grupos` | operador | Substitui a composição dos grupos. |
+| POST | `/api/roteador/auto-bind` | operador | Vincula modelos aos grupos automaticamente. |
+| POST | `/api/roteador/grupos/novo` | operador | Cria grupo. |
+| PATCH / DELETE | `/api/roteador/grupos/{grupo_id}` | operador | Edita; remove. |
+
+### Segredos e governança
+
+| Método | Rota | Papel | O que faz |
+|---|---|---|---|
+| GET | `/api/segredos` | admin | Lista chaves do `.env`, mascaradas, com `categoria` (`FREE`, `PAID`, `GOVERNANCA`, `SISTEMA`). |
+| PUT | `/api/segredos/{chave}` | admin | Grava o valor (backup do `.env` antes). |
+| POST | `/api/segredos/{chave}/revelar` | admin | Revela o valor (auditado). |
+| POST | `/api/segredos/{chave}/testar` | admin | Testa a chave no provedor. Responde 200 com o resultado. |
+| GET | `/api/governanca` | leitor | Estado: drift, Doutrina, alertas de MCP, instâncias, regras, skills, MCP. |
+| POST | `/api/governanca/sincronizar` | admin | `governanca.aplicar_tudo`: valida tudo antes de gravar. |
+| GET | `/api/governanca/instancias` | leitor | Instâncias de clientes configuradas. |
+| POST | `/api/governanca/instancias` | admin | Cria instância. |
+| PUT / DELETE | `/api/governanca/instancias/{id}` | admin | Edita; remove. |
+| POST | `/api/governanca/instancias/detectar` | admin | Detecta clientes instalados na home e nos workspaces. |
+| GET | `/api/governanca/{tipo}/{item}` | leitor | Lê regra, skill ou MCP. `tipo`: `mcp`, `skills`, `regras`. |
+| PUT | `/api/governanca/{tipo}/{item}/conteudo` | admin | Edita o arquivo. |
+| PUT / DELETE | `/api/governanca/{tipo}/{item}` | admin | Ativa ou desativa; remove. |
+| POST | `/api/governanca/regras` | admin | Inclui regra. |
+| POST | `/api/governanca/skills` | admin | Inclui skill. |
+| POST | `/api/governanca/skills/importar` | admin | Importa skill de repositório externo (executa `npx`). |
+| POST | `/api/governanca/mcp` | admin | Inclui servidor MCP. |
+| POST | `/api/governanca/mcp/{id}/testar` | admin | Testa o MCP (HTTP ou handshake stdio). Responde 200 com o resultado. |
+
+Nota: o `GET` de `/api/governanca/mcp` e de qualquer subcaminho também é só admin (`PREFIXOS_SO_ADMIN`).
+
+### SquadTI
+
+Fonte: `painel/tudoia_painel/rotas/squadti.py`. Todas as rotas repassam à API da Squad (`/api/...`, sem o prefixo `squadti`).
+
+| Método | Rota | Papel | O que faz |
+|---|---|---|---|
+| GET | `/api/squadti/estado` | leitor | `{configurado, no_ar, perfis}`. Consulta `/saude` da Squad com timeout de 2 s. |
+| GET | `/api/squadti/tarefas` | leitor | Lista tarefas com situação e execução. |
+| GET | `/api/squadti/tarefas/{tarefa}` | leitor | Detalhe: situação, perguntas, arquivos, execução. |
+| GET | `/api/squadti/tarefas/{tarefa}/arquivo?caminho=` | leitor | Lê arquivo gerado (`caminho` de 1 a 300 caracteres). |
+| GET | `/api/squadti/tarefas/{tarefa}/mensagens` | leitor | Histórico da conversa com o CHEFE. |
+| GET | `/api/squadti/tarefas/{tarefa}/auditoria` | leitor | Trilha de auditoria por nó. |
+| GET | `/api/squadti/tarefas/{tarefa}/proveniencia` | leitor | Proveniência da tarefa. |
+| GET | `/api/squadti/tarefas/{tarefa}/log?desde=` | leitor | Log ao vivo a partir do evento `desde` (0 a 1 000 000, padrão 0). |
+| GET | `/api/squadti/agentes` | leitor | Configuração atual dos agentes. |
+| POST | `/api/squadti/tarefas` | operador | Inicia tarefa (202). Campos: `tarefa`, `briefing`, `perfil`, `consentimento_nuvem`, `stack` (`dotnet` ou `python`; ausente = o CHEFE decide), `orcamento`. |
+| POST | `/api/squadti/tarefas/{tarefa}/responder` | operador | Responde à entrevista (202). |
+| POST | `/api/squadti/tarefas/{tarefa}/mensagem` | operador | Mensagem ao CHEFE (202; timeout de 120 s, porque o CHEFE chama o modelo antes de responder). |
+| POST | `/api/squadti/tarefas/{tarefa}/aprovar` | operador | Aprova a especificação (202). |
+| POST | `/api/squadti/tarefas/{tarefa}/aprovar-release` | operador | Aprova o release (202). Só gera notas: nada é commitado nem publicado. |
+| POST | `/api/squadti/tarefas/{tarefa}/continuar` | operador | Retoma tarefa escalada, com novo `orcamento` opcional (202). |
+| POST | `/api/squadti/agentes` | **admin** | Salva a configuração dos agentes (`PREFIXOS_ESCRITA_SO_ADMIN`). |
+
+O painel só repassa pedidos validados à API da Squad, com o token de `TUDOIA_SQUADTI_TOKEN`, timeout de 15 s (120 s na
+mensagem) e Bearer fixo. `tarefa` casa `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`; `briefing` e `resposta` têm no máximo 20 000
+caracteres e a mensagem ao CHEFE, 4 000; o corpo rejeita campos extras. `orcamento` aceita `tokens` (1 000 a 50 000 000),
+`tempo_s` (60 a 86 400) e `chamadas` (1 a 10 000); eixo ausente não muda, `null` é sem limite. Perfis oferecidos:
+`local-estrito` (padrão), `local`, `hibrido`, `nuvem` e `auto` (`tudoia-auto`; `max` não é oferecido). Qualquer perfil
+diferente de `local-estrito` exige `consentimento_nuvem: true`, senão 422 com código `consentimento_nuvem` (o gateway pode
+reenviar à nuvem um pedido que não cabe no modelo local). A configuração dos agentes aceita até 32 agentes (nome
+`^[a-z][a-z0-9_]{0,31}$`) com `perfil`, `temperatura` (0 a 1,5) e `max_tokens` (256 a 32 000), `revisao.modo`
+(`simples` ou `dupla`), `validacao` (objeto raso de até 2 níveis e 16 chaves) e `orcamento`; a Squad valida de novo.
+Resposta 401 da Squad vira 503 (token divergente); 5xx da Squad vira 503; 4xx é repassado com o código e a mensagem (até
+500 caracteres).
+
+### Estúdio e chat
+
+Rotas de `/api/estudio/*` e `/api/chat/completions`: veja a tabela em [estudio.md](estudio.md#-api). Papel mínimo para
+alterar: operador.
 
 ### Papéis
 
 | Papel | Pode | Não pode |
 |---|---|---|
-| `tudoia-leitor` | Ver as telas (`GET`), inclusive a governança | Alterar qualquer coisa. Não vê segredos, provedores nem o catálogo MCP. |
-| `tudoia-operador` | Alterar o que não é administrativo: serviços, roteamento, modelos, Estúdio | Segredos, provedores, qualquer alteração na governança (regras, skills, MCP, instâncias, `sincronizar`), baixar modelo local |
-| `tudoia-admin` | Tudo, inclusive segredos, provedores, governança e download de modelos | Nada: é o papel com mais acesso |
+| `tudoia-leitor` | Ver as telas (`GET`), inclusive o estado da governança | Alterar qualquer coisa. Não acessa `/api/segredos`, `/api/provedores` nem `/api/governanca/mcp`. |
+| `tudoia-operador` | Alterar o que não é administrativo: serviços, roteamento, modelos, Estúdio, SquadTI (iniciar tarefa, responder, falar com o CHEFE, continuar, aprovar) | Segredos, provedores, qualquer alteração em `/api/governanca/*`, salvar a configuração dos agentes da SquadTI (`POST /api/squadti/agentes`), baixar modelo local |
+| `tudoia-admin` | Tudo | Nada |
 
-A regra está em `decidir` (`painel/tudoia_painel/autenticacao.py`): `PREFIXOS_SO_ADMIN` vale para qualquer método, e
-`PREFIXOS_ESCRITA_SO_ADMIN = ("/api/governanca",)` deixa todos lerem a governança e só o admin alterá-la.
+A regra é a função pura `decidir` (`autenticacao.py`):
 
-O papel vem de `groups` ou de `realm_access.roles` do token. Um usuário pode ter mais de um papel. Sem nenhum papel do
-painel, o login é recusado com 403.
+1. `/api/sessao` passa sempre. Sem papéis: 401 `nao_autenticado`.
+2. `PREFIXOS_SO_ADMIN` (`/api/segredos`, `/api/provedores`, `/api/governanca/skills/importar`, `/api/governanca/mcp`,
+   `/api/modelos/local/baixar`) vale para qualquer método: só admin.
+3. `PREFIXOS_ESCRITA_SO_ADMIN = ("/api/governanca", "/api/squadti/agentes")`: todos leem, só admin altera.
+4. Qualquer outro método que não seja `GET`, `HEAD` ou `OPTIONS` exige operador ou admin.
 
-### Sem OIDC configurado
+O papel vem do claim `groups` ou de `realm_access.roles`. Sem nenhum papel do painel, o login é recusado com 403
+(`sem_papel`). Cliente de serviço com Bearer: aceito só se o `azp` estiver em `TUDOIA_API_BEARER_CLIENTES`; algoritmo
+fixo `RS256`; chaves públicas em cache por 600 s; `kid` desconhecido só dispara nova busca a cada 30 s.
 
-Se `TUDOIA_OIDC_ISSUER`, `TUDOIA_OIDC_CLIENT_ID` ou `TUDOIA_OIDC_CLIENT_SECRET` faltarem, ou se
-`TUDOIA_SESSAO_SEGREDO` tiver menos de 32 caracteres, toda rota `/api` responde **503** com código
-`auth_nao_configurada`. A exceção é `GET /api/sessao`, que responde `configurado: false`. A SPA carrega, mas não consegue
-mostrar dados. Isso é fail-closed de propósito.
+## 🧩 Serviços controlados
 
-## Formato de erro
+`servicos.py` (`ServicosDocker`). O módulo é Windows-only em vários pontos (`powershell`, `taskkill`, `cmd.exe`).
 
-Todas as respostas de erro da API seguem este formato (`painel/tudoia_painel/erros.py`):
+| Tipo | Nomes | Como |
+|---|---|---|
+| Docker (`DOCKER`) | `litellm`, `litellm-db`, `cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak`, `keycloak-db`, `squadti` | `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env` |
+| Host (`HOST`) | `ollama` (11434), `comfyui` (8188) | Processo. Para parar, encerra o dono da porta; no Ollama também `ollama.exe` e `ollama_llama_server.exe`; no ComfyUI, processos cuja linha de comando contém a pasta do portable (caminho passado por variável de ambiente, nunca no texto do comando). |
+
+Ações (`ACOES`): `start` = `up -d`; `stop` = `stop`; `restart` = `restart`. `compose restart` não recria o container: ele
+mantém as variáveis de ambiente com que foi criado, então uma chave preenchida depois no `.env` só chega ao container
+após recriá-lo (`compose up -d --force-recreate <serviço>`). Os dados ficam em volumes.
+
+Ação "todos": `start` inicia Ollama e ComfyUI se as portas estiverem fechadas e roda `compose up -d`; `stop` encerra os
+dois do host e roda `compose stop`; `restart` reinicia os do host e roda `compose restart`. Serviços de
+perfil (`cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak`, `squadti`, conforme `profiles:` do compose)
+só participam do "todos" se o perfil estiver em `COMPOSE_PROFILES` no `.env`; individualmente o painel os controla
+sempre.
+
+Ao iniciar o Ollama, o painel define `OLLAMA_HOST=127.0.0.1:11434` e `OLLAMA_MODELS` (só loopback). O ComfyUI sobe com
+`python_embeded\python.exe` do portable (ou `run_nvidia_gpu.bat` como alternativa), com `--disable-auto-launch`, e escreve
+em `dados\logs\comfyui.log`. Falha ao subir Ollama ou ComfyUI no "todos" é registrada como aviso e não aborta.
+
+## 🏛️ Integração com a Doutrina
+
+`doutrina_servico.py` alimenta o campo `doutrina` de `GET /api/governanca`. Somente leitura: sem rede e sem gravar.
+
+| Campo | Significado |
+|---|---|
+| `estado` | `ok`; `sem_pasta` (`DOUTRINA_TEC` ausente no `.env`); `ilegivel` (pasta sem `gerado/manifesto.json` legível). |
+| `em_uso` | `{versao, hash}` do manifesto da pasta `DOUTRINA_TEC`. |
+| `fixada` | Commit fixado em `governanca/doutrina.json` (lido por `scripts.empacotar.payload.ler_pin`). |
+| `derivados_divergentes` | Arquivos derivados (Dockerfile e compose da SquadTI) que não repetem o commit fixado. |
+| `aviso_fixacao` | Mensagem quando a fixação não pôde ser lida, ou "ferramenta de empacotamento indisponível". |
+| `comandos` | Comandos de manutenção: `python -m scripts.empacotar.payload --sincronizar-pin`, `... --derivar-pin` e `.\scripts\tudoia.ps1 empacotar`. |
+
+Atualizar o commit é decisão de quem empacota; a tela só mostra. Sem Doutrina legível, a skill, o MCP `doutrina-tec` e a
+SquadTI não trabalham (falham fechado; IA-ORQ-03).
+
+## 💾 O que o painel grava
+
+| Arquivo | Quando |
+|---|---|
+| `.env` (backup em `dados\backups\env\`) | Edição de segredo e provisionamento do Keycloak. |
+| `runtime\litellm\config.yaml` | `POST /api/roteador/gerar` e `gerar-config`. Guarda o anterior em `config.yaml.anterior`. O LiteLLM só lê o arquivo na inicialização: reinicie o serviço `litellm` para aplicar. |
+| `config\roteamento.yaml`, `config\catalogo-modelos.yaml` | Edição de grupos, provedores e modelos (gravação atômica sob a trava do `Contexto`). |
+| `governanca\governanca.json`, `governanca\mcp.json`, `governanca\regras\*.md`, `governanca\skills\*\SKILL.md` | Edições da tela Agentes e regras. |
+| Arquivos dos clientes de IA (`~\.claude\`, `~\.claude.json`, `~\.gemini\`, `opencode.json` etc.) | Quando regras, skills ou MCP mudam e em `sincronizar`. Backups em `~\.tudoia\backups\`, fora de qualquer workspace porque trazem tokens em claro. Ver [governanca.md](governanca.md). |
+| `dados\logs\auditoria.jsonl` | Uma linha por `POST`, `PUT`, `PATCH` ou `DELETE` em `/api`. |
+| `dados\logs\comfyui.log` | Ao iniciar o ComfyUI pelo painel. |
+| `dados\estudio\...` | Saídas e uploads do Estúdio ([estudio.md](estudio.md)). |
+
+## ❌ Erros e diagnóstico
+
+Toda resposta de erro da API segue o formato de `erros.py`:
 
 ```json
 {"erro": {"codigo": "validacao", "mensagem": "texto em português", "campo": "valor", "detalhes": []}}
 ```
 
-`campo`, `detalhes` e `extras` só aparecem quando há. `extras` é contexto legível por máquina (por exemplo `{"servico_offline": "comfyui"}`); o `painel.js` lê `erro.extras` para mostrar "ComfyUI offline". Operação que falha (upload recusado, geração que não rodou, chat sem motor) responde com status HTTP de erro e este corpo, nunca `200` com `ok: false`. As rotas de **teste** (`/api/modelos/testar`, `/api/roteador/testar`, `/api/governanca/mcp/{id}/testar`, `/api/segredos/{chave}/testar`) continuam respondendo `200` com o resultado do teste, porque "o teste deu negativo" é o resultado, não uma falha da rota. Códigos usados:
+`campo`, `detalhes` e `extras` só aparecem quando há. `extras` é contexto legível por máquina (por exemplo
+`{"servico_offline": "comfyui"}`). Operação que falha responde com status HTTP de erro, nunca `200` com `ok: false`. As
+rotas de teste (`/api/modelos/testar`, `/api/roteador/testar`, `/api/governanca/mcp/{id}/testar`,
+`/api/segredos/{chave}/testar`) respondem `200` com o resultado, porque "o teste deu negativo" é o resultado.
 
 | HTTP | `codigo` | Quando |
 |---|---|---|
-| 400 | `requisicao_invalida` | Requisição mal formada (ex.: `Content-Length` inválido) |
+| 400 | `requisicao_invalida` | `Content-Length` inválido |
 | 401 | `nao_autenticado` | Sem sessão válida em `/api` |
-| 403 | `papel_insuficiente` | Papel não permite a ação |
-| 403 | `host_recusado` | `Host` diferente de `127.0.0.1` ou `localhost` |
+| 401 | `login_recusado`, `bearer_desativado`, `token_invalido` | Falha de login ou de Bearer |
+| 403 | `papel_insuficiente` | O papel não permite a ação (por exemplo, operador salvando a configuração dos agentes) |
+| 403 | `sem_papel` | Login sem papel do painel |
+| 403 | `host_recusado` | `Host` diferente de `127.0.0.1:<porta>` ou `localhost:<porta>` |
 | 403 | `origem_recusada` | `Origin`, `Referer` ou `Sec-Fetch-Site` de outro site |
 | 404 | `nao_encontrado` | Recurso ou arquivo inexistente |
-| 409 | `duplicado` ou `conflito` | Já existe (ex.: instância com o mesmo id) |
-| 413 | `corpo_grande_demais` | Corpo acima de 10 MB (140 MB em `POST /api/estudio/upload`), declarado ou contado nos bytes recebidos |
-| 415 | `tipo_de_conteudo` | `POST`, `PUT` ou `PATCH` (ou `DELETE` com corpo) sem `application/json` |
-| 422 | `validacao` | Campo inválido. `campo` aponta qual |
-| 500 | `falha_interna` | Exceção não tratada. A mensagem diz só o tipo da exceção e o id do pedido. O traceback fica no log do servidor |
+| 409 | `duplicado` ou `conflito` | Já existe, ou conflito com o estado atual |
+| 413 | `corpo_grande_demais` | Corpo acima de 10 MB (140 MB em `POST /api/estudio/upload`) |
+| 415 | `tipo_de_conteudo` | `POST`, `PUT`, `PATCH` (ou `DELETE` com corpo) sem `application/json`. Sem corpo, envie `{}`. |
+| 422 | `validacao` | Campo inválido; `campo` aponta qual |
+| 500 | `falha_interna` | Exceção não tratada. A mensagem traz só o tipo e o id do pedido |
 | 503 | `auth_nao_configurada` | OIDC não configurado |
-| 503 | `indisponivel` | Dependência fora do ar (ex.: ComfyUI) |
+| 503 | `indisponivel`, `identidade_indisponivel` | Dependência fora do ar (ComfyUI, Squad, Keycloak) |
 
-Alguns erros do fluxo de login usam outros códigos: `login_recusado` (401) e `sem_papel` (403). O Bearer usa
-`bearer_desativado` e `token_invalido` (401) e `identidade_indisponivel` (503).
+Toda resposta de `/api`, `/app` e `/auth/*` traz `X-Request-ID`. O mesmo id aparece na mensagem do 500, no log do
+servidor e em `auditoria.jsonl`.
 
-Toda resposta de `/api`, `/app` e `/auth/*` traz o cabeçalho `X-Request-ID`. O mesmo id aparece na mensagem do erro 500,
-no log do servidor e em `dados\logs\auditoria.jsonl`. Use-o para achar o pedido.
-
-## API
-
-As rotas ficam em `painel/tudoia_painel/rotas/`, um `APIRouter` por domínio (`servicos`, `segredos`, `governanca`, `modelos`, `roteador`, `telemetria`, `provedores`, `hardware`, `estudio_catalogo`, `estudio_arquivos`, `estudio_imagem`, `estudio_video`, `estudio_musica`, `chat`, `ui`). `app.py` só monta o `Contexto` (`ambiente.py`: raiz, home, serviços e a trava de escrita em arquivos de configuração), inclui os routers e liga a autenticação e a guarda. Modelos de entrada: `schemas.py`. Regra de negócio fora das rotas: `estudio_servico.py`, `skills_servico.py`, `mcp_teste.py` e `comfyui.py`. Endereços do LiteLLM, Ollama e ComfyUI: `upstreams.py`. A lista abaixo agrupa por prefixo. Consulte
-o código para a assinatura de cada rota. A OpenAPI está desligada (`openapi_url=None`).
-
-| Prefixo | Papel mínimo para alterar | O que faz |
+| Sintoma | Causa provável | Ação |
 |---|---|---|
-| `/api/sessao` | nenhum | Estado da sessão e papéis |
-| `/api/servicos` | operador | Lista serviços. `POST /api/servicos/{nome}/{acao}` (start, stop, restart). `POST /api/servicos/todos/{acao}` |
-| `/api/hardware` | operador | Estado da GPU e da fila. `POST /api/hardware/limpar-vram` descarrega modelos do Ollama |
-| `/api/modelos` | operador (só `/api/modelos/local/baixar` exige admin) | Catálogo, teste de modelos (`/api/modelos/testar`), modelos locais, mídia do Estúdio |
-| `/api/roteador` | operador | Detalhes dos grupos, `POST /api/roteador/gerar`, `POST /api/roteador/testar`, edição de grupos e auto-vínculo |
-| `/api/telemetria` | leitor | Eventos ao vivo e totais do LiteLLM |
-| `/api/limites-tokens` | leitor | Uso por provedor. `periodo` aceita `24h`, `7d`, `total` etc. |
-| `/api/provedores` | admin | Cadastro de provedor, descoberta de modelos (`/api/provedores/{id}/descobrir-modelos`) |
-| `/api/segredos` | admin | Listar (mascarado), gravar (`PUT /api/segredos/{chave}`), revelar, testar |
-| `/api/governanca` | admin (leitura: qualquer papel, exceto `/api/governanca/mcp`, só admin) | Estado, `sincronizar`, instâncias, regras, skills, MCP e edição de arquivos |
-| `/api/squadti` | operador (leitor vê; `/api/squadti/agentes` só altera o admin) | Repasse validado à API local da Squad: tarefas, responder, aprovar, aprovar-release, arquivos, agentes, mensagens ao CHEFE, auditoria, proveniência, log e continuar. Ver [squadti.md](squadti.md) |
-| `/api/estudio` | operador | Geração (imagem, vídeo, música, inpaint), otimização de prompt, galeria, cancelamento e upload |
-| `/api/chat/completions` | operador | Chat pelo LiteLLM (usa `LITELLM_MASTER_KEY`) |
+| Toda rota `/api` responde 503 `auth_nao_configurada` | Falta `TUDOIA_OIDC_ISSUER`, `TUDOIA_OIDC_CLIENT_ID`, `TUDOIA_OIDC_CLIENT_SECRET`, ou `TUDOIA_SESSAO_SEGREDO` tem menos de 32 caracteres | Complete o `.env` e reinicie o painel. É fail-closed de propósito. |
+| 403 `host_recusado` | Acesso por IP da rede, nome de máquina ou porta diferente | Use `http://127.0.0.1:3100/app/` ou `http://localhost:3100/app/`. |
+| 415 em um `POST` sem corpo | Falta `Content-Type: application/json` | Envie `{}` com o cabeçalho. |
+| `/api/squadti/*` responde 503 "não configurado" | `TUDOIA_SQUADTI_TOKEN` com menos de 32 caracteres | Rode `tudoia.ps1 segredos` com o perfil `squadti` ativo. |
+| 503 "a SquadTI recusou o token" | Token do painel difere do da API | Reinicie painel e container após acertar o `.env`. |
+| Teste de modelo dá `Invalid model name` | `config.yaml` regenerado e LiteLLM não reiniciado (`litellm_sem_o_modelo`) | Reinicie o serviço `litellm`. Nada é desativado. |
+| Modelo desativado após "Testar" | O provedor disse que ele não existe (404, ou 400/410 com `decommissioned`, `deprecated`, `does not exist`, `no longer supported`, `model not found`) | Confira no provedor. Timeout, 429, 5xx e 401 nunca desativam. |
+| `parar.ps1` sai com código 1 | Alguma porta (3100, 11434, 8188) continua aberta | Leia o aviso impresso e encerre o processo indicado. |
 
-O `POST /api/roteador/gerar` grava `runtime/litellm/config.yaml` e não reinicia o LiteLLM. O LiteLLM lê esse arquivo na
-inicialização. Para aplicar, reinicie o serviço `litellm` (pela aba Serviços ou com `docker compose restart litellm`).
+## 🛡️ Segurança
 
-### Teste e sincronização de modelos
+Detalhes e modelo de ameaças em [seguranca.md](../seguranca.md). Controles do painel conferidos no código:
 
-Código: `painel/tudoia_painel/provedores_service.py` e a rota `POST /api/modelos/testar` em `rotas/modelos.py`.
+- **Fail-closed**: sem OIDC válido, `/api` inteira responde 503. Sem resposta do Keycloak ao reconfirmar a conta, o
+  acesso é negado (503).
+- **Sessão**: Authorization Code + PKCE S256; dura 8 h (`IDADE_MAXIMA_SESSAO`); a conta é reconfirmada no Keycloak no
+  máximo a cada 30 s (`TTL_REVALIDACAO_S`), então desativar o usuário ou trocar o papel vale no ciclo seguinte.
+- **Guarda** (`seguranca.py`): `Host` exato em `/api`, `/app` e `/auth`; em métodos que alteram, `Origin`/`Referer`
+  locais, `Sec-Fetch-Site` `same-origin` ou `none`, `Content-Type: application/json` e corpo contado nos bytes recebidos
+  (10 MB; 140 MB no upload). Respostas de `/api` com `Cache-Control: no-store`, `nosniff`, `no-referrer`, CORP
+  `same-origin` e `X-Frame-Options: DENY`; `/app` com CSP sem origem remota. Não há CORS.
+- **Erro 500** só com o tipo da exceção e o id do pedido; traceback só no log do servidor.
+- **Auditoria** (`auditoria.py`): uma linha JSON por pedido que altera estado, inclusive os negados (403). Campos: instante,
+  id, usuário, papéis, método, rota e status. Nunca o corpo. Gira ao passar de 5 MB (`auditoria.jsonl.1`, sobrescreve a
+  cópia anterior). Falha de disco não derruba o pedido.
+- **Segredos**: `GET /api/segredos` devolve valores mascarados; revelar e gravar são só admin e ficam na auditoria.
+- **Importar skill** executa `npx` com repositório externo: só admin (IA-FER-01: leia a skill antes de adotá-la).
+- **Teste de MCP stdio** executa o comando do catálogo: só admin. O teste HTTP não segue redirecionamento (o token não
+  acompanha um 3xx a outro host) e testa o Cérebro pelo `/saude`, porque o `/mcp` exige token.
+- **Squad**: o painel chama a Squad só em loopback, com token e timeout; o release só gera notas. A configuração dos agentes (perfil, temperatura, orçamento) só o admin grava. Com o `docker.sock` montado na Squad, quem inicia tarefa (operador) aciona código gerado por modelo: ver o [risco 21](../seguranca.md#21-dockersock-montado-na-squadti-em-aberto-decisão-do-dono).
 
-- O botão "Testar" só desativa um modelo do catálogo (e o tira dos grupos do roteador) quando o provedor diz que ele não
-  existe mais: HTTP 404, ou 400/410 com sinais como `decommissioned`, `deprecated`, `does not exist`,
-  `no longer supported` ou `model not found` (`falha_definitiva`).
-- Conexão recusada, timeout, 429, 5xx e 401 não desativam nada. Essas falhas dizem algo do ambiente, não do modelo.
-- `Invalid model name` (ou `ProxyModelNotFound`) vem do próprio LiteLLM: o `config.yaml` foi regenerado e o LiteLLM
-  ainda não foi reiniciado. Não desativa, e a resposta traz `dica` pedindo para reiniciar o LiteLLM
-  (`litellm_sem_o_modelo`).
-- A sincronização do catálogo segue a paginação de cada API: Anthropic (`has_more` e `after_id`), Gemini
-  (`nextPageToken`) e Cloudflare (`result_info`). Uma listagem que não termina em 20 páginas (`MAX_PAGINAS`) é tratada
-  como incompleta e não inativa nenhum modelo.
-- A consulta às APIs dos provedores é feita fora da trava do painel. Antes, toda gravação do painel esperava as
-  listagens.
-- Telemetria e limites pedem ao LiteLLM só o período: a telemetria pede as últimas 24 h (`rotas/telemetria.py`, `/api/telemetria`) e
-  os limites o período escolhido (`limites.py`). Antes, cada atualização da tela baixava o histórico inteiro, cerca de
-  27 MB.
+## 🧪 Testes
 
-## Serviços
+Suíte do painel: `tests\painel\` (`test_painel.py`, `test_autenticacao.py`, `test_bearer.py`, `test_cli.py`,
+`test_contrato_erro.py`, `test_doutrina_estado.py`, `test_fronteiras.py`,
+`test_mcp_stdio.py`, `test_mcp_teste.py`, `test_servicos_parar.py`, `test_skills_servico.py`,
+`test_squadti.py`, `test_squadti_servico.py` e `test_squadti_v2.py`). Comando, na raiz do repositório:
 
-O painel controla dois tipos de serviço:
+```powershell
+uv run --frozen pytest -q tests/painel
+```
 
-- **Docker** (`litellm`, `litellm-db`, `cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`): ações via
-  `docker compose -p tudoia -f runtime\docker-compose.yml --env-file .env`.
-- **Host** (`ollama`, `comfyui`, `squadti`): ações via processo. O `squadti` sobe só por ação explícita (fica fora do "todos") e exige a configuração do `.env` (ver [squadti.md](squadti.md)). Para parar, o painel encerra o processo que escuta na porta
-  (11434 ou 8188). Para iniciar, usa `ollama serve` e `run_nvidia_gpu.bat` dentro da pasta do ComfyUI portable.
+Resultado da verificação desta revisão: ver o relatório de entrega (o resultado fica no relatório, não no documento, para
+não envelhecer). Mais em [desenvolvimento.md](../desenvolvimento.md).
 
-Implementação: `painel/tudoia_painel/servicos.py`. Esse módulo é Windows-only em vários pontos (`cmd.exe`,
-`taskkill`, `powershell`).
+## ❓ Perguntas frequentes
 
-Ao iniciar o Ollama, o painel define `OLLAMA_HOST=127.0.0.1:11434` (só loopback; ver [seguranca.md](../seguranca.md)).
+**Posso expor o painel na rede?** Não. O uvicorn escuta só em `127.0.0.1` e a guarda recusa `Host` que não seja loopback.
+Para acesso remoto, a decisão é de arquitetura (túnel autenticado), não de configuração.
 
-## Estúdio
+**Mudei código de rota e nada mudou.** O painel carrega o código na subida. Rode `.\scripts\reiniciar.ps1`.
 
-Documentação completa do Estúdio: [estudio.md](estudio.md). Rotas em `/api/estudio/*`. O fluxo de imagem está descrito em [arquitetura.md](../arquitetura.md#fluxos). Pontos
-importantes:
+**O `POST /api/roteador/gerar` não aplicou o roteamento.** Ele só grava o `config.yaml`. Reinicie o serviço `litellm`.
 
-- O ComfyUI é acessado em `127.0.0.1:8188`. Se o pedido exige o ComfyUI (motor `comfyui` ou modelo local `local:`) e a porta 8188 não responde, o painel devolve erro e não tenta outro motor (`gerar-imagem` em `rotas/estudio_imagem.py`).
-- Antes de algumas gerações visuais (imagem, inpaint, vídeo e música), o painel descarrega da VRAM os modelos do Ollama
-  (`keep_alive: 0`). Isso libera a GPU para o ComfyUI.
-- O otimizador de prompt usa `GROQ_API_KEY` quando existe, senão um modelo local.
-- Saídas: `dados\estudio\imagens`, `dados\estudio\videos` e `dados\estudio\musicas`. Uploads ficam em
-  `dados\estudio\uploads`.
-- Caminhos de arquivo passam por `arquivo_em` (`estudio_servico.py`): a pasta permitida e o alvo são resolvidos, e só vale arquivo
-  dentro da pasta resolvida (`is_relative_to`). Vale para ler e apagar imagens, vídeos, músicas e uploads.
-- O Pollinations só é usado com `TUDOIA_ESTUDIO_POLLINATIONS=1` (ver [configuracao.md](../configuracao.md#local-host-e-containers)).
+**Por que o teste de um modelo cadastrado falhou mas ele continua ativo?** Só "o provedor diz que não existe" desativa.
+Falha de rede, cota ou chave não desativam.
 
-## O que o painel grava
+---
 
-| Arquivo | Quando |
-|---|---|
-| `.env` (com backup em `dados\backups\env\`) | Edição de segredo, `segredos`, provisionamento do Keycloak |
-| `runtime\litellm\config.yaml` | `POST /api/roteador/gerar`. Guarda o anterior em `config.yaml.anterior`. A gravação só ocorre se o código do gerador não mudou desde que o painel abriu |
-| `config\roteamento.yaml` | Edição de grupos do roteador (gravação atômica) |
-| `governanca\governanca.json`, `governanca\mcp.json`, `governanca\regras\*.md`, `governanca\skills\*\SKILL.md` | Edições na aba Governança |
-| Arquivos dos clientes (`~\.claude\`, `~\.claude.json`, `~\.gemini\`, `opencode.json` etc.) | Quando a governança ou o MCP mudam e em `sincronizar` (`aplicar_tudo`). Backups em `~\.tudoia\backups\`. Veja [governanca.md](governanca.md) |
-| `dados\logs\auditoria.jsonl` | Uma linha por `POST`, `PUT`, `PATCH` ou `DELETE` em `/api` (ver [seguranca.md](../seguranca.md#auditoria)) |
-| `dados\logs\comfyui.log` | Ao iniciar o ComfyUI pelo painel |
-
-## Testes
-
-Os testes do painel estão em `tests\painel\` (`test_painel.py`, `test_autenticacao.py`, `test_bearer.py`,
-`test_cli.py`, `test_mcp_stdio.py`). Rodam com `uv run pytest -q`. Ver [desenvolvimento.md](../desenvolvimento.md).
-
-### Sessão
-
-O login usa o Keycloak. O painel reconfirma a conta a cada 30 s: desativar o usuário no Keycloak encerra o acesso
-no próximo ciclo, e trocar o papel vale no mesmo ciclo. Sem resposta do Keycloak, o acesso é negado (503). A sessão
-dura 8 h. O token do cliente `tudoia-painel` também dura 8 h (`access.token.lifespan = 28800` no template do realm);
-com o padrão de 300 s do Keycloak, a sessão caía em 5 min. Rode o provisionamento para o valor valer no Keycloak em
-execução. Detalhes em [seguranca.md](../seguranca.md#autenticação-oidc).
+[🏠 README](../../README.md) · ⬅️ [Governança](governanca.md) · [Estúdio](estudio.md) ➡️

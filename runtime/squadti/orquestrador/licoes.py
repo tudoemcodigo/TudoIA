@@ -1,5 +1,5 @@
 """
-Livro de Lições da SquadTI: transforma achados dos agentes em prevenção, no lugar certo (ver docs/squadti/LICOES.md).
+Livro de Lições da SquadTI: transforma achados dos agentes em prevenção, no lugar certo (ver docs/squadti/licoes.md).
 
 API pura: sem rede, sem modelo, sem tocar no grafo. O livro é um JSONL append-only (`SQUADTI_LICOES_ARQUIVO`, padrão
 `licoes.jsonl`) e o estado das lições é sempre o resultado de reler o arquivo (não há cache que possa divergir).

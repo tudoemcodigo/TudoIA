@@ -1,168 +1,297 @@
-# Estúdio
+---
+titulo: Estúdio de criação (imagem, vídeo e música)
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-O Estúdio é a área criativa do painel. Ele gera imagens, faz inpainting (regenerar uma região marcada com pincel), gera vídeos e compõe músicas. Cada tipo de mídia pode rodar em dois lugares:
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🎨 Estúdio
 
-- **Local (ComfyUI)**: roda na GPU do host, em uma instalação ComfyUI portable que fica fora do Docker. É o único motor de vídeo, música e inpainting.
-- **Nuvem**: imagem apenas. Cloudflare Workers AI (exige chave) e Pollinations (sem chave).
+# 🎨 Estúdio de criação
 
-Os endpoints ficam em `painel/tudoia_painel/rotas/estudio_*.py` (catálogo, arquivos, imagem, vídeo e música), a lógica de prompts e grafos em `painel/tudoia_painel/estudio_servico.py`, e a interface em `painel/tudoia_painel/static/painel.js` e `index.html`.
+> Para quem usa e mantém o Estúdio do painel. Responde: que mídia ele gera, em qual motor, com quais limites e custos,
+> onde grava, quais rotas expõe e o que sai da máquina.
 
-## Pré-requisitos
+## 📑 Sumário
 
-1. **ComfyUI portable no host.** A pasta precisa conter `ComfyUI\` (com `models`, `input`, `output` e `user`) e o script `run_nvidia_gpu.bat`.
-   - Caminho: variável `TUDOIA_COMFYUI_PORTABLE` no `.env`. Vazia, o padrão é `modelos\comfyui\ComfyUI_windows_portable` dentro da raiz do projeto (`painel/tudoia_painel/caminhos.py`, funções `comfyui_portable` e `comfyui_dir`).
-   - O painel sobe o ComfyUI executando `run_nvidia_gpu.bat` dessa pasta (`painel/tudoia_painel/servicos.py`, `_start_comfyui`). Não há variável para trocar o script.
-   - **Porta 8188 em `127.0.0.1`, fixa no código.** Os chamados `http://127.0.0.1:8188` estão em `painel/tudoia_painel/upstreams.py`. Não existe variável para mudar a porta. O ComfyUI escuta em `127.0.0.1` por padrão (`ComfyUI/comfy/cli_args.py`, opção `--listen`), e o `run_nvidia_gpu.bat` não passa `--listen`.
-2. **Custom node `ComfyUI-GGUF`** em `ComfyUI\custom_nodes\`. O fluxo `flux-schnell` usa `UnetLoaderGGUF`, que vem dele. Está instalado na cópia local.
-   Os nós de YuE 2 (`YuE2GenerateMusic`), MiniMax H3 (`MiniMaxH3ImageToVideo`) e TextGen estão em `ComfyUI\comfy_extras\` da cópia local, não em `custom_nodes`.
-3. **Pesos dos modelos** nas subpastas de `ComfyUI\models\`. Os nomes exatos estão na tabela de fluxos abaixo. Para baixar e verificar, use [modelos.md](modelos.md) e `config/modelos.yaml`. Todos os nomes de arquivo usados pelos fluxos existem em `config/modelos.yaml` (conferido).
-4. **GPU NVIDIA.** Antes de cada geração pesada, o painel descarrega da VRAM os modelos do Ollama (`_arbitrar_vram_para_estudio`).
+- [🎯 Visão geral](#-visão-geral)
+- [🚀 Uso](#-uso)
+- [⚙️ Opções](#️-opções)
+- [🔬 Como funciona](#-como-funciona)
+- [🔌 API](#-api)
+- [❌ Erros e diagnóstico](#-erros-e-diagnóstico)
+- [🛡️ Segurança e privacidade](#️-segurança-e-privacidade)
+- [⚠️ Limitações conhecidas](#️-limitações-conhecidas)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
 
-## Configuração
+---
 
-Variáveis lidas pelo Estúdio, no `.env` da raiz (só os nomes aqui):
+## 🎯 Visão geral
 
-| Variável | Para que serve |
+O Estúdio é a parte criativa do [painel](painel.md): chat, imagem (com inpainting), vídeo (local) e
+música. Cada mídia roda em um ou mais motores:
+
+| Mídia | Motores | Observação |
+|---|---|---|
+| Chat | LiteLLM (`/api/chat/completions`) | Modelo padrão `tudoia-auto` ([roteador.md](roteador.md)). |
+| Imagem | ComfyUI local; Cloudflare Workers AI; Pollinations (opt-in); SVG de reserva | Ordem em [Imagem](#imagem-escolha-do-motor). |
+| Inpainting | só ComfyUI | |
+| Vídeo | só ComfyUI | O campo `motor` de `POST /gerar-video` é ignorado. |
+| Música | só ComfyUI (YuE 2) | |
+
+```mermaid
+flowchart LR
+    SPA["SPA do painel<br/>Estúdio: Chat, Imagens, Vídeos, Músicas"] --> R["rotas/estudio_*.py"]
+    R --> S["estudio_servico.py<br/>grafos e prompts"]
+    S --> C["ComfyUI :8188<br/>(host, GPU)"]
+    S --> O["Ollama :11434<br/>otimizar prompt"]
+    S -. com GROQ_API_KEY .-> G["Groq (nuvem)"]
+    R --> D["dados/estudio/*"]
+```
+
+Código:
+
+| Arquivo | Papel |
 |---|---|
-| `TUDOIA_COMFYUI_PORTABLE` | Pasta do ComfyUI portable. Vazia usa o padrão. |
-| `CLOUDFLARE_API_KEY` e `CLOUDFLARE_ACCOUNT_ID` | Imagem pela Cloudflare Workers AI. Sem as duas, a rota é ignorada. |
-| `GROQ_API_KEY` | Otimização de prompt pela Groq. Sem ela, usa o Ollama local. |
+| `painel/tudoia_painel/rotas/estudio_catalogo.py` | `status-motores` e `catalogo-modelos`. |
+| `rotas/estudio_imagem.py` | Gerar imagem, inpaint, otimizar prompt. |
+| `rotas/estudio_video.py` | Clipe único, status de job, cancelar, otimizar prompt de vídeo. |
+| `rotas/estudio_musica.py` | Gerar música, otimizar estilo. |
+| `rotas/estudio_arquivos.py` | Listar, servir e apagar saídas; upload. |
+| `estudio_servico.py` | Grafos do ComfyUI montados em memória, otimização de prompt, pastas. |
+| `comfyui.py` | Valida nome de arquivo e parâmetros de `/view` vindos do ComfyUI. |
+| `midia.py` | Confere o conteúdo (bytes iniciais) do arquivo enviado. |
+| `runtime/comfyui/workflows/*.json` | Três fluxos de referência para abrir na interface do ComfyUI (ver abaixo). |
 
-A otimização local chama o modelo `qwen3.5:4b` no Ollama, em `http://127.0.0.1:11434` (porta fixa). O modelo está no manifesto como `ollama-qwen3.5-4b` em `config/modelos.yaml`.
+> [!NOTE]
+> Os grafos que o painel envia ao ComfyUI são montados em memória no Python. Os JSON de `runtime/comfyui/workflows/`
+> (`TUDOIA_Imagem_e_Inpainting.json`, `TUDOIA_Musica_TrilhaSonora.json`, `TUDOIA_Video_Cinematografico.json`) não são
+> lidos por nenhum código do painel (busca em `*.py` sem ocorrência). Servem de referência visual para carregar na UI do
+> ComfyUI; `config/modelos.yaml` os cita em `usado_por`. Se o grafo do código mudar, esses JSON podem ficar defasados.
 
-As demais variáveis do Ollama (`TUDOIA_OLLAMA_MODELS`, por exemplo) estão em [servicos-docker.md](servicos-docker.md).
+## 🚀 Uso
 
-## Uso pela interface
+### Pré-requisitos
+
+1. **ComfyUI portable no host.** Pasta com `ComfyUI\` (`models`, `input`, `output`) e `run_nvidia_gpu.bat`. Caminho:
+   `TUDOIA_COMFYUI_PORTABLE` no `.env`; vazio, o padrão é `modelos\comfyui\ComfyUI_windows_portable` na raiz
+   (`caminhos.py`). Sobe pelo painel (tela Serviços & Runtime) ou `iniciar.ps1`.
+2. **Porta 8188 em `127.0.0.1`, fixa** (`upstreams.py`). Ollama (11434) e LiteLLM (4000) também são fixos.
+3. **Pesos dos modelos** em `ComfyUI\models\`. Nomes exatos e download em [modelos.md](modelos.md) e `config/modelos.yaml`. O `flux-schnell` local (`local:<arquivo>` com `flux` no nome) usa o nó `UnetLoaderGGUF` (custom node `ComfyUI-GGUF`).
+4. **GPU NVIDIA.** Antes de imagem, inpaint, vídeo e música, o painel descarrega da VRAM os modelos do Ollama
+   (`_arbitrar_vram_para_estudio`, erros ignorados).
 
 ### Imagem
 
-- **Campos:** prompt (até 4096 caracteres), prompt negativo, motor (Automático, ComfyUI ou Nuvem), modelo, proporção, seed (opcional) e passos (padrão do servidor 20; faixa 1 a 100).
-- **Proporções:** 1:1 gera 1024x1024; 16:9 gera 1344x768; 9:16 gera 768x1344; 4:3 gera 1152x864; 3:4 gera 864x1152.
-- **Melhorar com IA:** chama `POST /api/estudio/otimizar-prompt` e mostra o prompt em inglês antes de gerar. A geração também otimiza automaticamente quando o texto parece português.
+- Campos (`GerarImagemReq`, extras proibidos): `prompt` (1 a 4096), `prompt_negativo` (até 4096), `motor`
+  (`auto` padrão, `comfyui`, outro), `modelo` (padrão `flux`), `aspect_ratio`, `seed` (opcional) e `steps` (padrão 20,
+  1 a 100).
+- Proporções: `1:1` 1024x1024; `16:9` 1344x768; `9:16` 768x1344; `4:3` 1152x864; `3:4` 864x1152.
+- **A otimização de prompt é automática** em `gerar-imagem` (`otimizar_prompt_visual`): não há campo para desligá-la. A
+  resposta traz `prompt` (efetivo), `prompt_original`, `prompt_otimizado` e `prompt_msg`. A rota
+  `POST /api/estudio/otimizar-prompt` só devolve o prompt melhorado, sem gerar. Regras em
+  [Otimização de prompt](#otimização-de-prompt).
 
 ### Inpainting
 
-- Gere uma imagem, ative o modo inpaint e pinte com o pincel a área a regenerar. A máscara sai como PNG preto e branco: preto preserva a imagem, o pintado é regenerado.
-- Controles: denoise (faixa 0,2 a 1,0; padrão da interface 0,75) e passos. O prompt descreve o que deve aparecer na região.
-- O servidor usa sempre o fluxo `inpaint-tudoia.json`. O campo `modelo` enviado pela interface não escolhe o modelo.
+- `POST /api/estudio/inpaint`: `imagem_base` (URL `/api/estudio/imagens/...`, `/api/estudio/uploads/...` ou só o nome
+  dentro de `imagens`), `mascara_base64` (aceita data URL), `prompt`, `prompt_negativo`, `modelo` (padrão `auto`),
+  `denoise` (padrão 0,75; aceita 0,05 a 1,0), `seed` e `steps` (padrão 25).
+- A máscara é lida pelo canal vermelho, ampliada em 6 px (`grow_mask_by` do `VAEEncodeForInpaint`). O checkpoint padrão é
+  `Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors`; `modelo` no formato `local:<arquivo>.safetensors|.ckpt` troca o
+  checkpoint se o arquivo existir em `models\checkpoints` e não for YuE.
+- Espera até 180 s pelo resultado; depois responde 504 `tempo_esgotado`.
 
 ### Vídeo
 
-- **Modelos (opções locais):** MiniMax H3 Omni (padrão; vídeo com áudio estéreo), Wan 2.2 Text-to-Video 14B, Wan 2.2 Image-to-Video 14B e Wan 2.2 5B.
-- **Modo de origem:** `t2v` (texto), `i2v` (imagem) ou `v2v` (vídeo). Os modos `i2v` e `v2v` exigem arquivo de referência, enviado antes por `POST /api/estudio/upload`.
-- **Duração:** 1 a 60 s. **FPS:** 8 a 60 (a interface oferece 16 e 24). **Resolução:** 480p, 720p ou 1080p (ver a ressalva sobre 1080p).
-- A interface envia `modo_execucao=async`. O servidor responde com um `job_id` (o `prompt_id` do ComfyUI) e a interface consulta `GET /api/estudio/status-video/{job_id}` até terminar.
+- **Vídeo** (`POST /api/estudio/gerar-video`): `prompt`, `modelo` (padrão `video-minimax-h3`),
+  `duracao_segundos` (1 a 60), `resolucao` (`480p`, `720p`, `1080p`), `fps` (8 a 60), `seed`, `modo_origem` (`t2v`, `i2v`,
+  `v2v`), `arquivo_referencia`, `modo_execucao` (`sync` padrão ou `async`). `i2v` e `v2v` exigem arquivo de referência
+  enviado antes por `POST /upload`. O arquivo é resolvido só dentro da pasta de uploads. A otimização cinematográfica do
+  prompt é automática. Campos desconhecidos são ignorados (`extra="ignore"`).
+- **Modelos locais**: MiniMax H3 (vídeo com áudio), Wan 2.2 T2V 14B, Wan 2.2 I2V 14B e Wan 2.2 TI2V 5B. O catálogo vem dos
+  arquivos em `ComfyUI\models\diffusion_models`.
 
 ### Música
 
-- **Modelo:** YuE 2 (3B), fluxo `musica-yue2.json`.
-- **Campos:** estilo (`style`), letra (`lyrics`, padrão `[instrumental]`), duração de 5 a 360 s e modo (`full`, `melody` ou `off`).
-- **Melhorar Estilo com IA:** chama `POST /api/estudio/otimizar-prompt-musica`.
+- Modelo: YuE 2 (`musica-yue2`). Campos (`GerarMusicaReq`): `style` (1 a 4096), `lyrics` (padrão `[instrumental]`, até
+  8192), `duracao_segundos` (5 a 360, padrão 30), `modo` (`full`, `melody` ou `off`), `seed`.
 
 ### Galeria
 
-A galeria da interface guarda só o que foi gerado nesta sessão da página. Os arquivos ficam em disco (seção de armazenamento) e voltam a aparecer pelas rotas `GET /api/estudio/imagens`, `/videos` e `/musicas`.
+A galeria da interface guarda o que foi gerado na sessão da página. Os arquivos ficam em disco e voltam por
+`GET /api/estudio/imagens`, `/videos` e `/musicas`.
 
-## Como funciona
+## ⚙️ Opções
+
+Variáveis do `.env` lidas pelo Estúdio (só nomes; padrões completos em [configuracao.md](../configuracao.md)):
+
+| Variável | Padrão | Efeito |
+|---|---|---|
+| `TUDOIA_COMFYUI_PORTABLE` | `modelos\comfyui\ComfyUI_windows_portable` | Pasta do ComfyUI portable. |
+| `CLOUDFLARE_API_KEY` e `CLOUDFLARE_ACCOUNT_ID` | vazio | Imagem pela Cloudflare Workers AI. Sem as duas, a rota é ignorada. |
+| `TUDOIA_ESTUDIO_POLLINATIONS` | desligado | Só o valor `1` liga o Pollinations (o prompt vai na URL a um serviço público). |
+| `GROQ_API_KEY` | vazio | Otimização de prompt pela Groq. Sem ela, usa o Ollama local. **O texto do prompt sai da máquina.** |
+
+### Limites das rotas
+
+| Item | Limite | Onde |
+|---|---|---|
+| Corpo JSON comum | 10 MB | `seguranca.py` |
+| `POST /api/estudio/upload` | 140 MB de corpo (base64), 100 MB de arquivo decodificado | `seguranca.py`, `midia.py` |
+| Extensões de upload | imagem: `.png .jpg .jpeg .webp .bmp .gif`; vídeo: `.mp4 .mov .webm .avi .mkv` | `estudio_arquivos.py` |
+| Conteúdo do upload | os bytes iniciais precisam bater com a extensão (`midia_confere`), senão 422 | `midia.py` |
+| Jobs de vídeo assíncronos em memória | 200 (os mais antigos saem) | `MAX_JOBS_VIDEO` |
+| Espera por vídeo (`sync`) | 600 s | `_executar_comfyui_video` |
+| Espera por música | 300 s | `_executar_comfyui_musica` |
+| Espera por inpaint | 180 s | `rotas/estudio_imagem.py` |
+
+## 🔬 Como funciona
 
 ### Imagem: escolha do motor
 
-A função `gerar_imagem` (em `rotas/estudio_imagem.py`) segue esta ordem:
+`gerar_imagem` (`rotas/estudio_imagem.py`) segue esta ordem:
 
-1. **Modelo local** (começa com `local:`): exige o ComfyUI online. Se ele estiver fora, responde com `servico_offline`.
-2. **ComfyUI** online e motor `auto` ou `comfyui`, ou modelo local: monta o grafo ComfyUI em memória e submete ao ComfyUI (`executar_comfyui_imagem`).
-3. **Cloudflare Workers AI**, se houver as duas chaves e o modelo for `cf-*`, `flux`, `turbo`, `flux-anime` ou `auto`. Modelos usados: FLUX.1 Schnell, SDXL base 1.0 e DreamShaper 8 LCM.
-4. **Pollinations** (`image.pollinations.ai`), sem chave, **só com `TUDOIA_ESTUDIO_POLLINATIONS=1`** no `.env`. O prompt vai na URL para um serviço público. Entra quando nenhum passo anterior se aplica ao modelo escolhido, ou quando o passo anterior falha.
-5. **SVG de reserva**, gravado com o texto do prompt. Motor `estudio`. Com o Pollinations desligado, a resposta traz `aviso` explicando que nenhum motor respondeu, e a interface mostra esse aviso.
+1. Modelo `local:<arquivo>` ou motor `comfyui` com a porta 8188 fechada: 503 `servico_offline` com
+   `extras.servico_offline = "comfyui"`. Não tenta outro motor.
+2. ComfyUI online e motor `auto` ou `comfyui` (ou modelo local): descarrega o Ollama da VRAM e executa o grafo. Falha de
+   um modelo `local:` responde 502 `falha_motor`; nos demais casos o fluxo segue para a nuvem.
+3. **Cloudflare Workers AI**, com as duas variáveis e modelo `cf-*`, `flux`, `turbo`, `flux-anime` ou `auto`:
+   FLUX.1 Schnell (`cf-flux`, `flux`; `steps` limitado a 8), SDXL base 1.0 (`cf-sdxl`, `turbo`) ou DreamShaper 8 LCM
+   (`cf-dreamshaper`, `flux-anime`). Timeout de 45 s; qualquer falha segue adiante.
+4. **Pollinations**, só com `TUDOIA_ESTUDIO_POLLINATIONS=1`. Timeout de 35 s.
+5. **SVG de reserva** (motor `estudio`), com o início do prompt escapado por `html.escape`. Se o Pollinations estava
+   desligado, a resposta traz `aviso`.
 
-Cada resultado vai para o histórico visual (últimas 60 entradas, em memória).
+Cada geração entra no histórico visual em memória (`HISTORICO_VISUAL`, 60 entradas, exibido em
+`/api/telemetria` como `feed_visual`).
 
-### Inpainting
+### Vídeo de clipe único
 
-A requisição traz a imagem base (URL `/api/estudio/imagens/...`, `/api/estudio/uploads/...` ou só o nome do arquivo dentro de `imagens`), a máscara em base64 (aceita data URL) e o prompt. O servidor:
+- O grafo é escolhido por `_preparar_grafo_video` conforme o nome do modelo (`minimax`/`h3`, `5b`/`ti2v`, `i2v`; o resto
+  é Wan 2.2 14B T2V).
+- Dimensões (`res_dims`): MiniMax 768x768 em 480p e 1344x768 em 720p; Wan 832x480 em 480p e 1280x704 em 720p;
+  **1080p gera o mesmo tamanho de 720p**. Wan 14B I2V usa 640x640.
+- Quadros e fps, como o código monta o grafo:
 
-1. copia a base e a máscara para `ComfyUI\input`;
-2. monta o grafo de inpainting em memória (`LoadImage`, `LoadImageMask`, `CLIPTextEncode`, `KSampler` e `VAEDecode`);
-3. espera até 90 s pelo histórico do ComfyUI e copia o resultado para `dados\estudio\imagens`.
+  | Modelo | fps do grafo | Quadros |
+  |---|---|---|
+  | MiniMax H3 | o `fps` do pedido | `round(duracao x fps)`, no mínimo 5, arredondado para cima na grade 17k+5 |
+  | Wan 2.2 5B | o `fps` do pedido | `round(duracao x fps)`, no mínimo 17, na grade 4n+1 |
+  | Wan 2.2 14B T2V | 16 fixo | `int(duracao x fps)`, no mínimo 17 |
+  | Wan 2.2 14B I2V | 16 fixo | 81 fixos |
 
-### Vídeo
-
-- **Escolha do grafo** (`_preparar_grafo_video`): monta o grafo em memória conforme o modelo (`minimax`/`h3`, `i2v`, `5b` ou `wan14b-t2v`).
-- **Dimensões:** MiniMax usa 768x768 em 480p e 1344x768 em 720p e 1080p. Wan usa 832x480 em 480p e 1280x704 em 720p e 1080p.
-- **Quadros do MiniMax:** duração x fps, ajustado ao múltiplo exigido pelo nó.
-- **Job:** `POST /prompt` devolve o `prompt_id`, que fica em memória (`_jobs_video`). O servidor consulta `/history/{id}` e copia o vídeo de `ComfyUI\output\video` para `dados\estudio\videos` com prefixo `comfy_vid_`. O tempo máximo de espera é 600 s.
-- **Cancelar:** `POST /api/estudio/cancelar` chama `/interrupt` no ComfyUI. Interrompe a execução atual, seja ela qual for.
+  Não há teto de duração por modelo além do limite do campo (60 s); durações longas podem não caber na VRAM.
+- Em `v2v` (referência em vídeo), o painel extrai o primeiro quadro com o PyAV do `python_embeded` do ComfyUI
+  (`_extrair_frame_chave_video`, timeout de 12 s) e o usa como imagem inicial; sem o `python_embeded`, copia o arquivo
+  como está.
+- **Job**: `sync` espera até 600 s no histórico do ComfyUI e copia o vídeo de `ComfyUI\output\video` para
+  `dados\estudio\videos`; `async` devolve `job_id` e a SPA consulta `GET /status-video/{job_id}`. Os jobs ficam em memória
+  (`_jobs_video`); depois de reiniciar o painel a consulta ainda funciona enquanto o ComfyUI mantiver o histórico.
+- **Cancelar** (`POST /cancelar`): sem corpo; envia `POST /interrupt` ao ComfyUI e interrompe o que estiver rodando.
 
 ### Música
 
-O servidor monta o grafo YuE 2 em memória com estilo, letra, seed e duração. Espera até 300 s pelo histórico e copia o áudio de `ComfyUI\output\audio` (ou `output`) para `dados\estudio\musicas` com prefixo `comfy_audio_`.
+O grafo YuE 2 é montado em memória com estilo, letra, seed e duração. O servidor espera até 300 s pelo histórico e copia o
+áudio de `ComfyUI\output\audio` (ou `output`) para `dados\estudio\musicas` com prefixo `comfy_audio_`.
 
 ### Otimização de prompt
 
-Imagem e vídeo usam a mesma lógica (`_otimizar_prompt_visual` e `_otimizar_prompt_video`). A música tem a sua (`_otimizar_prompt_musica`).
+Imagem, vídeo e música têm funções próprias (`otimizar_prompt_visual`, `_otimizar_prompt_video`,
+`_otimizar_prompt_musica`) com a mesma lógica:
 
-1. Se o texto já tem 30 palavras ou mais, não tem acento e não tem termos em português, devolve o texto como está.
-2. Se `GROQ_API_KEY` existe, chama `https://api.groq.com/openai/v1/chat/completions` com o modelo `qwen/qwen3.8-27b` (timeout 6 s).
-3. Se a Groq falhar ou não houver chave, chama o Ollama local com `qwen3.5:4b` (timeout 8 s).
-4. Se tudo falhar, devolve o texto original sem alteração.
+1. Texto com 30 palavras ou mais, sem acento e sem termos em português da lista interna: devolvido como está.
+2. Com `GROQ_API_KEY`: chama a API da Groq (`qwen/qwen3.8-27b`, timeout de 6 s).
+3. Senão, ou se falhar: chama o Ollama local (`qwen3.5:4b`, timeout de 8 s).
+4. Se tudo falhar: devolve o original, sem erro.
 
-Com `GROQ_API_KEY` configurada, **o texto do prompt sai da máquina** e vai para a Groq.
-
-## Modelos locais do ComfyUI
-
-O painel lista os checkpoints e modelos de difusão que existem em `ComfyUI\models\` (`/api/estudio/catalogo-modelos`).
-
-## Armazenamento
+### Armazenamento
 
 | Pasta | Conteúdo |
 |---|---|
-| `dados/estudio/imagens` | PNG e JPG gerados (ComfyUI e nuvem), resultados de inpaint e SVG de reserva |
-| `dados/estudio/videos` | MP4 gerados |
-| `dados/estudio/musicas` | Áudio gerado pelo YuE 2 |
-| `dados/estudio/uploads` | Arquivos enviados como referência |
-| `ComfyUI\input` | Cópias de base, máscara e referência, criadas pelo painel |
-| `ComfyUI\output\video` e `ComfyUI\output\audio` | Saída original do ComfyUI. O painel copia para `dados\estudio` |
+| `dados/estudio/imagens` | PNG/JPG gerados, resultados de inpaint, SVG de reserva |
+| `dados/estudio/videos` | Vídeos gerados |
+| `dados/estudio/musicas` | Áudio do YuE 2 |
+| `dados/estudio/uploads` | Referências enviadas (`upload_<epoch>_<8 hex>_<nome>.<ext>`) |
+| `ComfyUI\input` | Cópias de base, máscara e imagem de upload criadas pelo painel |
+| `ComfyUI\output\video`, `ComfyUI\output\audio` | Saída original do ComfyUI |
 
-A pasta `dados/` é de execução e não vai para o git (`.gitignore`). `DELETE /api/estudio/videos/{nome}` apaga o arquivo em `dados\estudio\videos` e também a cópia em `ComfyUI\output\video`.
+`dados/` é de execução e não vai para o git. `DELETE /api/estudio/videos/{nome}` apaga o arquivo de `dados\estudio\videos`
+**e** a cópia em `ComfyUI\output\video`.
 
-## API
+## 🔌 API
 
-Todas as rotas ficam sob `/api/estudio`. As rotas que alteram estado (POST, DELETE) passam pela guarda de origem do painel (`painel/tudoia_painel/seguranca.py`): só aceitam requisição do próprio painel e corpo de até 10 MB (`POST /upload`: 140 MB), contado nos bytes recebidos. As rotas de arquivo (`/imagens/{nome}`, `/videos/{nome}`, `/musicas/{nome}`, `/uploads/{nome}`) passam por `_arquivo_em` (`app.py`): só servem ou apagam arquivo que fica dentro da pasta permitida, já resolvida.
+Tabela gerada dos decoradores em `rotas/estudio_*.py` e `rotas/chat.py`. Papel mínimo para alterar: operador.
 
-| Método e rota | Função |
-|---|---|
-| `GET /status-motores` | Diz se o ComfyUI responde na porta 8188 |
-| `GET /catalogo-modelos` | Modelos por motor e tipo (locais, fluxos e nuvem) |
-| `POST /otimizar-prompt`, `/otimizar-prompt-video`, `/otimizar-prompt-musica` | Traduz e enriquece o prompt |
-| `POST /gerar-imagem` | Gera imagem (ComfyUI, Cloudflare, Pollinations ou SVG) |
-| `POST /inpaint` | Regenera a região marcada na máscara |
-| `POST /gerar-video` | Gera vídeo; `modo_execucao` `sync` ou `async` |
-| `GET /status-video/{job_id}` | Estado de um job de vídeo assíncrono |
-| `POST /gerar-musica` | Compõe música (YuE 2) |
-| `POST /cancelar` | Envia `interrupt` ao ComfyUI |
-| `POST /upload` | Envia imagem ou vídeo em base64 (`tipo` `imagem` ou `video`) |
-| `GET /uploads/{nome}` | Serve um upload |
-| `GET` e `DELETE /imagens/{nome}`, `/videos/{nome}`, `/musicas/{nome}` | Serve ou apaga um arquivo |
-| `GET /imagens`, `/videos`, `/musicas` | Lista os arquivos de cada pasta |
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/estudio/status-motores` | `{litellm, ollama, comfyui}` (porta aberta ou não). |
+| GET | `/api/estudio/catalogo-modelos` | Modelos locais de imagem, vídeo e música (checkpoints, unet, diffusion_models); as listas de nuvem vêm vazias. |
+| POST | `/api/estudio/otimizar-prompt` | Traduz e enriquece prompt de imagem. |
+| POST | `/api/estudio/otimizar-prompt-video` | Idem, vídeo. |
+| POST | `/api/estudio/otimizar-prompt-musica` | Idem, estilo musical. |
+| POST | `/api/estudio/gerar-imagem` | Gera imagem. |
+| POST | `/api/estudio/inpaint` | Regenera a região marcada. |
+| POST | `/api/estudio/gerar-video` | Gera vídeo, local. |
+| GET | `/api/estudio/status-video/{job_id}` | Estado de um job assíncrono. |
+| POST | `/api/estudio/cancelar` | Interrompe a execução atual no ComfyUI. |
+| POST | `/api/estudio/gerar-musica` | Compõe música. |
+| POST | `/api/estudio/upload` | Envia imagem ou vídeo em base64 (`tipo` `imagem` ou `video`). |
+| GET | `/api/estudio/uploads/{nome_arquivo}` | Serve um upload. |
+| GET | `/api/estudio/imagens`, `/videos`, `/musicas` | Lista os arquivos de cada pasta. |
+| GET, DELETE | `/api/estudio/imagens/{nome_arquivo}`, `/videos/{nome_arquivo}`, `/musicas/{nome_arquivo}` | Serve ou apaga um arquivo. |
+| POST | `/api/chat/completions` | Chat pelo LiteLLM (`ChatReq`: `model` padrão `tudoia-auto`, 1 a 100 mensagens, `temperature` 0 a 2, `max_tokens` 16 a 16384). |
 
-## Limitações e riscos
+Rotas de arquivo passam por `arquivo_em` (`estudio_servico.py`): a pasta permitida e o alvo são resolvidos, e só vale
+arquivo dentro dela (`is_relative_to`). `..` e caminho absoluto são recusados.
 
-Estes pontos saem da leitura do código. Alguns são divergências entre o que a interface mostra e o que o servidor faz.
+## ❌ Erros e diagnóstico
 
-1. **Upload de até 100 MB de arquivo.** A guarda aceita até 140 MB de corpo em `POST /api/estudio/upload` (`LIMITES_POR_ROTA` em `seguranca.py`), porque o arquivo vai em base64 (cerca de 33% maior). A checagem de 100 MB dentro de `upload_midia_estudio` (`app.py`) vale para o arquivo decodificado. Antes, o teto de 1 MB do corpo recusava qualquer arquivo acima de cerca de 750 KB.
-2. **1080p gera a mesma resolução de 720p** (`estudio_servico.py`, dicionário `res_dims` em `_preparar_grafo_video`).
-3. **As opções "Wan 2.1 Nuvem" e "Stable Video Diffusion (SVD Nuvem)" não têm backend de nuvem.** O servidor só gera vídeo no ComfyUI. Com o ComfyUI ligado, o pedido cai nos grafos locais (MiniMax ou Wan 14B). Com o ComfyUI desligado, responde `servico_offline`. O campo `motor` de `gerar-video` é ignorado.
-4. **Prompts saem da máquina.** A Groq recebe o prompt quando há `GROQ_API_KEY`. O Pollinations recebe o prompt na URL só se `TUDOIA_ESTUDIO_POLLINATIONS=1`; por padrão ele fica desligado.
-5. **Portas fixas.** ComfyUI (8188) e Ollama (11434) não são configuráveis pelo `.env`.
-6. **Jobs de vídeo ficam em memória.** Reiniciar o painel apaga `_jobs_video`. A consulta de estado volta a funcionar pelo histórico do ComfyUI, enquanto ele mantiver o job.
-7. **Campos ignorados.** `modelo` é ignorado em inpaint e em música (sempre YuE 2).
-8. **SVG de reserva.** O texto do prompt entra no SVG com `html.escape` (até 60 caracteres). O arquivo é servido como `application/octet-stream` (`servir_imagem_estudio`), então o `<img>` da interface provavelmente não o exibe. Isso é a confirmar no navegador.
-9. **Modelo da Groq.** `qwen/qwen3.8-27b` não aparece em `config/modelos.yaml`. A existência desse modelo na Groq é a confirmar.
-10. **Histórico visual.** As últimas 60 gerações ficam em memória (`HISTORICO_VISUAL`). Não há persistência.
+Formato de erro e códigos gerais: [painel.md](painel.md#-erros-e-diagnóstico). Códigos específicos do Estúdio:
 
-## Veja também
+| Sintoma | Código | Causa | Ação |
+|---|---|---|---|
+| 503 ao gerar imagem, vídeo, música ou inpaint | `servico_offline` (`extras.servico_offline`: `comfyui`) | Porta 8188 fechada | Tela Serviços & Runtime: iniciar o ComfyUI. O painel não troca de motor sozinho. |
+| 502 `falha_motor` | `falha_motor` | O ComfyUI recusou o grafo (`node_errors`), faltam pesos ou custom nodes | Veja `dados\logs\comfyui.log` e confira os arquivos em `ComfyUI\models`. |
+| 504 no inpaint | `tempo_esgotado` | ComfyUI não terminou em 180 s | Reduza `steps` ou veja a fila no ComfyUI. |
+| 404 `nao_encontrado` em `i2v`/`v2v` | `nao_encontrado` | Referência não está em `dados\estudio\uploads` | Envie o arquivo de novo por `POST /upload`. |
+| 422 `validacao` em `i2v`/`v2v` sem referência | `validacao` | Modo exige mídia | Informe `arquivo_referencia`. |
+| 422 no upload | `validacao` | Extensão não permitida ou conteúdo que não bate com a extensão | Envie um arquivo válido. |
+| 413 no upload | `corpo_grande_demais` | Arquivo acima de 100 MB | Reduza o arquivo. |
+| Imagem sai como SVG com `aviso` | (campo `aviso`) | Nenhum motor respondeu e o Pollinations está desligado | Inicie o ComfyUI ou configure Cloudflare. |
 
-- [modelos.md](modelos.md): download, verificação e espaço em disco dos pesos.
-- [keycloak.md](keycloak.md): autenticação do painel.
-- [servicos-docker.md](servicos-docker.md): como o painel sobe e para o ComfyUI e o Ollama no host.
-- [../../config/modelos.yaml](../../config/modelos.yaml): manifesto de modelos, com destino de cada arquivo.
+## 🛡️ Segurança e privacidade
+
+- **O que sai da máquina**: a Groq recebe o prompt quando há `GROQ_API_KEY`: em toda geração de imagem e de vídeo (a otimização é automática) e nas rotas
+  de otimizar prompt, inclusive a de música (a geração de música não otimiza sozinha). O Pollinations recebe o
+  prompt na URL só com `TUDOIA_ESTUDIO_POLLINATIONS=1`. Para dado confidencial,
+  fique em ComfyUI local e sem Groq (IA-PRV-01, IA-PRV-03).
+- **Entradas do ComfyUI são tratadas como não confiáveis** (`comfyui.py`): `filename`, `subfolder` e `type` vindos do
+  histórico são validados (sem separador, `..`, unidade ou byte nulo) antes de virar caminho ou query.
+- **Caminhos**: leitura e exclusão só dentro das pastas do Estúdio; referência de vídeo só em `uploads`; imagem-base de
+  inpaint só em `imagens` ou `uploads`.
+- **Upload**: extensão em lista, tamanho conferido antes de decodificar, conteúdo conferido pelos bytes iniciais, nome
+  sanitizado com prefixo único.
+- **Segredos**: as chaves da Groq e da Cloudflare viajam só para o respectivo provedor; o corpo de nenhuma rota do Estúdio é gravado na
+  auditoria ([painel.md](painel.md#️-segurança)).
+
+## ⚠️ Limitações conhecidas
+
+1. 1080p gera a mesma resolução de 720p.
+2. `POST /gerar-video` é só local; não há geração de vídeo em nuvem.
+3. Portas fixas: ComfyUI 8188 e Ollama 11434 não são configuráveis.
+4. Jobs de vídeo assíncronos e histórico visual ficam em memória; reiniciar o painel os apaga.
+5. O arquivo SVG de reserva é servido como `application/octet-stream`; a exibição no `<img>` não foi verificada.
+6. A contagem do histórico, as dimensões e os nós acima vêm da leitura do código. Nenhuma geração real (GPU ou
+   nuvem paga) foi executada na verificação deste documento.
+
+## ❓ Perguntas frequentes
+
+**Posso trocar o checkpoint do inpaint?** Sim: `modelo: "local:<arquivo>.safetensors"` com o arquivo em
+`ComfyUI\models\checkpoints`. Qualquer outro valor usa o Juggernaut XL.
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Painel](painel.md) · [Roteador](roteador.md) ➡️

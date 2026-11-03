@@ -1,8 +1,31 @@
-# Ingestão e Governança da Doutrina Corporativa (Doutrina TEC)
+---
+titulo: Consumo da Doutrina TEC pela SquadTI
+tipo: explicacao
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 📜 Consumo da Doutrina TEC pela SquadTI
+
+# 📜 Consumo da Doutrina TEC pela SquadTI
+
+> **Público:** quem mantém a ligação entre a SquadTI e a Doutrina TEC. Explica como as regras chegam aos agentes, o orçamento de tokens e a falha fechada.
+
+## 📑 Sumário
+
+- [1. O Conceito de Doutrina para Inteligência Artificial](#1-o-conceito-de-doutrina-para-inteligência-artificial)
+- [2. A Melhor Forma de Consumo de Conteúdo Voltado para IA (Protocolo em 4 Camadas)](#2-a-melhor-forma-de-consumo-de-conteúdo-voltado-para-ia-protocolo-em-4-camadas)
+- [3. Estrutura de Diretórios da Doutrina TEC](#3-estrutura-de-diretórios-da-doutrina-tec)
+- [4. Como a Squad Consome a Doutrina no LangGraph](#4-como-a-squad-consome-a-doutrina-no-langgraph)
+
+---
+
 
 ## 1. O Conceito de Doutrina para Inteligência Artificial
 
-A **Doutrina TEC** (a pasta da Doutrina (`DOUTRINA_TEC`)) não é uma documentação estática comum para humanos lerem sequencialmente. Ela foi concebida sob uma arquitetura de governança **AI-Ready**, desenhada especificamente para consumo por agentes de IA com **orçamento controlado de tokens** e **regras acionáveis e verificáveis**.
+A **Doutrina TEC** (a pasta apontada por `DOUTRINA_TEC`) não é uma documentação estática comum para humanos lerem sequencialmente. Ela foi concebida sob uma arquitetura de governança **AI-Ready**, desenhada especificamente para consumo por agentes de IA com **orçamento controlado de tokens** e **regras acionáveis e verificáveis**.
 
 > **Regra de Ouro da Doutrina:**
 > *"Se o código gerado por qualquer agente e a Doutrina divergirem, **a Doutrina vence** e o código é corrigido, ou a Doutrina é alterada formalmente por um novo ADR. Nunca os dois divergindo em silêncio."*
@@ -48,7 +71,7 @@ flowchart TD
 
 ### Camada 1: Núcleo Permanente (`gerado/arquitetura-nucleo.md`)
 - **Tamanho:** ~2.800 tokens só da família `arquitetura` (estimativa caracteres/4; orçamento rígido de 3.000 por família, validado no CI da doutrina); com `ia` e `ecossistema` o contexto fixo passa de ~4.400.
-- **Quando usar:** Injetado **sempre** no System Prompt dos agentes técnicos (CHEFE, Arquiteto, Backend, DBA, QA).
+- **Quando usar:** injetado no prompt dos papéis que usam modelo, conforme o perfil do papel (`gerado/perfis/<papel>.json`, ver seção 4).
 - **Conteúdo:** Contém apenas as regras `MUST · núcleo` inegociáveis (ex: `ARQ-PRI-01`, `ARQ-EST-01`, `ARQ-DOM-02`, `ARQ-APL-03`).
 
 ### Camada 2: Roteamento Semântico (`INDEX.md` ou `llms.txt`)
@@ -58,7 +81,7 @@ flowchart TD
 
 ### Camada 3: Slicing de Regras (Somente o bloco `## Regras`)
 - O agente não lê introduções históricas, contexto ou discussões no momento de codificar.
-- O parser lê **exclusivamente o bloco `## Regras`** até o próximo cabeçalho `## `.
+- O gerador da Doutrina extrai **exclusivamente o bloco `## Regras`** de cada padrão; a SquadTI não parseia Markdown, consome só o JSON gerado (seção 4).
 - Justificativas e ADRs só são abertos se houver ambiguidade no requisito.
 
 ### Camada 4: Citação de IDs e Validação Fechada
@@ -66,7 +89,7 @@ flowchart TD
 - A conformidade é medida, não declarada: regras com `evidencia:` apontam o teste real do TemplateTEC (ex.: `ConvencoesTests.TodoCommand_TemValidador`), que o `dotnet test` executa. O QA reprova a entrega se o comando sair com código diferente de 0.
 
 ### Privacidade
-- O orquestrador usa por padrão o modelo `tudoia-local` (somente Ollama). O roteador `tudoia-auto` pode mandar código e esquema para a nuvem, então é recusado a menos que `TUDOIA_PERMITIR_NUVEM=1`.
+- O gateway desta árvore não define `tudoia-local-estrito` (ver [SquadTI (componente)](../componentes/squadti.md#perfis-perfispy)); o texto abaixo descreve o que o código da Squad exige. O padrão é modelo só local: a API e o painel iniciam a tarefa com `local-estrito` (`tudoia-local-estrito`, sem fallback para a nuvem); o processo, sem outra indicação, usa `tudoia-local` (a imagem fixa `tudoia-local-estrito`). Qualquer modelo que não seja `tudoia-local`, `tudoia-local-estrito` ou `local/*` (inclui o roteador `tudoia-auto`) pode mandar código e esquema para a nuvem e é recusado a menos que `TUDOIA_PERMITIR_NUVEM=1` (CLI) ou `consentimento_nuvem` (API); o mesmo vale para o perfil de cada agente configurado na aba Agentes. Ver `perfis.py` e `nodes.py`.
 
 ### Rastreabilidade e falha fechada
 - `gerado/manifesto.json` dá versão e hash da doutrina. A primeira etapa grava `doutrina_versao`/`doutrina_hash` no `SquadState`; se mudarem durante a tarefa, a tarefa aborta.
@@ -77,10 +100,10 @@ flowchart TD
 
 ## 3. Estrutura de Diretórios da Doutrina TEC
 
-A estrutura canônica da Doutrina está organizada em famílias:
+A estrutura canônica da Doutrina está organizada em famílias. A árvore mostra só a família `arquitetura` e é um resumo; a Doutrina vive em repositório próprio, fora deste, e esta árvore **não foi conferida** contra ele na revisão de 2026-11-03 (a contagem de 14 padrões, ADR 0001 a 0012 e ~2.800 tokens vêm do texto original). O que o código da SquadTI exige está na seção 4.
 
 ```text
-a pasta da Doutrina\
+<raiz-da-doutrina>/
 ├── INDEX.md                     # Índice geral com metadados 'leia-quando'
 ├── llms.txt                     # Manifesto padronizado para IA
 ├── AGENTS.md                    # Regras de postura para agentes
@@ -119,16 +142,20 @@ a pasta da Doutrina\
 
 ## 4. Como a Squad Consome a Doutrina no LangGraph
 
-O arquivo [nodes.py](file:///D:/SquadTI/orquestrador/nodes.py) foi adaptado para consumir a doutrina usando o script e os arquivos gerados:
+O módulo [`doutrina_tec.py`](../../runtime/squadti/orquestrador/doutrina_tec.py), usado por [`nodes.py`](../../runtime/squadti/orquestrador/nodes.py), consome só os artefatos gerados, sem parsear Markdown:
 
-O módulo [doutrina_tec.py](orquestrador/doutrina_tec.py) consome só os artefatos gerados, sem parsear Markdown:
-
-1. **Núcleo:** `gerado/<familia>-nucleo.md` de cada família lida entra como contexto base dos papéis técnicos. Padrão: `arquitetura`, `ia` e `ecossistema` (~4.400 tokens no total, medido em 2026-11-01); a família `componentes` é para construir bibliotecas e não entra por padrão. Mude com `DOUTRINA_FAMILIAS` (lista separada por vírgula) ou `doutrina_familias` no `stack_config`; nome inválido ou família ausente derruba a tarefa (falha fechado). Mais famílias = mais tokens por chamada: confira a janela do modelo local, porque o gateway pode reenviar à nuvem o pedido que não couber (IA-PRV-02).
-2. **Regras do papel:** `gerado/<familia>.json` → `por_papel[papel]` lista os padrões de cada família (o papel pode existir em só algumas); entram só as regras deles que não são de núcleo. O roteamento mora na doutrina (front-matter `papeis`), não no orquestrador.
-3. **Evidência:** `evidencias()` mapeia ID → teste do template (provas em outros repositórios, `fonte:caminho#trecho`, não entram); o QA relata no `qa_report.json` quais regras têm teste.
+1. **Núcleo e perfil do papel:** cada papel lê `gerado/perfis/<papel>.json` (`nucleo_sugerido` = famílias do papel); sem perfil, o papel não trabalha (falha fechada). O núcleo `gerado/<familia>-nucleo.md` dessas famílias entra no prompt. Famílias que a stack escolhida não usa (`doutrina_excluir` no estado, gravado pelo CHEFE; na stack `python`: `arquitetura` e `componentes`) saem desse conjunto. `FAMILIAS_PADRAO` (`arquitetura`, `ia`, `ecossistema`) só vale quando não há papel. Para forçar as mesmas famílias em todos os papéis, use `DOUTRINA_FAMILIAS` (lista separada por vírgula) ou `doutrina_familias` no `stack_config`; nome inválido ou família ausente derruba a tarefa (falha fechada). Mais famílias = mais tokens por chamada: confira a janela do modelo local, porque o gateway pode reenviar à nuvem o pedido que não couber (IA-PRV-02).
+2. **Regras do papel:** `gerado/<familia>.json` → `por_papel[papel]` lista os padrões de cada família (o papel pode existir em só algumas); entram só as regras deles que não são de núcleo, MUST primeiro e depois SHOULD, até o orçamento de `DOUTRINA_REGRAS_MAX_TOKENS` (padrão 12000; valor inválido volta ao padrão). O roteamento mora na doutrina (front-matter `papeis`), não no orquestrador.
+3. **Evidência e IDs:** `evidencias()` mapeia ID → teste do template (provas em outros repositórios, `fonte:caminho#trecho`, não entram); o QA relata no `qa_report.json` quais regras têm teste. `ids_existentes()` lista todos os IDs de regra das famílias geradas: o revisor e o Sênior Master só bloqueiam por achado cujo ID existe (o resto vai para `nao_verificados`).
 4. **Versão:** `verificar_versao()` grava/compara `manifesto.json` no estado.
 5. **Caminho:** `DOUTRINA_TEC` (ambiente) tem precedência sobre `architecture_source_path` do `stack_config`. Não há caminho fixo no código.
 
-A saída dos modelos só vira arquivo por [execucao.py](orquestrador/execucao.py) (caminho validado, área permitida, limite de tamanho), e comandos rodam sem shell com executável permitido e timeout.
+A saída dos modelos só vira arquivo por [execucao.py](../../runtime/squadti/orquestrador/execucao.py) (caminho validado, área permitida, limite de tamanho), e comandos rodam sem shell com executável permitido e timeout.
 
-Testes: `cd orquestrador && DOUTRINA_TEC=<pasta> python -m unittest discover -s tests -v`.
+Papéis que o orquestrador pede à Doutrina: `requisitos`, `arquiteto`, `dba`, `backend`, `frontend`, `documentacao`, `appsec` (modelo de ameaças do hacker) e `chefe`. O revisor e o Sênior Master usam `backend`/`frontend`; o Mantenedor roda sem regras da Doutrina. (Conferido contra `gerado/perfis/` de um clone local da Doutrina, não contra o commit fixado em `governanca/doutrina.json`.)
+
+Testes: o `pyproject.toml` de `runtime/squadti` configura `pytest` (`testpaths = ["orquestrador/tests"]`, `pythonpath` com `orquestrador` e `.`); rode `uv run pytest` nessa pasta. A suíte raiz `tests/runtime` roda a partir da raiz do repositório.
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Guia de implementação com LangGraph e TudoIA](03-guia-de-implementacao.md) · [Sistema web da SquadTI (proposta)](06-sistema-web-squadti.md) ➡️

@@ -1,4 +1,40 @@
-# Especificação Técnica e Arquitetura: Sistema Web da Squad TI
+---
+titulo: Sistema web da SquadTI (proposta)
+tipo: explicacao
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🌐 Sistema web da SquadTI (proposta)
+
+# 🌐 Sistema web da SquadTI (proposta)
+
+> **Público:** quem decide o futuro portal da SquadTI. **Proposta**: o portal .NET descrito aqui não existe. Uma parte da função dele foi entregue de outro jeito, no painel do TudoIA (tabela abaixo).
+
+## 📑 Sumário
+
+- [1. Visão Geral da Arquitetura do Sistema Web](#1-visão-geral-da-arquitetura-do-sistema-web)
+- [2. Módulos Funcionais do Sistema Web](#2-módulos-funcionais-do-sistema-web)
+- [3. Modelo de Dados Relacional (MSSQL)](#3-modelo-de-dados-relacional-mssql)
+- [4. Endpoints Principais da API (.NET 10)](#4-endpoints-principais-da-api-net-10)
+- [5. Próximos Passos para Materialização do Sistema Web](#5-próximos-passos-para-materialização-do-sistema-web)
+
+---
+
+
+> [!WARNING]
+> **Proposta não implementada como descrita.** Revisado em 2026-11-03 contra `runtime/squadti/` e `painel/`: não existe backend .NET, SignalR, banco `squad` nem os endpoints `/api/v1/...` abaixo. A SquadTI é controlada pela CLI (`main.py`) e pela API HTTP do orquestrador (`api.py`, porta padrão 8790, token em `TUDOIA_SQUADTI_TOKEN`), e o **painel do TudoIA** (menu SquadTI) a consome. Os nomes de modelo citados (ex.: `qwen2.5-coder:32b`, `llama3.3:70b`) são do desenho original; o orquestrador usa perfis do gateway e tem 18 nós.
+
+O que dos quatro módulos abaixo já existe, no painel (ver [SquadTI (componente)](../componentes/squadti.md#️-painel-abas-tarefas-e-agentes)):
+
+| Módulo proposto | Situação hoje |
+|---|---|
+| 1. Parametrização dos agentes | **Parcial**: aba *Agentes* grava perfil, temperatura, máximo de tokens por agente, modo de revisão, validação em execução e orçamento, em `agentes.json` (só o admin salva). **Não existe**: edição de system prompt, Top-P, retry, caminho da Doutrina pela tela, toggle de ferramentas |
+| 2. Solicitações e elicitação | **Existe**: *Nova tarefa*, perguntas do analista, conversa com o CHEFE, leitura do `BUSINESS_SPEC` e botão de aprovação |
+| 3. Cockpit em tempo real | **Parcial**: trilha dos nós, consumo do orçamento, log ao vivo por polling (sem SignalR) e leitura de arquivos. **Não existe**: DAG interativo, visualizador de diffs |
+| 4. Governança e Human-in-the-Loop | **Parcial**: aprovação da especificação e do release (amarradas a hash), auditoria de chamadas e proveniência por API. **Não existe**: fila de aprovações entre tarefas, aprovação de arquitetura ou de migração |
 
 Este documento especifica a concepção completa do **Sistema Web de Gestão da Squad TI (SquadTI Web Portal)**. O sistema permite parametrizar os agentes de IA, registrar solicitações com entrevistas interativas de requisitos e acompanhar a execução do grafo LangGraph em tempo real.
 
@@ -6,7 +42,7 @@ Este documento especifica a concepção completa do **Sistema Web de Gestão da 
 
 ## 1. Visão Geral da Arquitetura do Sistema Web
 
-O sistema adota os padrões corporativos de [Doutrina TEC](file:///D:/Projetos/Doutrina):
+O sistema adota os padrões corporativos de Doutrina TEC:
 - **Backend:** .NET 10 Web API estruturada em Clean Architecture com CQRS (`TemplateTEC`).
 - **Comunicação em Tempo Real:** **ASP.NET Core SignalR** para streaming do grafo, logs de terminal e mensagens do analista de requisitos.
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS + Radix UI / shadcn + TanStack Query.
@@ -17,7 +53,7 @@ O sistema adota os padrões corporativos de [Doutrina TEC](file:///D:/Projetos/D
 flowchart LR
     Browser([Frontend React 19 / TS]) <-->|HTTP REST + SignalR WebSockets| API[.NET 10 Web API - SquadTI.Api]
     API <-->|EF Core / DDL| DB[(MSSQL 2022)]
-    API <-->|Fonte da Verdade Padrões| TEC[a pasta da Doutrina]
+    API <-->|Fonte da Verdade Padrões| TEC[Doutrina TEC]
     API <-->|Execução de Jobs / Fila| ORQ[Orquestrador LangGraph Python]
     ORQ <-->|LLM Gateway :4000| TudoIA[TudoIA / LiteLLM / Ollama]
 ```
@@ -31,7 +67,7 @@ Permite configurar o comportamento de cada agente da Squad sem alterar código:
 - **Seleção de Modelo por Agente:** Atribuir modelo do TudoIA (ex: `qwen2.5-coder:32b`, `llama3.3:70b`, `tudoia-auto`).
 - **Edição de System Prompts:** Ajustar diretrizes de persona e regras locais.
 - **Configuração de Hiperparâmetros:** Temperatura, Top-P, max tokens e retry bounds.
-- **Fonte da Verdade:** Input configurável para o caminho da Doutrina TEC (a pasta da Doutrina (`DOUTRINA_TEC`)).
+- **Fonte da Verdade:** Input configurável para o caminho da Doutrina TEC (pasta apontada por `DOUTRINA_TEC`).
 - **Ferramentas Ativas:** Toggle de permissões de terminal, escrita em disco e scanners de segurança.
 
 ### Módulo 2: Portal de Solicitações & Elicitação Interativa (`/solicitacoes/nova`)
@@ -76,7 +112,7 @@ CREATE TABLE squad.Projeto (
     Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
     Nome NVARCHAR(100) NOT NULL,
     CaminhoDiretorio NVARCHAR(500) NOT NULL,
-    FonteVerdadeArquitetura NVARCHAR(500) NOT NULL DEFAULT 'a pasta da Doutrina',
+    FonteVerdadeArquitetura NVARCHAR(500) NOT NULL DEFAULT '<caminho-da-doutrina>',
     StackBackend NVARCHAR(50) NOT NULL DEFAULT 'dotnet10',
     StackFrontend NVARCHAR(50) NOT NULL DEFAULT 'react19_ts',
     EngineBanco NVARCHAR(50) NOT NULL DEFAULT 'mssql',
@@ -124,7 +160,7 @@ CREATE TABLE squad.LogExecucao (
 ## 4. Endpoints Principais da API (.NET 10)
 
 ### Configurações de Agentes:
-- `GET /api/v1/agentes`: Lista configurações atuais dos 9 agentes.
+- `GET /api/v1/agentes`: Lista configurações atuais dos agentes.
 - `PUT /api/v1/agentes/{id}`: Atualiza modelo, prompt ou parâmetros do agente.
 - `GET /api/v1/configuracoes/fonte-verdade`: Valida se o diretório da Doutrina TEC existe e lista os padrões disponíveis.
 
@@ -153,3 +189,7 @@ CREATE TABLE squad.LogExecucao (
 1. Gerar a estrutura de backend utilizando o template corporativo: `dotnet new tec-project -n SquadTI.Web`.
 2. Criar a SPA frontend utilizando Vite + React 19 + TypeScript.
 3. Conectar o serviço SignalR da API aos eventos de streaming do LangGraph.
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Consumo da Doutrina TEC pela SquadTI](05-fonte-da-verdade-arquitetura.md) · [Análise crítica e benchmarks da SquadTI](07-analise-critica-e-benchmarks.md) ➡️

@@ -16,20 +16,24 @@ aplicar_mcp_opencode(raiz: Path, home: Path | None, dir_backup: Path, remover=()
 aplicar_tudo(raiz: Path, home: Path | None, dir_backup: Path, remover=()) -> dict[str, str]
     # aplicar_mcp_claude + aplicar_mcp_opencode + sincronizar com UMA fase de validação: nada é gravado
     # se qualquer um dos três falhar na validação. `dir_backup` é a base (subpastas claude-json,
-    # opencode-json, antigravity-json). Chaves: alvos do sincronizar + `claude:mcp:<caminho>` e
+    # opencode-json, antigravity-json, cursor-json, codex-toml). Chaves: alvos do sincronizar + `claude:mcp:<caminho>` e
     # `opencode:mcp:<caminho>`. É o que o painel deve chamar.
 detectar_instancias(home: Path | None = None, workspaces: list[str] | None = None) -> list[dict]
     # Sugere instâncias (Claude padrão e perfis `~/.claude-*`, Antigravity `~/.gemini`, Codex `~/.codex`,
-    # Cursor por workspace existente). Só lê o disco; o painel decide o que gravar em `instancias[]`.
+    # OpenCode `~/.config/opencode`, Aider `~/.aider.conf.yml` ou `~/.aider`, Cursor por workspace existente).
+    # Só lê o disco; o painel decide o que gravar em `instancias[]`.
 ```
 `raiz` = raiz do monorepo (contém `governanca/governanca.json`, `.env`). `home` = HOME do usuário (injetável p/ teste).
 Os dicionários de `aplicar_mcp_*` usam como chave o caminho resolvido do arquivo.
 
 ## Fonte única (`governanca/`)
-- `governanca.json`: `regras[]`, `skills[]` (ids), `mcp[]` (ids ativos), `workspaces[]`, `clientes[]` (modo legado),
+- `governanca.json`: `regras[]`, `skills[]` (ids), `mcp[]` (ids ativos), `workspaces[]`, `clientes[]` (modo legado;
+  valores aceitos: os de `instancias[]` abaixo, mas `opencode` e `workspace` não geram nada nesse modo),
   `instancias[]` (opcional; se presente e não vazio, substitui `clientes[]`).
+- `governanca/instancias.local.json` (ignorado pelo git): se existir, o campo `instancias` dele tem precedência sobre
+  o de `governanca.json`; malformado = `ErroGovernanca`.
 - `instancias[]`: `{id, cliente, caminho, config_json?, ativo?=true, ...}`; `cliente` ∈ `antigravity`, `claude`,
-  `cursor`, `codex`, `opencode`, `workspace`; `caminho` aceita `~`. Instância inativa é ignorada; `cursor`/`workspace`
+  `cursor`, `codex`, `opencode`, `aider`, `workspace`; `caminho` aceita `~`. Instância inativa é ignorada; `cursor`/`workspace`
   ativas também viram raízes de workspace (regra 3).
 - `regras/*.md`, `skills/<id>/` (com `SKILL.md`; todos os arquivos em UTF-8), `mcp.json` (catálogo canônico com `${VAR}`).
 - Segredos: somente `<raiz>/.env`.
@@ -41,11 +45,12 @@ Os dicionários de `aplicar_mcp_*` usam como chave o caminho resolvido do arquiv
 | Cursor | `<ws>/.cursor/rules/tudoia.mdc` | regras |
 | Cursor (MCP) | `config_json` da instância, padrão **`<home>/.cursor/mcp.json`** (nunca a pasta da instância, que é workspace) | só as entradas de `mcpServers` do catálogo, traduzidas (regra 11); escrito por `sincronizar` |
 | Claude | `<caminho>/CLAUDE.md` (padrão `~/.claude`) + `<caminho>/skills/<id>/` | bloco gerenciado + skills |
-| Claude (MCP) | `<home>/.claude.json` (ou `config_json`) | só as entradas de `mcpServers` do catálogo; escrito por `aplicar_mcp_claude`/`aplicar_tudo`, **nunca** por `sincronizar` |
+| Claude (MCP) | `<home>/.claude.json` (ou `config_json`; perfil cujo `caminho` não termina em `.claude`: `<caminho>/.claude.json`) | só as entradas de `mcpServers` do catálogo; escrito por `aplicar_mcp_claude`/`aplicar_tudo`, **nunca** por `sincronizar` |
 | Antigravity | `<caminho>/GEMINI.md` (bloco) + `config_json` (padrão `<caminho>/config/mcp_config.json`) + `<caminho>/antigravity-cli/skills/` | MCP: só as entradas de `mcpServers` do catálogo (escrito por `sincronizar`) |
 | Codex | `<caminho>/AGENTS.md` | bloco gerenciado |
 | Codex (MCP) | `config_json` da instância, padrão `<caminho>/config.toml` | só as tabelas `[mcp_servers.<id>]` do catálogo, traduzidas (regra 12); escrito por `sincronizar` |
 | OpenCode | `<caminho>/AGENTS.md` (bloco) + `config_json` (padrão `<caminho>/opencode.json`) | MCP: só as entradas de `mcp` do catálogo, traduzidas (ver regra 8); escrito por `aplicar_mcp_opencode`/`aplicar_tudo`, nunca por `sincronizar` |
+| Aider | `<caminho>/.aider.conf.yml` e `<caminho>/.aider.model.metadata.json` | arquivos inteiros gerados (sem bloco gerenciado nem MCP): endpoint `http://127.0.0.1:4000/v1`, modelos `openai/tudoia-codigo` e `openai/tudoia-local`, um alias e um bloco de metadados por grupo do roteador (lidos de `runtime/litellm/config.yaml`; sem ele, cinco grupos canônicos); escrito por `sincronizar`. `LITELLM_MASTER_KEY` entra interpolada só se o destino está sob `home` e fora de workspace; senão vai `${LITELLM_MASTER_KEY}` literal (regra 3) |
 
 ## Regras de comportamento
 1. **Bloco gerenciado**: só o trecho entre marcas é reescrito; conteúdo do usuário fora das marcas é preservado.
@@ -67,11 +72,16 @@ Os dicionários de `aplicar_mcp_*` usam como chave o caminho resolvido do arquiv
    - Falha de E/S **durante** a fase de escrita (ex.: arquivo travado) interrompe a chamada; arquivos já
      trocados antes dela permanecem trocados (não há transação entre arquivos).
 5. **Drift**: `verificar` aponta arquivo gerado ausente ou diferente do esperado e skill gerenciada órfã. Nos JSON de MCP compara só as entradas que o módulo possui.
-6. Sem dependências externas (stdlib).
+6. Sem dependências externas (stdlib). Única E/S de rede: a consulta de modelos do Ollama local (regra 8), `GET http://127.0.0.1:11434/api/tags` com prazo de 0,5 s; qualquer falha devolve lista vazia.
 7. **MCP do Claude é do painel**: `sincronizar` não lê nem escreve `mcpServers` de `~/.claude.json`; servidores escritos à mão são preservados. `aplicar_mcp_claude` possui os ids de `governanca/mcp.json`: grava os ativos (com segredos se o destino está em `home`), remove os catálogo inativos e os passados em `remover`, e mantém as demais entradas. Backup em `<home>/.tudoia/backups/claude-json/` (últimas 10). O mesmo vale para o `mcp_config.json` do Antigravity (escrito por `sincronizar`, backup em `<home>/.tudoia/backups/antigravity-json/`) para o `opencode.json` (backup em `<home>/.tudoia/backups/opencode-json/`), para o `mcp.json` do Cursor (`cursor-json/`) e para o `config.toml` do Codex (`codex-toml/`). Os backups ficam na home, fora de todo workspace, porque guardam tokens em claro.
 8. **OpenCode**: tradução do catálogo para `mcp.<id>`: `type` `http`/`sse` → `{"type": "remote", "url", "headers"?}`;
    sem `type` ou `stdio` → `{"type": "local", "command": [command, *args], "environment"?}`; sempre `"enabled": true`.
-   Outro `type`, ou entrada sem `url`/`command` → `ErroGovernanca`. Demais chaves do `opencode.json` são do usuário.
+   Outro `type`, ou entrada sem `url`/`command` → `ErroGovernanca`. Demais chaves do `opencode.json` são do usuário,
+   **com uma exceção**: se o arquivo já tem `provider.ollama` e o Ollama local responde com ao menos um modelo, o
+   módulo também reescreve `provider.ollama` (`npm`, `name`, `options.baseURL` = `http://127.0.0.1:11434/v1` e `models`
+   = os modelos instalados), acrescenta `opencode` a `disabled_providers` e, se `model` não começa com `ollama/`, troca-o
+   por `ollama/qwen2.5-coder:latest` (ou pelo primeiro modelo instalado). Como isso depende do estado do Ollama,
+   `verificar` e `aplicar_mcp_opencode` podem divergir entre duas execuções sem mudança em disco.
 9. **Gravação atômica**: temporário único no mesmo diretório (`tempfile.mkstemp`), mesmo modo do arquivo original
    (arquivo novo: `0600` se pode conter segredo, isto é, JSON de MCP sob home; senão `0644`), `flush` + `fsync`,
    `os.replace`. O temporário nunca fica para trás. Backups nascem `0600`.
