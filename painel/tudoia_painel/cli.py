@@ -20,13 +20,19 @@ SEGREDOS_INTERNOS = ("WEBUI_SECRET_KEY", "SEARXNG_SECRET", "N8N_ENCRYPTION_KEY",
 SEGREDOS_KEYCLOAK = ("TUDOIA_KEYCLOAK_ADMIN_PASSWORD", "KEYCLOAK_DB_PASSWORD")
 
 
+# Só com o perfil `squadti`: token da API da Squad (o painel e o container leem o mesmo valor). A chave do LiteLLM da Squad
+# (SQUADTI_API_KEY) não nasce aqui: precisa do LiteLLM no ar, ver scripts/squadti/chave.py.
+SEGREDOS_SQUADTI = ("TUDOIA_SQUADTI_TOKEN",)
+
+
 def preencher_segredos(raiz: Path) -> list[str]:
     """Gera segredos aleatórios para as chaves internas vazias. Devolve os nomes preenchidos (sem valores)."""
     env_path = raiz / ".env"
     atuais = ler_env(env_path) if env_path.exists() else {}
     preenchidos = []
     perfis = {p.strip() for p in (atuais.get("COMPOSE_PROFILES") or "").split(",")}
-    for chave in SEGREDOS_INTERNOS + (SEGREDOS_KEYCLOAK if "keycloak" in perfis else ()):
+    extras = (SEGREDOS_KEYCLOAK if "keycloak" in perfis else ()) + (SEGREDOS_SQUADTI if "squadti" in perfis else ())
+    for chave in SEGREDOS_INTERNOS + extras:
         if not (atuais.get(chave) or "").strip():
             novo_val = f"sk-{secrets.token_urlsafe(32)}" if chave == "LITELLM_MASTER_KEY" else secrets.token_urlsafe(32)
             gravar_valor(env_path, chave, novo_val, raiz / "dados" / "backups" / "env")

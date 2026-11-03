@@ -49,7 +49,7 @@ if ($LASTEXITCODE -ne 0) { throw 'docker compose up falhou.' }
 if (-not (IniciarPainel)) { throw 'O painel nao respondeu na porta 3100.' }
 
 # 5. API da Squad (opcional)
-if ($ComSquadti -and -not (IniciarSquadti)) { Write-Warning 'A API da SquadTI nao subiu; veja dados\logs\squadti.err.log.' }
+if ($ComSquadti -and -not (IniciarSquadti)) { Write-Warning 'A API da SquadTI nao subiu; veja: docker logs squadti.' }
 
 if (-not $SemNavegador) { Start-Process 'http://127.0.0.1:3100/app/' }
 exit 0

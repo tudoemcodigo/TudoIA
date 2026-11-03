@@ -1,36 +1,62 @@
-# SquadTI no painel
+# SquadTI
 
-O menu **SquadTI** (grupo Agentes) conduz o orquestrador [SquadTI](https://github.com/tudoemcodigo/SquadTI) pelo painel: inicia tarefas,
-responde à entrevista do analista, aprova a especificação e o release e lê os arquivos gerados. O painel não executa a Squad: ele repassa
-pedidos validados à **API local** do orquestrador (`orquestrador/api.py`, só loopback, sempre com token).
+Squad de agentes (LangGraph) que leva uma demanda do briefing à entrega, seguindo a [Doutrina TEC](https://github.com/tudoemcodigo/Doutrina). O código vive em
+[`runtime/squadti/`](../../runtime/squadti/) (README com o fluxo, os agentes e os limites) e a documentação de projeto em [`docs/squadti/`](../squadti/).
+Este documento cobre como ela se encaixa no TudoIA: container, painel, chave, privacidade e scripts.
 
 ```
-navegador ──► painel (/api/squadti/*, papéis, auditoria) ──► API da Squad (127.0.0.1:8790, Bearer) ──► LangGraph ──► LiteLLM
+navegador ──► painel (/api/squadti/*, papéis, auditoria) ──► container squadti (127.0.0.1:8790, Bearer) ──► LiteLLM (rede do compose)
+                                                                   │
+                                                                   └─ volume squadti-dados: checkpoint, workspace/<tarefa>, caches NuGet e npm
 ```
 
-## Configuração (`.env`)
+## Por que um container isolado
 
-| Variável | Para que serve |
+A Squad compila e testa o código que o modelo escreveu: o MSBuild e o npm executam código dele. No host isso rodaria com o seu usuário. No container (perfil
+`squadti` do compose) o raio de dano é pequeno: usuário sem root (uid 10001), sistema de arquivos somente leitura, `cap_drop: ALL`, `no-new-privileges`,
+teto de CPU, memória e processos, e **nenhum `docker.sock`** (isso seria root no host). A única escrita é o volume `squadti-dados`.
+
+Consequências: testes de integração que sobem containers (Testcontainers) não rodam lá dentro, e a imagem é grande (~2 GB: .NET SDK 10 + Node 24 + Python 3.12).
+Por isso o componente é **opcional** no instalador (desmarcado por padrão).
+
+## Instalação e configuração
+
+- **Instalador:** marque *SquadTI*. Ele coloca `squadti` em `COMPOSE_PROFILES`, gera `TUDOIA_SQUADTI_TOKEN` (`tudoia segredos`), constrói a imagem e cria a chave
+  virtual do LiteLLM (`scripts/squadti/chave.py`), recriando o container para ele ler a chave.
+- **Instalação existente:** inclua `squadti` em `COMPOSE_PROFILES`, rode `scripts\tudoia.ps1 segredos`, `scripts\tudoia.ps1 squadti-chave` e `scripts\iniciar.ps1 -ComSquadti`.
+
+| Variável (`.env`) | Para que serve |
 |---|---|
-| `TUDOIA_SQUADTI_DIR` | Pasta do repositório SquadTI. O painel usa `orquestrador/api.py` e `.venv\Scripts\python.exe` dela (ou `TUDOIA_SQUADTI_PYTHON`) |
-| `TUDOIA_SQUADTI_TOKEN` | Token da API da Squad (32+ caracteres). O painel e a API leem o mesmo valor; sem ele nada sobe nem é chamado |
-| `SQUADTI_API_KEY` | Chave virtual do LiteLLM **só da Squad** (alias e tag `squadti`): lista os perfis locais e a nuvem gratuita, nunca `tudoia-max` |
-| `DOUTRINA_TEC` | Pasta da Doutrina TEC que os agentes consomem |
-| `TUDOIA_SQUADTI_URL` | Opcional. Padrão `http://127.0.0.1:8790`; só `http://127.0.0.1` ou `http://localhost` |
-| `TUDOIA_SQUADTI_CONFIG`, `TUDOIA_SQUADTI_GATEWAY`, `TUDOIA_SQUADTI_PYTHON` | Opcionais: configuração de stack, URL do gateway e Python do ambiente |
+| `TUDOIA_SQUADTI_TOKEN` | Token da API (32+ caracteres). O painel e o container leem o mesmo valor; sem ele a API não sobe |
+| `SQUADTI_API_KEY` | Chave virtual do LiteLLM **só da Squad** (alias e tag `squadti`, 90 dias): lista os perfis locais e a nuvem gratuita, nunca `tudoia-max` |
+| `TUDOIA_NUGET_USER`, `TUDOIA_NUGET_PAT` | Opcional: feed privado `tec-interno` (GitHub Packages exige PAT `read:packages`). Só por ambiente; o arquivo do NuGet guarda a referência, não o segredo |
+| `SQUADTI_TEMPLATE_DIR` | Opcional: pasta do TemplateTEC (padrão `dados\squadti-template`), montada só leitura em `/template` para o `dotnet new tec-project` |
+| `SQUADTI_DOUTRINA_SHA` | Opcional: versão da Doutrina embutida na imagem (padrão fixado no `Dockerfile`); trocar exige reconstruir |
+| `SQUADTI_MEMORIA`, `SQUADTI_CPUS`, `SQUADTI_TIMEOUT_S`, `SQUADTI_CONTEXTO_TOKENS` | Opcionais: tetos do container, prazo por chamada ao modelo e janela de contexto |
+| `TUDOIA_SQUADTI_URL` | Opcional: só `http://127.0.0.1` ou `http://localhost` (padrão `:8790`) |
 
-Ligar e desligar: Sistema → Serviços → **SquadTI**. O processo roda em `dados\squadti` (workspace e checkpoint ficam ali, fora dos repositórios), com
-log em `dados\logs\squadti.log`. O "todos" do painel não liga nem desliga a Squad.
+Ligar e desligar: Sistema → Serviços → **SquadTI** (serviço Docker comum do painel) ou os scripts abaixo.
 
 ## Papéis e privacidade
 
 - **Leitor** vê tarefas e arquivos. **Operador** inicia, responde e aprova (inclusive o release, que só gera notas: nada é commitado, tagueado nem publicado).
-- O perfil padrão é `local-estrito` (nunca sai da máquina). `local`, `hibrido` e `nuvem` exigem marcar o consentimento na criação da tarefa, e ele fica gravado
-  no estado dela. `tudoia-max` (pago) não é oferecido.
-- Arquivos lidos pelo painel omitem linhas com padrão de segredo.
-- Uma execução por vez: a API responde 409 se houver outra. Reiniciar o serviço interrompe a execução em curso; o checkpoint permite retomar.
+- O perfil padrão é `local-estrito` (nunca sai da máquina). `local`, `hibrido` e `nuvem` exigem o consentimento marcado na criação da tarefa, gravado no estado dela.
+  `tudoia-max` (pago) não é oferecido, e a chave da Squad nem o lista.
+- Arquivos lidos pelo painel omitem linhas com padrão de segredo. Uma execução por vez (a API responde 409 se houver outra).
+- A API só escuta em `0.0.0.0` **dentro** do container; no host a porta é publicada só em `127.0.0.1`. O `Host` da requisição precisa ser `127.0.0.1:8790` ou `localhost:8790`.
 
 ## Custo e telemetria
 
-A chave `SQUADTI_API_KEY` leva a tag `squadti` no LiteLLM, então Atividade e Custos distinguem o gasto da Squad. Para gerar a chave, use `POST /key/generate`
-do LiteLLM com `models` (os perfis acima), `key_alias: "squadti"` e `metadata: {"tags": ["squadti"]}`; guarde o valor só no `.env`.
+A chave leva a tag `squadti` no LiteLLM, então Atividade e Custos distinguem o gasto da Squad. Para rotacionar: `scripts\tudoia.ps1 squadti-chave --rotacionar`.
+
+## Scripts do Windows
+
+| Script | O que faz |
+|---|---|
+| `scripts\iniciar.ps1 [-ComSquadti]` | Liga Docker, Ollama, ComfyUI, serviços e painel; com `-ComSquadti`, também (re)constrói e sobe a Squad |
+| `scripts\parar.ps1` | Desliga painel, Squad, serviços, Ollama e ComfyUI (os dois últimos só se o `.env` os configurou) |
+| `scripts\reiniciar.ps1 [-ComSquadti] [-Tudo]` | Padrão: reinicia **só** o painel (e a Squad, se ligada), sem derrubar Ollama, ComfyUI nem Docker. `-Tudo` = parar + iniciar |
+| `scripts\painel.ps1` | Abre o painel; sobe-o se não estiver no ar |
+
+Os scripts compartilham `scripts\_comum.ps1`. A porta é testada por conexão TCP real: `Get-NetTCPConnection -State Listen` deixa entradas fantasma (PID 0) de processos
+mortos, e o launcher chegou a achar que um painel parado estava no ar.

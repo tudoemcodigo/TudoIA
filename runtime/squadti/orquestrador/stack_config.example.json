@@ -1,0 +1,36 @@
+{
+  "project_name": "GestaoFinanceira",
+  "architecture_source_path": "../Doutrina",
+  "stack": {
+    "backend": {
+      "language": "csharp",
+      "framework": "dotnet10",
+      "architecture": "clean_architecture",
+      "build_command": "dotnet build --configuration Release",
+      "test_command": "dotnet test --no-build --coverage --coverage-output-format cobertura",
+      "scaffold_command": "dotnet new tec-project -n {nome}"
+    },
+    "frontend": {
+      "framework": "react19",
+      "language": "typescript",
+      "bundler": "vite",
+      "styling": "tailwindcss",
+      "build_command": "npm run build",
+      "test_command": "npm test"
+    },
+    "database": {
+      "engine": "mssql",
+      "version": "2022",
+      "migration_tool": "ef_core",
+      "migration_command": "dotnet ef database update"
+    },
+    "quality": {
+      "coverage_min": 90
+    },
+    "infra": {
+      "ci": "github",
+      "container_runtime": "docker",
+      "compose_file": "docker-compose.yml"
+    }
+  }
+}
