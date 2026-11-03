@@ -6,8 +6,15 @@ Camada de serviço da Squad: o que a CLI (main.py) e a API local (api.py) compar
 """
 import os
 import re
+import time
 from pathlib import Path
 from typing import Optional
+
+import agentes
+import aprovacao
+import entrada as entrada_texto
+import stacks
+from execucao import workspace
 
 RE_TAREFA = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")  # vira nome de pasta do workspace: nada de separador nem '..'
 
@@ -57,18 +64,42 @@ def situacao(app, cfg) -> dict:
     if v.get("review_passed") is False and v.get("iteration_count", 0) >= 3:
         return {"estado": "escalada_revisao", "fase": fase, "aguardando": [],
                 "mensagem": "a revisão de código reprovou e o limite de iterações acabou; veja docs/revisao/REVISAO.md"}
+    if v.get("escalada"):  # parada que exige humano: estagnação, orçamento, critério de pronto, saída inválida
+        return {"estado": "escalada", "fase": fase, "aguardando": [], "mensagem": str(v["escalada"])}
     if v.get("business_spec_file"):
         return {"estado": "em_fase", "fase": fase, "aguardando": [], "mensagem": f"{fase}"}
     return {"estado": "aguardando_respostas", "fase": fase, "aguardando": [],
             "mensagem": "responda às perguntas com `responder`"}
 
 
+def aprovar_spec(app, cfg) -> None:
+    """Aprovação da especificação AMARRADA ao texto que o usuário viu: grava o hash do arquivo junto com o sim."""
+    v = app.get_state(cfg).values or {}
+    ws = workspace(v)
+    try:
+        hash_ = aprovacao.hash_arquivo(ws, v["business_spec_file"])
+    except (KeyError, aprovacao.AprovacaoInvalida) as e:
+        raise ErroUso(f"não há especificação para aprovar: {e}") from e
+    app.update_state(cfg, {"business_spec_approved": True, "business_spec_hash": hash_})
+
+
+def aprovar_release(app, cfg) -> None:
+    """Aprovação do release amarrada ao pacote de verificações (relatórios, revisão e documentação) que o usuário viu."""
+    v = app.get_state(cfg).values or {}
+    app.update_state(cfg, {"release_approved": True, "release_gate_hash": aprovacao.hash_do_pacote(workspace(v), v)})
+
+
 def montar_entrada(tarefa: str, briefing: str, config: dict, modelo: Optional[str] = None,
-                   consentimento_nuvem: bool = False) -> dict:
-    """Estado inicial de uma tarefa nova. Recusa pasta de workspace que já tenha conteúdo (IA-ORQ-10)."""
+                   consentimento_nuvem: bool = False, stack: Optional[str] = None, cfg_agentes: Optional[dict] = None) -> dict:
+    """Estado inicial de uma tarefa nova. Recusa pasta de workspace que já tenha conteúdo (IA-ORQ-10). O briefing é sanitizado
+    (caracteres invisíveis e de controle saem) e a configuração dos agentes vigente é COPIADA para a tarefa."""
     tarefa_valida(tarefa)
+    briefing, _ = entrada_texto.limpar_entrada(briefing, 20_000)
     if not (briefing or "").strip():
         raise ErroUso("o briefing não pode ser vazio")
+    cfg_agentes = agentes.validar(cfg_agentes)
+    if stack is not None and stack not in stacks.STACKS:
+        raise ErroUso(f"stack inválida: use uma de {sorted(stacks.STACKS)}")
     pasta = Path("workspace") / tarefa
     if pasta.exists() and (not pasta.is_dir() or any(pasta.iterdir())):
         # IA-ORQ-10: a Squad só cria projeto novo em área isolada; nunca escreve sobre conteúdo que já existe
@@ -91,7 +122,13 @@ def montar_entrada(tarefa: str, briefing: str, config: dict, modelo: Optional[st
         "security_passed": False,
         "devops_passed": False,
         "release_approved": False,  # só `aprovar-release` muda; nunca é padrão
+        "agentes_cfg": cfg_agentes,
+        "orcamento": cfg_agentes["orcamento"],
+        "auditoria": [], "assinaturas_erro": [], "observacoes_usuario": [], "escalada": None,
+        "mensagens": [{"de": "usuario", "para": "chefe", "texto": briefing[:4000], "em": time.time()}],
     }
+    if stack:
+        entrada["stack_id"], entrada["stack_fixa"] = stack, True
     if modelo:
         entrada["modelo"] = modelo
         entrada["consentimento_nuvem"] = consentimento_nuvem is True

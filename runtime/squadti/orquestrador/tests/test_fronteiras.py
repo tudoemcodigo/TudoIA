@@ -24,7 +24,8 @@ def doutrina_falsa(raiz: Path, hash_: str = "aaaa", versao: str = "9.9.9") -> No
     (g / "ia-nucleo.md").write_text("NUCLEO-IA", encoding="utf-8")
     (g / "ecossistema-nucleo.md").write_text("NUCLEO-ECO", encoding="utf-8")
     (g / "ia.json").write_text(json.dumps({
-        "por_papel": {"chefe": ["06.md"], "qa": ["05.md"], "frontend": ["05.md"], "documentacao": ["07.md"]},
+        "por_papel": {"chefe": ["06.md"], "qa": ["05.md"], "frontend": ["05.md"], "documentacao": ["07.md"],
+                      "requisitos": ["07.md"], "arquiteto": ["07.md"]},
         "regras": [
             {"id": "IA-DOC-01", "nivel": "MUST", "nucleo": False, "padrao": "07.md", "texto": "documentar",
              "verif": ["revisao"], "evidencia": []},
@@ -47,7 +48,8 @@ def doutrina_falsa(raiz: Path, hash_: str = "aaaa", versao: str = "9.9.9") -> No
     (g / "perfis").mkdir()
     for papel, nucleo in {"chefe": ["ia", "ecossistema"], "qa": ["ia", "ecossistema", "arquitetura"],
                           "appsec": ["ia", "ecossistema", "seguranca"], "documentacao": ["ia", "ecossistema"],
-                          "frontend": ["ia", "ecossistema"],
+                          "frontend": ["ia", "ecossistema"], "requisitos": ["ia", "ecossistema"],
+                          "arquiteto": ["ia", "ecossistema", "arquitetura"],
                           "backend": ["ia", "ecossistema", "arquitetura"], "dba": ["ia", "ecossistema", "arquitetura"]}.items():
         (g / "perfis" / f"{papel}.json").write_text(json.dumps({
             "papel": papel, "nucleo_sugerido": nucleo, "nucleo_tokens": 10, "consulta_sob_demanda": [],

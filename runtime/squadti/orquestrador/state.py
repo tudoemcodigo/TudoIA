@@ -9,6 +9,16 @@ def unir_listas(atual: Optional[List[str]], novo: Optional[List[str]]) -> List[s
     return list(dict.fromkeys([*(atual or []), *(novo or [])]))
 
 
+RESET = "__reset__"  # primeiro item de uma atualização: zera a lista (só `continuar` usa, para limpar a trilha de estagnação)
+
+
+def somar_listas(atual: Optional[List[Any]], novo: Optional[List[Any]]) -> List[Any]:
+    """Reducer de trilha (auditoria, mensagens, assinaturas): só acrescenta, nunca reescreve o que já foi registrado."""
+    if novo and novo[0] == RESET:
+        return list(novo[1:])
+    return [*(atual or []), *(novo or [])]
+
+
 def ultimo_valor(atual: Any, novo: Any) -> Any:
     """Reducer: quando dois nós paralelos gravam o mesmo campo escalar, vale o último; o campo é só informativo."""
     return novo
@@ -25,6 +35,27 @@ class SquadState(TypedDict):
     # Modelo desta tarefa (perfil do gateway) e consentimento explícito para modelo que pode sair da máquina
     modelo: Optional[str]
     consentimento_nuvem: Optional[bool]
+
+    # CHEFE (canal único do usuário), plano e stack decididos por ele
+    plano: Optional[Dict[str, Any]]        # tamanho, stack, precisa_banco, precisa_frontend, riscos (docs/chefe/PLANO.json)
+    stack_id: Optional[str]                # 'dotnet' | 'python' (adaptador de stack)
+    doutrina_excluir: Optional[List[str]]  # famílias da Doutrina que a stack escolhida não usa
+    mensagens: Annotated[List[Dict[str, Any]], somar_listas]   # conversa usuário <-> CHEFE (de, para, texto, em)
+    observacoes_usuario: Annotated[List[str], somar_listas]    # instruções livres do usuário (DADO para os agentes, já sanitizadas)
+
+    # Configuração e controle da execução
+    agentes_cfg: Optional[Dict[str, Any]]  # modelo/temperatura por agente, modo de revisão e orçamento (cópia da config ao iniciar)
+    orcamento: Optional[Dict[str, Any]]    # tetos da tarefa: tokens, tempo_s, chamadas
+    auditoria: Annotated[List[Dict[str, Any]], somar_listas]   # um registro por nó: duração, chamadas, tokens, modelo, hash de prompt
+    assinaturas_erro: Annotated[List[str], somar_listas]       # assinatura das falhas seguidas (detecção de estagnação)
+    escalada: Optional[str]                # motivo de uma parada que exige humano (estagnação, orçamento, saída inválida)
+    stack_fixa: Optional[bool]             # True = o usuário escolheu a stack; o CHEFE não troca
+    feedback_chefe: Optional[str]          # pendências que o CHEFE devolveu ao analista (critério de pronto)
+    rodadas_gate: Optional[int]            # quantas vezes o CHEFE devolveu a especificação
+
+    # Aprovações amarradas ao conteúdo
+    business_spec_hash: Optional[str]
+    release_gate_hash: Optional[str]
 
     # Rastreabilidade: versão da Doutrina usada. Mudou no meio da tarefa = a tarefa aborta.
     doutrina_versao: Optional[str]

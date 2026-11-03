@@ -13,7 +13,9 @@ import segredos
 from execucao import caminho_seguro
 
 ARQUIVO_REVISAO = "docs/revisao/REVISAO.md"
-PREFIXOS_REVISADOS = ("src/", "tests/", "frontend/")
+ARQUIVO_REVISAO_2 = "docs/revisao/REVISAO_2.md"  # segundo revisor (modo dupla)
+ARQUIVO_ACHADOS = "docs/revisao/ACHADOS.json"  # trilha determinística: verificados, não verificados e verificador
+PREFIXOS_REVISADOS = ("src/", "app/", "tests/", "frontend/")
 LIMITE_TOTAL_CARACTERES = 60_000
 MINIMO_POR_ARQUIVO = 2_000
 SEVERIDADES = ("CRITICO", "ALTO", "MEDIO", "BAIXO")
@@ -108,3 +110,105 @@ def resumo_para_dev(achados: List[dict], motivo: str, limite: int = 2000) -> str
 
 def contagem(achados: List[dict]) -> str:
     return ", ".join(f"{s}={sum(1 for a in achados if a['severidade'] == s)}" for s in SEVERIDADES)
+
+
+# ---------------------------------------------------------------- achados verificados
+def _normalizar_arquivo(arquivo: str) -> str:
+    """Caminho do achado sem aspas nem `./` inicial (só o prefixo `./`: um arquivo oculto como `.gitignore` continua com o ponto)."""
+    if not arquivo:
+        return ""
+    limpo = arquivo.strip().strip("`'\"()").replace("\\", "/")
+    while limpo.startswith("./"):
+        limpo = limpo[2:]
+    return limpo
+
+
+def verificar_achados(achados: List[dict], raiz: Path, ids_validos) -> Tuple[List[dict], List[dict]]:
+    """Separa o que o modelo disse do que dá para CONFERIR sem modelo: a regra existe na Doutrina, o arquivo existe no workspace e a
+    linha cabe no arquivo. Achado que não passa vira `nao_verificado` (com o motivo): não vale como bloqueio nem some da trilha."""
+    verificados, nao = [], []
+    contagens = {}
+    for a in achados:
+        arquivo = _normalizar_arquivo(a["arquivo"])
+        motivo = None
+        if a["regra"] not in ids_validos:
+            motivo = "a regra citada não existe na Doutrina"
+        else:
+            try:
+                destino = caminho_seguro(raiz, arquivo)
+            except ValueError:
+                destino, motivo = None, "caminho inválido"
+            if motivo is None and (destino is None or not destino.is_file()):
+                motivo = "o arquivo não existe no workspace"
+            elif motivo is None and a["linha"] > 0:
+                if destino not in contagens:
+                    with open(destino, "r", encoding="utf-8", errors="replace") as f:
+                        contagens[destino] = sum(1 for _ in f)
+                if a["linha"] > contagens[destino]:
+                    motivo = f"a linha {a['linha']} não existe (o arquivo tem {contagens[destino]})"
+        (nao if motivo else verificados).append({**a, "arquivo": arquivo, **({"motivo": motivo} if motivo else {})})
+    return verificados, nao
+
+
+def decidir(texto: Optional[str], raiz: Path, ids_validos) -> dict:
+    """Veredito final: o do modelo, mas só achado VERIFICADO bloqueia. Devolve aprovado, verificados, nao_verificados e o motivo."""
+    aprovado_bruto, achados, motivo = ler_veredito(texto)
+    verificados, nao = verificar_achados(achados, raiz, ids_validos)
+    linhas = _RE_LINHA_VEREDITO.findall(texto or "")
+    exatas = _RE_VEREDITO_EXATO.findall(texto or "")
+    if not texto or not texto.strip() or len(linhas) != 1 or len(exatas) != 1:
+        return {"aprovado": False, "verificados": verificados, "nao_verificados": nao, "motivo": motivo}
+    if exatas[0] != "APROVADO":
+        graves = [a for a in verificados if a["severidade"] in ("CRITICO", "ALTO")]
+        m = "modelo reprovou" if graves else (f"modelo reprovou sem achado verificável ({len(nao)} achado(s) não verificado(s)); "
+                                              "revise a entrada")
+        return {"aprovado": False, "verificados": verificados, "nao_verificados": nao, "motivo": m}
+    if any(a["severidade"] == "CRITICO" for a in verificados):
+        return {"aprovado": False, "verificados": verificados, "nao_verificados": nao,
+                "motivo": "há achado CRITICO verificado: a regra vence o veredito do modelo"}
+    return {"aprovado": True, "verificados": verificados, "nao_verificados": nao, "motivo": "aprovado"}
+
+
+# ---------------------------------------------------------------- revisão dupla e verificador adversarial
+def chave_do_achado(a: dict) -> Tuple[str, int, str]:
+    return (_normalizar_arquivo(a["arquivo"]), a["linha"], a["regra"])
+
+
+def mesclar_achados(por_revisor: List[List[dict]]) -> List[dict]:
+    """Une os achados de revisores independentes por (arquivo, linha, regra). Guarda quantos revisores o apontaram e a MAIOR severidade."""
+    ordem = {s: i for i, s in enumerate(SEVERIDADES)}
+    juntos: dict = {}
+    for achados in por_revisor:
+        for a in achados:
+            k = chave_do_achado(a)
+            if k in juntos:
+                juntos[k]["revisores"] += 1
+                if ordem[a["severidade"]] < ordem[juntos[k]["severidade"]]:
+                    juntos[k]["severidade"] = a["severidade"]
+            else:
+                juntos[k] = {**a, "revisores": 1}
+    return list(juntos.values())
+
+
+def precisa_verificador(a: dict, total_revisores: int) -> bool:
+    """CRITICO/ALTO apontado por UM só dos revisores passa por um verificador adversarial; apontado por todos vale direto."""
+    return a["severidade"] in ("CRITICO", "ALTO") and total_revisores > 1 and a.get("revisores", 1) < total_revisores
+
+
+def trecho(raiz: Path, arquivo: str, linha: int, contexto: int = 15) -> str:
+    destino = caminho_seguro(raiz, _normalizar_arquivo(arquivo))
+    with open(destino, "r", encoding="utf-8", errors="replace") as f:
+        linhas = f.read().splitlines()
+    ini = max(0, (linha if linha > 0 else 1) - 1 - contexto)
+    fim = min(len(linhas), (linha if linha > 0 else 1) + contexto)
+    bloco = "\n".join(f"{i + 1:>5}| {linhas[i]}" for i in range(ini, fim))
+    return segredos.redigir(bloco)[0]
+
+
+_RE_VERIFICADOR = re.compile(r"^VERIFICADOR: (CONFIRMADO|REFUTADO)[ \t]*$", re.MULTILINE)
+
+
+def ler_verificador(texto: Optional[str]) -> bool:
+    """True só com UMA linha exata `VERIFICADOR: CONFIRMADO`. Qualquer outra coisa (inclusive dúvida) é REFUTADO."""
+    achadas = _RE_VERIFICADOR.findall(texto or "")
+    return len(achadas) == 1 and achadas[0] == "CONFIRMADO"

@@ -18,7 +18,7 @@ URL_PADRAO = "http://127.0.0.1:8790"
 HOSTS_LOCAIS = {"127.0.0.1", "localhost"}
 TIMEOUT_S = 15.0
 TRANSPORTE = None  # seam dos testes: httpx.MockTransport (o conftest bloqueia a rede real)
-PERFIS = ("local-estrito", "local", "hibrido", "nuvem")  # `max` (pago) não é oferecido pelo painel
+PERFIS = ("local-estrito", "local", "hibrido", "nuvem", "auto")  # `max` (pago) não é oferecido pelo painel
 ID_TAREFA = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
 
 

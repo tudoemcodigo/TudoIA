@@ -22,6 +22,12 @@ def dubles(ordem, qa_aprova=True, qa_origem=None, revisor_aprova=True, revisor_o
     """NÃ³s falsos que imitam as chaves que os nÃ³s reais devolvem (inclusive as que os dois devs gravam em paralelo)."""
     def analista(state):
         ordem.append("analista_requisitos")
+        if state.get("interview_answers") and state.get("workspace_dir"):
+            # a aprovação agora é amarrada ao hash do arquivo: ele precisa existir de verdade
+            from execucao import workspace
+            alvo = workspace(state) / "docs/negocio/BUSINESS_SPEC.md"
+            alvo.parent.mkdir(parents=True, exist_ok=True)
+            alvo.write_text("# especificacao de teste", encoding="utf-8")
         if not state.get("interview_answers"):
             return {"interview_questions": ["pergunta"], "business_spec_approved": False}
         return {"business_spec_file": "docs/negocio/BUSINESS_SPEC.md", "business_spec_approved": False,
@@ -65,7 +71,13 @@ def dubles(ordem, qa_aprova=True, qa_origem=None, revisor_aprova=True, revisor_o
         ordem.append("release")
         return {"current_phase": "ENTREGA_CONCLUIDA", "release_notes_file": "docs/release/RELEASE_NOTES.md"}
 
-    return {"node_analista_requisitos": analista, "node_arquiteto": simples("arquiteto", "ARQ"),
+    def silencioso(fase):
+        # o CHEFE não conta na ordem dos agentes que trabalham: só planeja, confere e escala
+        return lambda state: {"current_phase": fase}
+
+    return {"node_chefe_intake": silencioso("PLANEJADO"), "node_chefe_gate_requisitos": lambda state: {},
+            "node_chefe_gate_design": lambda state: {}, "node_chefe_escalada": lambda state: {},
+            "node_analista_requisitos": analista, "node_arquiteto": simples("arquiteto", "ARQ"),
             "node_dba": simples("dba", "DBA"), "node_dev_backend": dev("dev_backend", "src/a.cs"),
             "node_dev_frontend": dev("dev_frontend", "frontend/a.ts"), "node_qa_testes": qa, "node_revisor": revisor,
             "node_appsec": appsec, "node_devops": devops, "node_documentacao": simples("documentacao", "DOC"),
@@ -92,8 +104,12 @@ class GrafoReal(unittest.TestCase):
     def test_topologia_liga_requisitos_a_arquitetura_e_pausa_antes_dela(self):
         self.montar()
         arestas = {(e.source, e.target) for e in self.app.get_graph().edges}
-        self.assertIn(("analista_requisitos", "arquiteto"), arestas)
-        self.assertIn(("arquiteto", "dba"), arestas)
+        self.assertIn(("chefe_intake", "analista_requisitos"), arestas)  # o CHEFE recebe a demanda primeiro
+        self.assertIn(("analista_requisitos", "chefe_gate_requisitos"), arestas)
+        self.assertIn(("chefe_gate_requisitos", "arquiteto"), arestas)
+        self.assertIn(("arquiteto", "chefe_gate_design"), arestas)
+        self.assertIn(("chefe_gate_design", "dba"), arestas)
+        self.assertIn(("qa_testes", "chefe_escalada"), arestas)  # toda parada que exige humano passa pelo CHEFE
         self.assertIn(("qa_testes", "revisor"), arestas)
         self.assertIn(("revisor", "appsec"), arestas)
         self.assertIn(("appsec", "devops"), arestas)

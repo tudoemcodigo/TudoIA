@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Tuple
 
-EXECUTAVEIS_PERMITIDOS = {"dotnet", "npm", "npx"}
+EXECUTAVEIS_PERMITIDOS = {"dotnet", "npm", "npx", "uv"}
 MAX_ARQUIVOS = 50
 MAX_BYTES_ARQUIVO = 200_000
 TIMEOUT_PADRAO_S = 900
