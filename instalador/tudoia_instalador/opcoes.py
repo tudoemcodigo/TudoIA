@@ -15,10 +15,11 @@ COMPONENTES = {
     "webui": "Open WebUI + Kokoro (voz)",
     "n8n": "n8n (automação)",
     "keycloak": "Keycloak embutido (login)",
+    "squadti": "SquadTI (squad de agentes que gera projetos; imagem de ~2 GB com .NET e Node, roda isolada)",
     "ollama": "Ollama (LLMs locais e embeddings)",
     "comfyui": "ComfyUI portable (Estúdio de imagem e vídeo)",
 }
-PERFIS_COMPOSE = ("cerebro", "webui", "n8n", "keycloak")   # os componentes que são perfis do docker compose
+PERFIS_COMPOSE = ("cerebro", "webui", "n8n", "keycloak", "squadti")   # os componentes que são perfis do docker compose
 PADRAO_COMPONENTES = ("cerebro", "webui", "n8n", "keycloak", "ollama")
 
 # Chaves de provedor que a tela aceita (as mesmas do .env.example). Qualquer outro nome é recusado.

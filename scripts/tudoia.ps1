@@ -9,7 +9,7 @@
 .NOTES     O código de saída é o do comando nativo (uv, docker, python) que falhou, ou 0.
 #>
 param(
-    [Parameter(Mandatory)][ValidateSet('up', 'down', 'status', 'painel', 'sync', 'verificar', 'segredos', 'keycloak', 'modelos', 'n8n-credencial', 'backup', 'verificar-openwebui', 'empacotar')][string]$Comando,
+    [Parameter(Mandatory)][ValidateSet('up', 'down', 'status', 'painel', 'sync', 'verificar', 'segredos', 'keycloak', 'modelos', 'n8n-credencial', 'squadti-chave', 'backup', 'verificar-openwebui', 'empacotar')][string]$Comando,
     [Parameter(ValueFromRemainingArguments)][string[]]$Resto
 )
 $ErrorActionPreference = 'Stop'
@@ -52,6 +52,7 @@ switch ($Comando) {
     'keycloak'       { PyModulo 'scripts.keycloak.provisionar' }
     'modelos'        { PyModulo 'scripts.modelos.baixar' }
     'n8n-credencial' { PyModulo 'scripts.n8n.credencial_cerebro' }
+    'squadti-chave'  { PyModulo 'scripts.squadti.chave' }   # chave virtual da Squad (--rotacionar para trocar)
     'backup'         { PyModulo 'scripts.backup.backup' }
     'verificar-openwebui' { PyModulo 'scripts.openwebui.verificar_env' }
     'empacotar' { $env:PYTHONPATH = "$raiz;$raiz\instalador"; PyModulo 'scripts.empacotar.construir' }

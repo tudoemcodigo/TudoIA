@@ -121,3 +121,15 @@ Os tarballs das versões fixadas foram baixados com `npm pack --ignore-scripts` 
 - `server-sequential-thinking@2.0.0`: a licença declarada é "SEE LICENSE IN LICENSE" e o tarball **não traz** o arquivo `LICENSE`: conferir a licença no repositório de origem antes de atualizar.
 
 - Decisões do dono (2026-11-02) para os demais: `github` passa a usar o servidor **oficial remoto** (`https://api.githubcopilot.com/mcp/`, token fine-grained em `GITHUB_PERSONAL_ACCESS_TOKEN`), porque `@modelcontextprotocol/server-github` está depreciado; `supabase` só **somente leitura e por projeto** (`--read-only`, `--project-ref=${SUPABASE_PROJECT_REF}`, token de escopo mínimo). Ambos continuam fora da lista de ativos até o dono ativá-los por cliente.
+
+## Segunda passada nos servidores MCP fixados: rede, execução e licença (2026-11-02)
+
+Mesmo método (tarball de `npm pack --ignore-scripts` em pasta vazia, nada executado), agora com busca de `child_process`/`eval`/`new Function` e de todos os hosts HTTP(S) embutidos no código publicado. **Ainda não é leitura linha a linha** (IA-FER-01 segue só parcialmente atendida), mas fecha as dúvidas abertas:
+
+- `server-sequential-thinking@2.0.0`: sem rede, sem `child_process`, sem `eval`. A licença "SEE LICENSE IN LICENSE" aponta para o `LICENSE` do repositório `modelcontextprotocol/servers`, que declara a transição de MIT para Apache-2.0 (código novo em Apache-2.0; contribuições sem consentimento de relicenciamento seguem MIT). As duas são permissivas e compatíveis com o uso; o tarball continua sem o arquivo.
+- `@tokenizin/mcp-npx-fetch@1.0.0`: MIT, sem host fixo, sem `child_process` nem `eval`. Busca a URL pedida pelo modelo (é a função dele): trate o conteúdo como dado não confiável (IA-SEG).
+- `@playwright/mcp@0.0.84`: Apache-2.0, nenhum host externo embutido.
+- `mcp-remote@0.16.0`: o único `child_process` é o `spawn` do abridor de navegador para o fluxo OAuth. Hosts embutidos só do GitHub (atualização/documentação).
+- `@upstash/context7-mcp@4.4.4`: MIT. Envia a consulta de biblioteca a `mcp.context7.com`/`context7.com` (é o serviço); não coloque código proprietário nem segredo na consulta.
+- `@supabase/mcp-server-supabase@0.15.0`: traz endpoints Supabase (produção e staging) com chave publicável embutida para a ferramenta `submit_feedback`, que envia texto livre, `user_id` e `project_ref` à equipe da Supabase. **Com `--read-only` a ferramenta recusa** ("Cannot submit feedback in read-only mode"), que é como o catálogo a fixa; não tire `--read-only` sem desligar o grupo `feedback` por `--features`.
+- `server-github` deixou de ser usado: o catálogo usa o servidor remoto oficial.

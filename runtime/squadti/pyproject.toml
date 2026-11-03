@@ -1,0 +1,21 @@
+[project]
+name = "tudoia-squadti"
+version = "0.1.0"
+description = "SquadTI: squad de agentes (LangGraph) que constrói projetos novos seguindo a Doutrina TEC"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=1.2",
+    "langgraph-checkpoint-sqlite>=3.1",
+    "langchain-core>=1.7",
+    "langchain-openai>=1.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.uv]
+package = false   # são scripts em orquestrador/ (imports planos), não um pacote instalável
+
+[tool.pytest.ini_options]
+testpaths = ["orquestrador/tests"]
+pythonpath = ["orquestrador"]

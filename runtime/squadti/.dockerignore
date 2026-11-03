@@ -1,0 +1,10 @@
+.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+orquestrador/tests
+orquestrador/workspace
+*.db
+.env
+.env.*
+README.md

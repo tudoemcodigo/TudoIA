@@ -48,14 +48,14 @@ async function carregarSquadti() {
   if (!estado.configurado) {
     raiz.replaceChildren(el("div", { className: "squadti-faixa squadti-aviso" }, [
       el("strong", { textContent: "SquadTI não configurada. " }),
-      "Defina TUDOIA_SQUADTI_DIR, TUDOIA_SQUADTI_TOKEN (32+ caracteres), SQUADTI_API_KEY e DOUTRINA_TEC no .env (Chaves e segredos) e ligue o serviço em Sistema → Serviços.",
+      "Marque squadti em COMPOSE_PROFILES, gere o TUDOIA_SQUADTI_TOKEN (tudoia segredos) e a chave (tudoia squadti-chave) e ligue o serviço SquadTI em Sistema → Serviços.",
     ]));
     return;
   }
   if (!estado.no_ar) {
     raiz.replaceChildren(el("div", { className: "squadti-faixa squadti-aviso" }, [
       el("strong", { textContent: "A API da Squad está parada. " }),
-      "Ligue o serviço SquadTI em Sistema → Serviços.",
+      "Ligue o serviço SquadTI em Sistema → Serviços (container squadti).",
     ]));
     return;
   }

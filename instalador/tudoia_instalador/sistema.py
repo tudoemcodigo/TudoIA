@@ -13,7 +13,7 @@ from pathlib import Path
 
 PORTAS = {
     "painel": 3100, "litellm": 4000, "litellm-db": 5433, "cerebro": 8765, "searxng": 8080, "open-webui": 3000,
-    "kokoro": 8880, "n8n": 5678, "keycloak": 8180, "ollama": 11434, "comfyui": 8188,
+    "kokoro": 8880, "n8n": 5678, "keycloak": 8180, "ollama": 11434, "comfyui": 8188, "squadti": 8790,
 }
 # Porta de cada serviço por componente: o que a tela confere antes de instalar.
 PORTAS_POR_COMPONENTE = {
@@ -24,9 +24,10 @@ PORTAS_POR_COMPONENTE = {
     "keycloak": ("keycloak",),
     "ollama": ("ollama",),
     "comfyui": ("comfyui",),
+    "squadti": ("squadti",),
 }
 # Espaço estimado (GB) sem contar os pesos dos modelos, que ficam fora da instalação.
-GB_POR_COMPONENTE = {"nucleo": 4, "cerebro": 2, "webui": 6, "n8n": 2, "keycloak": 1, "ollama": 2, "comfyui": 12}
+GB_POR_COMPONENTE = {"nucleo": 4, "cerebro": 2, "webui": 6, "n8n": 2, "keycloak": 1, "ollama": 2, "comfyui": 12, "squadti": 4}
 MIN_WINDOWS_BUILD = 19041   # Windows 10 2004: primeira versão com WSL2, que o Docker Desktop exige
 
 

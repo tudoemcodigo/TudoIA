@@ -10,9 +10,8 @@ from .envfile import ler_env
 
 log = logging.getLogger(__name__)
 
-DOCKER = ("litellm", "litellm-db", "cerebro", "searxng", "open-webui", "kokoro", "n8n", "keycloak", "keycloak-db")
-HOST = {"ollama": 11434, "comfyui": 8188, "squadti": 8790}
-HOST_DO_TODOS = ("ollama", "comfyui")  # "todos" liga e desliga só a infraestrutura; a Squad é decisão explícita
+DOCKER = ("litellm", "litellm-db", "cerebro", "searxng", "open-webui", "kokoro", "n8n", "keycloak", "keycloak-db", "squadti")
+HOST = {"ollama": 11434, "comfyui": 8188}
 # restart recria o container: `compose restart` mantém as variáveis do .env com que ele foi criado, e uma chave
 # preenchida depois (OPENROUTER_API_KEY, GROQ_API_KEY) nunca chegava ao LiteLLM. Dados ficam em volumes.
 ACOES = {"start": ["up", "-d"], "stop": ["stop"], "restart": ["up", "-d", "--no-deps", "--force-recreate"]}
@@ -28,7 +27,7 @@ METADADOS = {
     "keycloak": {"titulo": "Keycloak (login)", "desc": "Provedor de identidade OIDC do painel, do Cérebro e do n8n", "porta": 8180, "url": "http://127.0.0.1:8180/admin"},
     "keycloak-db": {"titulo": "Keycloak Database", "desc": "PostgreSQL do Keycloak embutido", "porta": None, "url": None},
     "ollama": {"titulo": "Ollama Local LLMs", "desc": "Motor de inferência local para modelos GGUF acelerados em GPU", "porta": 11434, "url": "http://127.0.0.1:11434"},
-    "squadti": {"titulo": "SquadTI (API da Squad)", "desc": "Orquestrador multiagente (LangGraph): inicia, acompanha e aprova tarefas pelo menu SquadTI", "porta": 8790, "url": None},
+    "squadti": {"titulo": "SquadTI (API da Squad)", "desc": "Squad de agentes (LangGraph) em container isolado: compila e testa o código que gera. Menu SquadTI", "porta": 8790, "url": None},
     "comfyui": {"titulo": "ComfyUI Portable", "desc": "Estúdio nodal para geração e edição de imagens e vídeos (SDXL, FLUX, Wan e MiniMax)", "porta": 8188, "url": "http://127.0.0.1:8188"},
 }
 
@@ -113,7 +112,7 @@ class ServicosDocker:
                 raise RuntimeError((r.stderr or "falha ao iniciar stack docker").strip().splitlines()[-1][:300])
         elif acao == "stop":
             # 1. Encerra todos os serviços do host (Ollama e ComfyUI)
-            for h in HOST_DO_TODOS:
+            for h in HOST:
                 self._stop_host(h)
             # 2. Pausa os containers Docker
             r = self._compose("stop")
@@ -121,7 +120,7 @@ class ServicosDocker:
                 raise RuntimeError((r.stderr or "falha ao pausar stack docker").strip().splitlines()[-1][:300])
         elif acao == "restart":
             # 1. Encerra e reinicia serviços do host (Ollama e ComfyUI)
-            for h in HOST_DO_TODOS:
+            for h in HOST:
                 self._stop_host(h)
             try:
                 self._start_ollama()
@@ -153,8 +152,6 @@ class ServicosDocker:
                     self._start_ollama()
                 elif nome == "comfyui":
                     self._start_comfyui()
-                elif nome == "squadti":
-                    self._start_squadti()
             elif acao == "stop":
                 self._stop_host(nome)
             elif acao == "restart":
@@ -163,8 +160,6 @@ class ServicosDocker:
                     self._start_ollama()
                 elif nome == "comfyui":
                     self._start_comfyui()
-                elif nome == "squadti":
-                    self._start_squadti()
             else:
                 raise ValueError(f"ação '{acao}' não suportada para '{nome}'")
             return
@@ -210,38 +205,6 @@ class ServicosDocker:
                 stdout=log_f,
                 stderr=subprocess.STDOUT,
             )
-
-    def _start_squadti(self) -> None:
-        """Sobe a API da Squad (orquestrador/api.py). Tudo vem do .env: pasta, Python, token da API, chave do gateway e Doutrina.
-        Token e chave vão por variável de ambiente do processo, nunca na linha de comando. Sem os itens obrigatórios, não sobe."""
-        env_arq = ler_env(self.raiz / ".env")
-        pasta = (env_arq.get("TUDOIA_SQUADTI_DIR") or "").strip()
-        token = (env_arq.get("TUDOIA_SQUADTI_TOKEN") or "").strip()
-        chave = (env_arq.get("SQUADTI_API_KEY") or "").strip()
-        doutrina = (env_arq.get("DOUTRINA_TEC") or "").strip()
-        faltando = [n for n, v in (("TUDOIA_SQUADTI_DIR", pasta), ("TUDOIA_SQUADTI_TOKEN", token),
-                                   ("SQUADTI_API_KEY", chave), ("DOUTRINA_TEC", doutrina)) if not v]
-        if faltando:
-            raise RuntimeError(f"SquadTI não configurado: defina no .env {', '.join(faltando)}")
-        if len(token) < 32:
-            raise RuntimeError("TUDOIA_SQUADTI_TOKEN precisa ter 32 caracteres ou mais")
-        base = Path(pasta)
-        api = base / "orquestrador" / "api.py"
-        python = Path((env_arq.get("TUDOIA_SQUADTI_PYTHON") or "").strip() or base / ".venv" / "Scripts" / "python.exe")
-        if not api.is_file() or not python.is_file():
-            raise RuntimeError(f"SquadTI não encontrada: preciso de {api} e do Python do ambiente ({python})")
-        trabalho = self.raiz / "dados" / "squadti"   # o workspace/ e o checkpoint da Squad ficam aqui
-        trabalho.mkdir(parents=True, exist_ok=True)
-        log_dir = self.raiz / "dados" / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        env = {**os.environ, "TUDOIA_SQUADTI_TOKEN": token, "TUDOIA_API_KEY": chave, "DOUTRINA_TEC": doutrina,
-               "TUDOIA_GATEWAY_URL": env_arq.get("TUDOIA_SQUADTI_GATEWAY") or "http://127.0.0.1:4000/v1",
-               "TUDOIA_MODEL": "tudoia-local-estrito"}
-        cmd = [str(python), str(api), "--porta", str(HOST["squadti"]), "--db", str(trabalho / "squad_state.db"),
-               "--config", env_arq.get("TUDOIA_SQUADTI_CONFIG") or str(base / "orquestrador" / "stack_config.example.json")]
-        with open(log_dir / "squadti.log", "a", encoding="utf-8") as log_f:
-            subprocess.Popen(cmd, cwd=str(trabalho), env=env, stdin=subprocess.DEVNULL, creationflags=DETACHED_FLAGS,
-                             stdout=log_f, stderr=subprocess.STDOUT)
 
     def _stop_host(self, nome: str) -> None:
         porta = HOST.get(nome)

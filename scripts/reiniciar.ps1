@@ -39,6 +39,6 @@ foreach ($servico in @(@('Painel', 3100), @('Ollama', 11434), @('ComfyUI', 8188)
 if ($queroSquadti) { Write-Host ('  {0,-8} {1}' -f 'SquadTI', $(if (SquadtiNoAr) { 'no ar' } else { 'FORA' })) }
 
 if (-not $painelOk) { Write-Error 'O painel nao voltou na porta 3100; veja dados\logs\painel.err.log.'; exit 1 }
-if (-not $squadtiOk) { Write-Warning 'A API da Squad nao voltou; veja dados\logs\squadti.err.log.'; exit 1 }
+if (-not $squadtiOk) { Write-Warning 'A API da Squad nao voltou; veja: docker logs squadti.'; exit 1 }
 if (-not $SemNavegador) { Start-Process 'http://127.0.0.1:3100/app/' }
 exit 0
