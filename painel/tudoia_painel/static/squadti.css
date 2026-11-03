@@ -1,0 +1,27 @@
+/* Menu SquadTI */
+.squadti-bloco { margin: 18px 0; }
+.squadti-bloco h3, .squadti-bloco h4 { margin: 14px 0 8px; }
+.squadti-faixa { padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); }
+.squadti-faixa.squadti-aviso { border-color: #b8860b; }
+.squadti-faixa.squadti-erro { border-color: #c0392b; }
+.squadti-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.squadti-cartao { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-surface-elevated); }
+.squadti-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.squadti-tabela { width: 100%; border-collapse: collapse; }
+.squadti-tabela th, .squadti-tabela td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.squadti-linha { cursor: pointer; }
+.squadti-linha:hover { background: var(--bg-hover); }
+.squadti-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border-color); color: var(--text-secondary); }
+.squadti-badge.squadti-ok { color: #3fb68b; border-color: #3fb68b; }
+.squadti-badge.squadti-aviso { color: #e0a82e; border-color: #e0a82e; }
+.squadti-badge.squadti-erro { color: #e5604d; border-color: #e5604d; }
+.squadti-badge.squadti-info { color: var(--brand-primary); border-color: var(--primary); }
+.squadti-trilha { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.squadti-no { padding: 2px 8px; border-radius: 6px; font-size: 12px; background: var(--bg-subtle); color: var(--text-dim); border: 1px solid var(--border-subtle); }
+.squadti-no.feito { color: var(--text-main); border-color: var(--primary); background: var(--primary-subtle); }
+.squadti-verif, .squadti-arquivos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.squadti-pre { max-height: 360px; overflow: auto; padding: 10px; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border-subtle); white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+.squadti-texto, .squadti-campo { width: 100%; box-sizing: border-box; margin: 4px 0 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font: inherit; }
+.squadti-fundo { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.6); }
+.squadti-modal { width: min(560px, 92vw); max-height: 90vh; overflow: auto; padding: 18px 20px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-surface-elevated); }
+.squadti-consent { display: block; margin: 0 0 10px; font-size: 13px; color: var(--text-secondary); }

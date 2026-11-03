@@ -8,6 +8,7 @@
   <link rel="icon" type="image/x-icon" href="/app/favicon.ico">
   <link rel="stylesheet" href="/app/fontes.css">
   <link rel="stylesheet" href="/app/painel.css">
+  <link rel="stylesheet" href="/app/squadti.css">
 </head>
 <body>
   <header class="app-header">
@@ -105,6 +106,13 @@
           <span class="badge badge-pulse-mini">LIVE</span>
 </a>
 </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Agentes</div>
+        <a class="nav-item" data-view="squadti" href="#squadti">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+          <span>SquadTI</span>
+        </a>
+      </div>
       <div class="nav-section">
         <div class="nav-section-label">Conta</div>
         <a class="nav-item" data-view="usuario" href="#usuario" id="nav-usuario" style="display:none">
@@ -379,6 +387,20 @@
 </section>
 
       <!-- 4. GOVERNANÇA -->
+      <section class="page-view" id="view-squadti">
+        <div class="page-header">
+          <div class="page-title">
+            <h2>SquadTI</h2>
+            <p>Squad de agentes que constrói projetos novos seguindo a Doutrina TEC. Você responde, aprova a especificação e aprova o release.</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-outline btn-sm" id="btn-squadti-atualizar">↻ Atualizar</button>
+            <button class="btn btn-primary btn-sm" id="btn-squadti-nova">Nova tarefa</button>
+          </div>
+        </div>
+        <div id="squadti-conteudo"><div class="suave">Carregando…</div></div>
+      </section>
+
       <section class="page-view" id="view-governanca">
         <div class="page-header">
           <div class="page-title">
@@ -1987,5 +2009,6 @@
   <div id="toast-container"></div>
 
   <script src="/app/painel.js?v=11" defer></script>
+  <script src="/app/squadti.js" defer></script>
 </body>
 </html>

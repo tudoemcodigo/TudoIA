@@ -180,6 +180,7 @@ function carregarAba(viewId) {
   else if (viewId === "segredos") carregarSegredos();
   else if (viewId === "limites") carregarLimites();
   else if (viewId === "telemetria") carregarTelemetria();
+  else if (viewId === "squadti" && typeof carregarSquadti === "function") carregarSquadti();  // squadti.js carrega depois: no 1º acesso por #squadti ele mesmo chama
 }
 
 $$(".nav-item").forEach((btn) => {
