@@ -58,7 +58,7 @@ Sua missão é garantir que o sistema possa ser compilado, empacotado, testado e
 ---
 
 ## 4. Nó no orquestrador (`devops`)
-Hoje o nó é **estático e determinístico**: sem modelo, sem rede, sem executar comando (`orquestrador/verificacoes.py`). Verifica: workflow em `.github/workflows/` quando `stack.infra.ci` declara GitHub (ausente = "não configurado"); `Dockerfile` sem `latest` e sem `FROM` sem tag ou digest; `uses:` de terceiros fixados por SHA de 40 hex (`./` local e `docker://` com digest são aceitos); `.gitignore` da raiz cobrindo `bin/`, `obj/`, `node_modules/` e `.env`; nenhum `.env` com conteúdo. Relatório `tests/reports/devops_report.json`. NÃO valida sintaxe YAML, não builda imagem e não cria Dockerfile nem pipeline (criar fica como objetivo do agente, ainda sem nó). Reprovado = `ENTREGA_BLOQUEADA` e o fluxo termina.
+Hoje o nó é **estático e determinístico**: sem modelo, sem rede, sem executar comando (`orquestrador/verificacoes.py`). Verifica: workflow em `.github/workflows/` quando `stack.infra.ci` declara GitHub (ausente = "não configurado"); `Dockerfile` sem `latest` e sem `FROM` sem tag ou digest; `uses:` de terceiros fixados por SHA de 40 hex (`./` local e `docker://` com digest são aceitos); `.gitignore` da raiz cobrindo `bin/`, `obj/`, `node_modules/` e `.env`; nenhum `.env` com conteúdo. Relatório `tests/reports/devops_report.json`. NÃO valida sintaxe YAML, não builda imagem e não cria Dockerfile nem pipeline (criar fica como objetivo do agente, ainda sem nó). Roda depois da `validacao_runtime`. Reprovado = `ENTREGA_BLOQUEADA` e o fluxo termina. O teste de carga do papel SRE é a etapa [carga](carga-sre.md), que não faz parte deste nó.
 
 ---
 

@@ -56,8 +56,10 @@ Sua missão é transformar os objetivos de negócio traduzidos pelo Agente CHEFE
 ## 4. Nó no orquestrador (`arquiteto`)
 - **Papel da Doutrina:** `arquiteto`. Usa modelo. Recusa rodar sem `business_spec_approved`.
 - **Entrada:** o `BUSINESS_SPEC.md` aprovado.
-- **Saídas obrigatórias:** `docs/arquitetura/PRD_TECNICO.md` e `contracts/openapi.yaml` (OpenAPI 3.1, erro e sucesso no envelope da Doutrina). Áreas de escrita: `docs/arquitetura/` e `contracts/`.
-- ADRs, diagramas Mermaid e a ferramenta `validate_schema` do desenho **não** são exigidos nem executados pelo nó: nenhuma validação sintática do OpenAPI roda no orquestrador.
+- **Saídas obrigatórias:** `docs/arquitetura/PRD_TECNICO.md` e, se o plano do CHEFE tem API, `contracts/openapi.yaml` (OpenAPI 3.1, erro e sucesso no envelope da Doutrina). Áreas de escrita: `docs/arquitetura/` e `contracts/`. O prompt inclui a receita da stack escolhida (`dotnet` ou `python`).
+- **Aprovação por hash:** recusa rodar se o `BUSINESS_SPEC.md` mudou depois da aprovação (`business_spec_hash`).
+- **Depois:** `chefe_gate_design` confere o PRD (300+ caracteres) e o OpenAPI (3.x, YAML válido, com `paths`); reprovou, a tarefa escala.
+- ADRs, diagramas Mermaid e a ferramenta `validate_schema` do desenho **não** são exigidos nem executados pelo nó. A validação sintática do OpenAPI (YAML válido, versão 3.x, `paths`) existe, mas é feita pelo CHEFE no portão de design, em código.
 - A documentação final do projeto (README e `docs/`) é de outro nó: [documentacao-redator.md](documentacao-redator.md).
 
 ---

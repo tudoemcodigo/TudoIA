@@ -55,10 +55,11 @@ Sua missão é implementar a lógica de negócio, APIs e integrações do sistem
 ---
 
 ## 4. Nó no orquestrador (`dev_backend`)
-- **Papel da Doutrina:** `backend`. Usa modelo. Só stack .NET.
-- **Scaffold:** se o workspace não tem projeto .NET, roda `scaffold_command` da stack (padrão `dotnet new tec-project -n {nome}`, prazo de 300 s). Falha no scaffold termina a fase como `BACKEND_FALHOU` com o log.
-- **Saída:** blocos gravados em `src/` e `tests/` (testes feliz e adversarial pedidos no prompt).
-- **Correção:** se `falha_origem` não é `frontend`, o log de erro do QA/revisor, sanitizado (`sanitizar_logs_de_erro`), volta ao prompt. Limite de 3 passagens (ver [chefe-orquestrador.md](chefe-orquestrador.md)).
+- **Papel da Doutrina:** `backend`. Usa modelo. Stacks `dotnet` (padrão) e `python`; a escolhida pelo CHEFE (ou fixada pelo usuário) define o adaptador (`stacks.py`): receita no prompt, comandos e áreas de escrita.
+- **Scaffold:** só `dotnet`: se o workspace não tem projeto .NET, roda `scaffold_command` da stack (padrão `dotnet new tec-project -n {nome}`, prazo de 300 s). Falha no scaffold termina a fase como `BACKEND_FALHOU` com o log. Em `python` não há template: o modelo escreve o projeto (`pyproject.toml`, `app/`, `tests/`, `Dockerfile`, workflow de CI, `.gitignore`, `.env.example`).
+- **Saída:** blocos gravados nas áreas do adaptador (`src/` e `tests/` em `dotnet`; `app/`, `tests/`, `migrations/` e arquivos de projeto em `python`), com testes feliz e adversarial pedidos no prompt.
+- **Contexto:** recebe também o plano do CHEFE e as instruções `/ajuste` do usuário (como dado).
+- **Correção:** se `falha_origem` não é `frontend`, o log de erro do QA, do revisor, do Sênior Master ou da validação em execução (hacker, macaco, carga), sanitizado (`sanitizar_logs_de_erro`), volta ao prompt. Limites em [chefe-orquestrador.md](chefe-orquestrador.md).
 - **Compilar e rodar linter antes de entregar** (exigência do desenho) **não é feito por este nó**: build e testes rodam no nó `qa_testes`.
 
 ---

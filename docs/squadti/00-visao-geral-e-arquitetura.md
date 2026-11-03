@@ -11,7 +11,7 @@ verificado-em: 2026-11-03
 
 # 🧭 Visão geral e arquitetura da SquadTI
 
-> **Público:** quem mantém ou avalia a SquadTI. Responde por que a squad é um grafo de artefatos e como se liga ao TudoIA; o estado real do código está em [SquadTI (componente)](../componentes/squadti.md).
+> **Público:** quem mantém ou avalia a SquadTI. Responde por que a squad é um grafo de artefatos e como se liga ao TudoIA; o estado real do código (v2) está em [SquadTI (componente)](../componentes/squadti.md).
 
 ## 📑 Sumário
 
@@ -41,7 +41,7 @@ Para solucionar isso, esta Squad adota a **Arquitetura Baseada em Contratos e Ar
 A squad opera sob o modelo **Hierárquico com Supervisão por Grafo de Estados (LangGraph StateGraph)**, incluindo o ciclo formal de elicitação negocial.
 
 > [!NOTE]
-> O diagrama é o **modelo conceitual** (com o papel CHEFE). No código não existe nó "chefe": o papel é exercido pelo próprio grafo (`graph.py`: roteamento, limite de iterações e pausas de aprovação humana). Os nós reais são `analista_requisitos`, `arquiteto`, `dba`, `dev_backend`, `dev_frontend`, `qa_testes`, `revisor`, `appsec`, `devops`, `documentacao` e `release`; o fluxo implementado está em [protocolo](02-protocolo-de-comunicacao-e-estado.md#1-o-ciclo-de-vida-de-uma-demanda-no-langgraph).
+> O diagrama é o **modelo conceitual**: mostra o CHEFE como hub entre o usuário e os agentes. No código (v2) o CHEFE é real, mas não é um hub que despacha cada mensagem: são quatro nós (`chefe_intake`, `chefe_gate_requisitos`, `chefe_gate_design`, `chefe_escalada`, em `chefe.py`) mais a rota de conversa da API; os demais agentes seguem o fluxo do grafo (`graph.py`). Os nós reais são 18; o fluxo implementado está em [protocolo](02-protocolo-de-comunicacao-e-estado.md#1-o-ciclo-de-vida-de-uma-demanda-no-langgraph). No desenho abaixo, "Agente de Documentação & Arquitetura" corresponde ao nó `arquiteto`.
 
 ```mermaid
 flowchart TD
@@ -80,7 +80,7 @@ flowchart TD
 
 A squad não depende de APIs externas proprietárias ou conexões que exponham código confidencial. Ela conecta-se nativamente à infraestrutura local do **TudoIA**:
 - **Gateway LiteLLM (`http://localhost:4000/v1`):** Ponto único de chamada de LLM compatível com a API OpenAI.
-- **Perfis do gateway (`tudoia-local-estrito`, `tudoia-local`, `tudoia-hibrido`, `tudoia-nuvem`, `tudoia-max`):** o orquestrador usa por padrão `tudoia-local` e recusa perfil que pode sair da máquina sem consentimento explícito (`TUDOIA_PERMITIR_NUVEM=1` ou `consentimento_nuvem`). O roteador `tudoia-auto` não é um perfil da SquadTI. Ver [guia de implementação](03-guia-de-implementacao.md#perfis-aceitos---perfil-orquestradorperfispy).
+- **Perfis do gateway (`tudoia-local-estrito`, `tudoia-local`, `tudoia-hibrido`, `tudoia-nuvem`, `tudoia-auto`, `tudoia-max`):** o orquestrador usa por padrão `tudoia-local-estrito` e recusa perfil que pode sair da máquina sem consentimento explícito (`TUDOIA_PERMITIR_NUVEM=1` ou `consentimento_nuvem`). O roteador `tudoia-auto` **é** um perfil (`auto`), tratado como nuvem: exige o consentimento. Cada agente pode ter o seu perfil (aba Agentes do painel). Ver [guia de implementação](03-guia-de-implementacao.md#perfis-aceitos---perfil-orquestradorperfispy).
 - **Cérebro MCP:** não é usado pelo orquestrador atual (nenhuma referência em `runtime/squadti/orquestrador/`); é intenção de projeto.
 - **Privacidade por Padrão (Local-First):** Código-fonte proprietário, esquemas de banco e regras de negócio permanecem na máquina local sem vazamento.
 
@@ -88,24 +88,27 @@ A squad não depende de APIs externas proprietárias ou conexões que exponham c
 
 ## 4. Stack Padrão e Arquitetura Agnóstica (Stack Adapters)
 
-Embora a stack prioritária de referência da organização seja:
+A stack prioritária de referência da organização é:
 - **Backend:** .NET 10 + C# (Clean Architecture, EF Core; regras na Doutrina TEC, família `arquitetura`)
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS
 - **Banco de Dados:** Microsoft SQL Server (MSSQL) com migrações versionadas
 
-A Squad adota o **Padrão de Adaptadores de Stack (Stack Adapters)**:
-Cada agente desenvolvedor, DBA e QA possui sub-regras modulares. Caso o projeto seja em Python/FastAPI, Go ou Node.js, o CHEFE injeta a receita correspondente do projeto sem alterar a mecânica orquestradora.
+A Squad adota o **Padrão de Adaptadores de Stack (Stack Adapters)** (`stacks.py`): o grafo e os portões são os mesmos; o adaptador diz só como detectar o projeto, que comandos rodam, onde cada papel escreve, qual receita o modelo recebe e quais famílias da Doutrina não se aplicam.
 
-> **Estado real:** o código lê as famílias da Doutrina por perfil de papel (padrão `arquitetura`, `ia`, `ecossistema`), e as regras de stack são específicas de .NET. O código do orquestrador implementa só a stack .NET (+ frontend React). Outras stacks são intenção de projeto: exigem antes uma família própria na Doutrina, senão o agente trabalha sem regras.
+> **Estado real:** o código implementa **duas** stacks de backend, `dotnet` (padrão) e `python` (FastAPI, SQLAlchemy 2, Alembic, pytest, uv), mais frontend React. Quem escolhe é o CHEFE (no plano), o usuário (fixando) ou `target_stack.backend.language`. Para `python` a Squad dispensa as famílias `arquitetura` e `componentes` da Doutrina (específicas de .NET/TEC.*), de modo que o agente trabalha só com as demais. Go, Node.js e outras seguem como intenção de projeto: exigem um adaptador novo em `stacks.py`.
 
 ---
 
 ## 5. O Papel Crítico do Agente CHEFE (Tech Lead & Orquestrador)
 
-1. **Decomposição Estruturada de Demandas:** Traduz o documento funcional do Analista de Requisitos em tarefas técnicas e contratos estritos.
-2. **Controle de Dependências e Ordem de Execução:** Garante que o banco e os contratos existam antes de qualquer desenvolvimento de código.
-3. **Isolamento de Contexto (Context Firewalls):** Prompts cirúrgicos contendo apenas as especificações pertinentes àquele agente.
-4. **Resolução de Conflitos e Retroalimentação:** Limita loops de correção a 3 passagens de verificação (QA e revisor dividem o contador, `LIMITE_ITERACOES` em `graph.py`) antes de acionar intervenção humana (Human-in-the-Loop).
+No código (`chefe.py`) o CHEFE é o **canal único** entre o usuário e os agentes:
+
+1. **Decomposição Estruturada de Demandas:** `chefe_intake` transforma o briefing num plano validado (tamanho, stack, banco, frontend, API, riscos) que manda no grafo; sem plano válido cai num plano padrão conservador.
+2. **Critérios de pronto entre as fases:** `chefe_gate_requisitos` e `chefe_gate_design` conferem a especificação e o PRD/OpenAPI em código antes de a fase seguinte começar.
+3. **Isolamento de Contexto (Context Firewalls):** cada nó monta um prompt só com o plano, as instruções do usuário (`/ajuste`, como dado) e os artefatos de que precisa; o histórico da conversa não vai aos agentes.
+4. **Resolução de Conflitos e Retroalimentação:** o laço de correção é limitado (QA e revisor dividem 3 passagens; Sênior Master 3; validação em execução 3; Mantenedor 2; estagnação escala cedo) e, no limite, `chefe_escalada` escreve o relatório para o humano decidir (Human-in-the-Loop).
+
+O que **não** existe: um CHEFE que reescreve prompts dos agentes ou despacha ordens de serviço por modelo (ver [protocolo](02-protocolo-de-comunicacao-e-estado.md#3-formato-padrão-da-ordem-de-serviço-prompt-cirúrgico)). Perfil do agente: [`04-agentes/chefe-orquestrador.md`](04-agentes/chefe-orquestrador.md).
 
 ---
 

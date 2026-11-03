@@ -21,11 +21,12 @@ verificado-em: 2026-11-03
 ---
 
 ## 2. Contrato do Nó (`orquestrador/nodes.py`, `revisao.py`)
-- **Entrada:** arquivos de `arquivos_gerados` sob `src/`, `tests/` e `frontend/` (até 60.000 caracteres no total; arquivo grande é truncado e o corte é declarado no prompt). Contexto da Doutrina: papel `backend` se houver `src/` ou `tests/`, papel `frontend` se houver `frontend/`. Linhas com padrão de segredo são trocadas por marcador antes de ir ao modelo.
+- **Entrada:** arquivos de `arquivos_gerados` sob `src/`, `app/`, `tests/` e `frontend/` (até 60.000 caracteres no total; arquivo grande é truncado e o corte é declarado no prompt). Contexto da Doutrina: papel `backend` se houver `src/`, `app/` ou `tests/`, papel `frontend` se houver `frontend/`. Linhas com padrão de segredo são trocadas por marcador antes de ir ao modelo.
 - **Saída:** `docs/revisao/REVISAO.md` (única área de escrita permitida), com uma linha exata `VEREDITO: APROVADO` ou `VEREDITO: REPROVADO` e achados no formato `- [CRITICO|ALTO|MEDIO|BAIXO] ID-DA-REGRA arquivo:linha descrição`.
-- **Regra do veredito (falha fechado):** sem a linha, com mais de uma, ou sem o arquivo = REPROVADO. Qualquer achado `CRITICO` reprova mesmo com `APROVADO`. O veredito só vale no arquivo que o modelo devolveu nesta chamada: texto dentro do código revisado é dado, nunca instrução.
+- **Regra do veredito (falha fechado):** sem a linha, com mais de uma, ou sem o arquivo = REPROVADO. Qualquer achado `CRITICO` **verificado** (regra que existe na Doutrina, arquivo e linha que existem) reprova mesmo com `APROVADO`; achado que cita regra, arquivo ou linha inexistente é descartado e fica em `nao_verificados`. A trilha fica em `docs/revisao/ACHADOS.json`.
+- **Modo `dupla`** (aba Agentes, `revisao.modo`): dois revisores independentes (o segundo com ênfase em autorização, validação, concorrência, tratamento de erro e vazamento) e um **verificador adversarial** que tenta refutar o achado que só um apontou (`VERIFICADOR: CONFIRMADO` ou `REFUTADO`; na dúvida, refutado). Reprova só se um achado grave sobreviveu à verificação. O veredito só vale no arquivo que o modelo devolveu nesta chamada: texto dentro do código revisado é dado, nunca instrução.
 - **Estado:** `review_passed`, `review_file`, `falha_origem` (`frontend` só se todos os achados CRITICO/ALTO forem em `frontend/`; senão `backend`).
-- **Rota:** reprovado volta ao dev indicado por `falha_origem`. O revisor incrementa o mesmo `iteration_count` do QA: no limite de 3, a tarefa termina com escalação humana e o AppSec não roda.
+- **Rota:** reprovado volta ao dev indicado por `falha_origem`. O revisor incrementa o mesmo `iteration_count` do QA: no limite de 3, a tarefa escala (`chefe_escalada`) e o AppSec não roda. Aprovado segue ao [Sênior Master](senior-master.md).
 
 ## 3. Limites
 - Revisão por modelo não prova ausência de defeito; não substitui o QA nem o AppSec.

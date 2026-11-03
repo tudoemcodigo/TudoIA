@@ -66,11 +66,11 @@ Se um teste falhar, devolva imediatamente a ordem para o CHEFE com:
 ## 4. Nó no orquestrador (`qa_testes`)
 Diverge do desenho acima: o nó é **determinístico, sem modelo**, e **não escreve testes**. Os testes vêm do dev backend/frontend. Ele executa de verdade:
 
-1. Se há projeto .NET: `build_command` (padrão `dotnet build --configuration Release`) e, se passou, `test_command` (padrão `dotnet test --no-build`).
+1. Se há projeto gerado (`.sln`/`.slnx`/`.csproj` em `dotnet`; `pyproject.toml` em `python`): `build_command` (padrão `dotnet build --configuration Release` ou `uv sync`) e, se passou, `test_command` (padrão `dotnet test --no-build --coverage --coverage-output-format cobertura` ou `uv run pytest --cov=app --cov-branch --cov-report=xml`).
 2. Se há `frontend/package.json`: `npm run build` e `npm test` (comandos sobrescrevíveis pela stack). Frontend esperado e ausente reprova.
 3. Se tudo passou: gate de cobertura (`quality.coverage_min` da stack, padrão **90**, linha e ramo; `0` desliga; valor inválido volta a 90). Cobertura não medida reprova.
 
-Sem nenhuma etapa (nada gerado) = reprovado. Relatório `tests/reports/qa_report.json` (aprovação, etapas, motivo, versão/hash da Doutrina, regras com teste). Cada passagem incrementa `iteration_count`; falha volta ao dev indicado por `falha_origem` (etapa `frontend-*` = frontend, senão backend). Testes de integração com banco, E2E, concorrência e rede indisponível são proposta, sem nó.
+Sem nenhuma etapa (nada gerado) = reprovado. Relatório `tests/reports/qa_report.json` (aprovação, etapas, motivo, versão/hash da Doutrina, regras com teste). Cada passagem incrementa `iteration_count`; falha volta ao dev indicado por `falha_origem` (etapa `frontend-*` = frontend, senão backend). Testes de integração com banco, E2E, concorrência e rede indisponível são proposta, sem nó neste agente. O uso à força do sistema rodando é do [macaco](macaco-qa.md), etapa de `validacao_runtime`.
 
 ---
 

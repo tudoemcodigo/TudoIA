@@ -11,7 +11,7 @@ verificado-em: 2026-11-03
 
 # 🌐 Sistema web da SquadTI (proposta)
 
-> **Público:** quem decide o futuro portal da SquadTI. **Proposta não implementada**: nada deste documento existe em `runtime/squadti/`.
+> **Público:** quem decide o futuro portal da SquadTI. **Proposta**: o portal .NET descrito aqui não existe. Uma parte da função dele foi entregue de outro jeito, no painel do TudoIA (tabela abaixo).
 
 ## 📑 Sumário
 
@@ -25,7 +25,16 @@ verificado-em: 2026-11-03
 
 
 > [!WARNING]
-> **Proposta não implementada.** Revisado em 2026-11-03 contra `runtime/squadti/`: não existe backend .NET, SignalR, banco `squad` nem os endpoints `/api/v1/...` abaixo. A SquadTI é hoje controlada pela CLI (`main.py`) e pela API HTTP do orquestrador (`api.py`, porta padrão 8790, token em `TUDOIA_SQUADTI_TOKEN`), e o painel do TudoIA a consome (ver [SquadTI (componente)](../componentes/squadti.md)). Os nomes de agente e de modelo citados (ex.: `qwen2.5-coder:32b`, `tudoia-auto`, "9 agentes") são do desenho original; o orquestrador usa um modelo único por tarefa e 11 nós.
+> **Proposta não implementada como descrita.** Revisado em 2026-11-03 contra `runtime/squadti/` e `painel/`: não existe backend .NET, SignalR, banco `squad` nem os endpoints `/api/v1/...` abaixo. A SquadTI é controlada pela CLI (`main.py`) e pela API HTTP do orquestrador (`api.py`, porta padrão 8790, token em `TUDOIA_SQUADTI_TOKEN`), e o **painel do TudoIA** (menu SquadTI) a consome. Os nomes de modelo citados (ex.: `qwen2.5-coder:32b`, `llama3.3:70b`) são do desenho original; o orquestrador usa perfis do gateway e tem 18 nós.
+
+O que dos quatro módulos abaixo já existe, no painel (ver [SquadTI (componente)](../componentes/squadti.md#️-painel-abas-tarefas-e-agentes)):
+
+| Módulo proposto | Situação hoje |
+|---|---|
+| 1. Parametrização dos agentes | **Parcial**: aba *Agentes* grava perfil, temperatura, máximo de tokens por agente, modo de revisão, validação em execução e orçamento, em `agentes.json` (só o admin salva). **Não existe**: edição de system prompt, Top-P, retry, caminho da Doutrina pela tela, toggle de ferramentas |
+| 2. Solicitações e elicitação | **Existe**: *Nova tarefa*, perguntas do analista, conversa com o CHEFE, leitura do `BUSINESS_SPEC` e botão de aprovação |
+| 3. Cockpit em tempo real | **Parcial**: trilha dos nós, consumo do orçamento, log ao vivo por polling (sem SignalR) e leitura de arquivos. **Não existe**: DAG interativo, visualizador de diffs |
+| 4. Governança e Human-in-the-Loop | **Parcial**: aprovação da especificação e do release (amarradas a hash), auditoria de chamadas e proveniência por API. **Não existe**: fila de aprovações entre tarefas, aprovação de arquitetura ou de migração |
 
 Este documento especifica a concepção completa do **Sistema Web de Gestão da Squad TI (SquadTI Web Portal)**. O sistema permite parametrizar os agentes de IA, registrar solicitações com entrevistas interativas de requisitos e acompanhar a execução do grafo LangGraph em tempo real.
 
@@ -151,7 +160,7 @@ CREATE TABLE squad.LogExecucao (
 ## 4. Endpoints Principais da API (.NET 10)
 
 ### Configurações de Agentes:
-- `GET /api/v1/agentes`: Lista configurações atuais dos 9 agentes.
+- `GET /api/v1/agentes`: Lista configurações atuais dos agentes.
 - `PUT /api/v1/agentes/{id}`: Atualiza modelo, prompt ou parâmetros do agente.
 - `GET /api/v1/configuracoes/fonte-verdade`: Valida se o diretório da Doutrina TEC existe e lista os padrões disponíveis.
 

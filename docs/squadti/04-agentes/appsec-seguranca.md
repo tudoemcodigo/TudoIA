@@ -58,7 +58,7 @@ Se você identificar qualquer vulnerabilidade de severidade CRÍTICA ou ALTA, ou
 ---
 
 ## 4. Nó no orquestrador (`appsec`)
-Hoje o nó é determinístico e **não usa modelo**: `dotnet list package --vulnerable`, `npm audit` e varredura de padrões de segredo, com relatório `tests/reports/security_report.json` (nunca o valor do segredo). O relatório lista só os IDs e níveis das regras `SEC-*` do papel `appsec` na Doutrina (escopo do papel, não prova de conformidade) e declara o que não cobre: modelo de ameaças, autorização, SAST/DAST e cadeia de suprimentos. Reprovado = `ENTREGA_BLOQUEADA` e o fluxo termina; aprovado segue ao `devops`. SAST e LGPD acima ficam como objetivo do agente, ainda sem nó.
+Hoje o nó é determinístico e **não usa modelo**: a auditoria de dependências da stack (`dotnet list package --vulnerable --include-transitive` ou `uv run --with pip-audit pip-audit`), `npm audit --audit-level=high` e varredura de padrões de segredo, com relatório `tests/reports/security_report.json` (nunca o valor do segredo). O relatório lista só os IDs e níveis das regras `SEC-*` do papel `appsec` na Doutrina (escopo do papel, não prova de conformidade) e declara o que não cobre: modelo de ameaças, autorização, SAST/DAST e cadeia de suprimentos. Reprovado = `ENTREGA_BLOQUEADA` e o fluxo termina (`chefe_escalada`); aprovado segue à `validacao_runtime`, onde o [hacker](hacker-ofensivo.md) ataca o sistema rodando. SAST e LGPD acima ficam como objetivo do agente, ainda sem nó.
 
 ---
 

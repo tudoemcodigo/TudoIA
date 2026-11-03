@@ -78,7 +78,8 @@ Quando uma nova ideia ou demanda chegar do Usuário ou do CHEFE, você NÃO deve
 - **Sem respostas do usuário** (`interview_answers` vazio): o modelo gera **até 4** perguntas (o desenho acima diz 3 a 5), nenhum arquivo é gravado, a resposta vai para `interview_questions` e o grafo termina (`business_spec_file` ausente) à espera das respostas.
 - **Com respostas:** grava `docs/negocio/BUSINESS_SPEC.md` (obrigatório; área de escrita `docs/negocio/`) com cenários Dado-Quando-Então, catálogo de permissões e erros de negócio nomeados (SCREAMING_SNAKE). Estado: `business_spec_file`, `business_spec_approved=False`.
 - **Aprovação:** o grafo pausa antes do `arquiteto` e o nó `arquiteto` recusa rodar sem `business_spec_approved`. A aprovação é humana.
-- Não há ferramenta `ask_user`: as perguntas voltam pelo estado da tarefa (API/CLI da SquadTI).
+- Não há ferramenta `ask_user`: as perguntas voltam pelo estado da tarefa (API/CLI da SquadTI) e, na v2, o usuário as responde **pelo CHEFE** (painel: conversa com o CHEFE ou campo de respostas). O briefing e as respostas passam por sanitização (`entrada.py`) e vão ao modelo como dado.
+- **Critério de pronto:** depois de gravar a especificação o [CHEFE](chefe-orquestrador.md) a confere (`chefe_gate_requisitos`); pendência volta ao analista com a lista, até 2 rodadas (`feedback_chefe`). Cada texto novo zera a aprovação anterior (`business_spec_hash`).
 
 ---
 

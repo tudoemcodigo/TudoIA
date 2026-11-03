@@ -89,7 +89,7 @@ flowchart TD
 - A conformidade é medida, não declarada: regras com `evidencia:` apontam o teste real do TemplateTEC (ex.: `ConvencoesTests.TodoCommand_TemValidador`), que o `dotnet test` executa. O QA reprova a entrega se o comando sair com código diferente de 0.
 
 ### Privacidade
-- O orquestrador usa por padrão o modelo `tudoia-local` (somente Ollama). Qualquer modelo que não seja `tudoia-local`, `tudoia-local-estrito` ou `local/*` (inclui o roteador `tudoia-auto`) pode mandar código e esquema para a nuvem e é recusado a menos que `TUDOIA_PERMITIR_NUVEM=1` (CLI) ou `consentimento_nuvem` (API). Ver `perfis.py`.
+- O padrão é modelo só local: a API e o painel iniciam a tarefa com `local-estrito` (`tudoia-local-estrito`, sem fallback para a nuvem); o processo, sem outra indicação, usa `tudoia-local` (a imagem fixa `tudoia-local-estrito`). Qualquer modelo que não seja `tudoia-local`, `tudoia-local-estrito` ou `local/*` (inclui o roteador `tudoia-auto`) pode mandar código e esquema para a nuvem e é recusado a menos que `TUDOIA_PERMITIR_NUVEM=1` (CLI) ou `consentimento_nuvem` (API); o mesmo vale para o perfil de cada agente configurado na aba Agentes. Ver `perfis.py` e `nodes.py`.
 
 ### Rastreabilidade e falha fechada
 - `gerado/manifesto.json` dá versão e hash da doutrina. A primeira etapa grava `doutrina_versao`/`doutrina_hash` no `SquadState`; se mudarem durante a tarefa, a tarefa aborta.
@@ -144,15 +144,17 @@ A estrutura canônica da Doutrina está organizada em famílias. A árvore mostr
 
 O módulo [`doutrina_tec.py`](../../runtime/squadti/orquestrador/doutrina_tec.py), usado por [`nodes.py`](../../runtime/squadti/orquestrador/nodes.py), consome só os artefatos gerados, sem parsear Markdown:
 
-1. **Núcleo e perfil do papel:** cada papel lê `gerado/perfis/<papel>.json` (`nucleo_sugerido` = famílias do papel); sem perfil, o papel não trabalha (falha fechada). O núcleo `gerado/<familia>-nucleo.md` dessas famílias entra no prompt. `FAMILIAS_PADRAO` (`arquitetura`, `ia`, `ecossistema`) só vale quando não há papel. Para forçar as mesmas famílias em todos os papéis, use `DOUTRINA_FAMILIAS` (lista separada por vírgula) ou `doutrina_familias` no `stack_config`; nome inválido ou família ausente derruba a tarefa (falha fechada). Mais famílias = mais tokens por chamada: confira a janela do modelo local, porque o gateway pode reenviar à nuvem o pedido que não couber (IA-PRV-02).
+1. **Núcleo e perfil do papel:** cada papel lê `gerado/perfis/<papel>.json` (`nucleo_sugerido` = famílias do papel); sem perfil, o papel não trabalha (falha fechada). O núcleo `gerado/<familia>-nucleo.md` dessas famílias entra no prompt. Famílias que a stack escolhida não usa (`doutrina_excluir` no estado, gravado pelo CHEFE; na stack `python`: `arquitetura` e `componentes`) saem desse conjunto. `FAMILIAS_PADRAO` (`arquitetura`, `ia`, `ecossistema`) só vale quando não há papel. Para forçar as mesmas famílias em todos os papéis, use `DOUTRINA_FAMILIAS` (lista separada por vírgula) ou `doutrina_familias` no `stack_config`; nome inválido ou família ausente derruba a tarefa (falha fechada). Mais famílias = mais tokens por chamada: confira a janela do modelo local, porque o gateway pode reenviar à nuvem o pedido que não couber (IA-PRV-02).
 2. **Regras do papel:** `gerado/<familia>.json` → `por_papel[papel]` lista os padrões de cada família (o papel pode existir em só algumas); entram só as regras deles que não são de núcleo, MUST primeiro e depois SHOULD, até o orçamento de `DOUTRINA_REGRAS_MAX_TOKENS` (padrão 12000; valor inválido volta ao padrão). O roteamento mora na doutrina (front-matter `papeis`), não no orquestrador.
-3. **Evidência:** `evidencias()` mapeia ID → teste do template (provas em outros repositórios, `fonte:caminho#trecho`, não entram); o QA relata no `qa_report.json` quais regras têm teste.
+3. **Evidência e IDs:** `evidencias()` mapeia ID → teste do template (provas em outros repositórios, `fonte:caminho#trecho`, não entram); o QA relata no `qa_report.json` quais regras têm teste. `ids_existentes()` lista todos os IDs de regra das famílias geradas: o revisor e o Sênior Master só bloqueiam por achado cujo ID existe (o resto vai para `nao_verificados`).
 4. **Versão:** `verificar_versao()` grava/compara `manifesto.json` no estado.
 5. **Caminho:** `DOUTRINA_TEC` (ambiente) tem precedência sobre `architecture_source_path` do `stack_config`. Não há caminho fixo no código.
 
 A saída dos modelos só vira arquivo por [execucao.py](../../runtime/squadti/orquestrador/execucao.py) (caminho validado, área permitida, limite de tamanho), e comandos rodam sem shell com executável permitido e timeout.
 
-Testes: o `pyproject.toml` de `runtime/squadti` configura `pytest` (`testpaths = ["orquestrador/tests"]`); rode `uv run pytest` nessa pasta. A suíte raiz `tests/runtime` roda a partir da raiz do repositório.
+Papéis que o orquestrador pede à Doutrina: `requisitos`, `arquiteto`, `dba`, `backend`, `frontend`, `documentacao`, `appsec` (modelo de ameaças do hacker) e `chefe`. O revisor e o Sênior Master usam `backend`/`frontend`; o Mantenedor roda sem regras da Doutrina. (Conferido contra `gerado/perfis/` de um clone local da Doutrina, não contra o commit fixado em `governanca/doutrina.json`.)
+
+Testes: o `pyproject.toml` de `runtime/squadti` configura `pytest` (`testpaths = ["orquestrador/tests"]`, `pythonpath` com `orquestrador` e `.`); rode `uv run pytest` nessa pasta. A suíte raiz `tests/runtime` roda a partir da raiz do repositório.
 
 ---
 

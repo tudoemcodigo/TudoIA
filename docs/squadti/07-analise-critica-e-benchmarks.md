@@ -14,7 +14,7 @@ verificado-em: 2026-11-03
 > **Público:** quem avalia a evolução da SquadTI. Registro datado do desenho inicial; o mérito não é reescrito.
 
 > [!NOTE]
-> **Documento histórico.** Data: 2026-11-02 (data do arquivo; o original não traz data). Versão analisada: desenho inicial da SquadTI (documentos 00 a 06), anterior ao orquestrador atual (`runtime/squadti`, versão 0.1.0). O texto abaixo é mantido como estava (DOC-COD-08). Situação em 2026-11-03 de cada recomendação: (1) subgrafos: **não** adotado, o grafo é plano (`graph.py`); (2) poda de logs: **adotado** em `sanitizar_logs_de_erro` (`nodes.py`); (3) isolamento: **parcial**, cada tarefa grava em `workspace/<task_id>`, sem git worktrees ou branches; (4) testes dourados: **não** encontrados em `orquestrador/tests`.
+> **Documento histórico.** Data: 2026-11-02 (data do arquivo; o original não traz data). Versão analisada: desenho inicial da SquadTI (documentos 00 a 06), anterior ao orquestrador atual (`runtime/squadti`, versão 0.1.0). O texto abaixo é mantido como estava (DOC-COD-08). Situação em 2026-11-03 de cada recomendação: (1) subgrafos: **não** adotado, o grafo é plano, hoje com 18 nós (`graph.py`); (2) poda de logs: **adotado** em `sanitizar_logs_de_erro` (`nodes.py`); (3) isolamento: **parcial**, cada tarefa grava em `workspace/<task_id>`, sem git worktrees ou branches (o sistema gerado agora roda também num sandbox Docker de rede interna, ver [SquadTI](../componentes/squadti.md)); (4) testes dourados: **adotado depois** como evals de qualidade real (`runtime/squadti/evals/`, 4 casos dourados; ver [Evals](evals.md)), que rodam pela API com modelo real e não fazem parte da suíte de `orquestrador/tests`. Atualização de 2026-11-03, sobre a versão v2 (PRs #14 a #18).
 
 ## 📑 Sumário
 
@@ -103,4 +103,4 @@ Com a incorporação das recomendações acima:
 
 ---
 
-[🏠 README](../../README.md) · ⬅️ [Sistema web da SquadTI (proposta)](06-sistema-web-squadti.md)
+[🏠 README](../../README.md) · ⬅️ [Sistema web da SquadTI (proposta)](06-sistema-web-squadti.md) · [Evals da SquadTI](evals.md) ➡️

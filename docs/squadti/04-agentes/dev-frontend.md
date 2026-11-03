@@ -58,9 +58,9 @@ Sua missão é construir a interface do usuário integrando-se aos contratos de 
 ---
 
 ## 4. Nó no orquestrador (`dev_frontend`)
-- **Papel da Doutrina:** `frontend`. Usa modelo. O prompt fixa **React 19 + TypeScript + Vite** (Vue, Angular, Blazor e Svelte do desenho são proposta).
-- **Entrada:** `contracts/openapi.yaml`. **Saída:** arquivos em `frontend/` com `package.json`, scripts `build` e `test` e testes (feliz, erro, acessibilidade) que gerem relatório Cobertura.
-- **Correção:** só recebe o log de erro se `falha_origem == "frontend"`.
+- **Papel da Doutrina:** `frontend`. Usa modelo. Só roda se o plano do CHEFE pede frontend (em paralelo com o backend). O prompt fixa **React 19 + TypeScript + Vite** (Vue, Angular, Blazor e Svelte do desenho são proposta).
+- **Entrada:** `contracts/openapi.yaml` (ou "sem contrato" se o plano não tem API), o plano do CHEFE e as instruções `/ajuste`. **Saída:** arquivos em `frontend/` com `package.json`, scripts `build` e `test` e testes (feliz, erro, acessibilidade) que gerem relatório Cobertura.
+- **Correção:** só recebe o log de erro se `falha_origem == "frontend"` (inclui achados do macaco de interface quando todos são de interface).
 - Build e testes rodam no nó `qa_testes`, não aqui.
 
 ---

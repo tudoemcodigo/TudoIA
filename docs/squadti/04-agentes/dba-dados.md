@@ -57,9 +57,9 @@ Sua missão é projetar a camada de persistência de dados, escrever scripts de 
 ---
 
 ## 4. Nó no orquestrador (`dba`)
-- **Papel da Doutrina:** `dba`. Usa modelo. O motor vem de `target_stack.database.engine`.
-- **Entrada:** o PRD técnico. **Saídas:** mapeamento EF Core em `src/` (uma `IEntityTypeConfiguration` por entidade, índices únicos filtrados, `RowVersion`) e `docs/dados/DICIONARIO.md` (obrigatório). Áreas: `src/` e `docs/dados/`.
-- A migration **não** é escrita à mão (`dotnet ef migrations add`, ARQ-PER-13). ERD, scripts `up`/`down` e linter SQL do desenho acima não existem no nó; para stacks que não sejam .NET o desenho vale só como proposta, porque o orquestrador hoje é .NET-only (`dotnet new tec-project`).
+- **Papel da Doutrina:** `dba`. Usa modelo. Só roda se o plano do CHEFE pede banco; o motor vem de `target_stack.database.engine` (o CHEFE grava `motor_banco` do plano ali) ou do plano.
+- **Entrada:** o PRD técnico. **Saídas:** na stack `dotnet`, mapeamento EF Core em `src/` (uma `IEntityTypeConfiguration` por entidade, índices únicos filtrados, `RowVersion`); na stack `python`, modelos SQLAlchemy 2 em `app/` (chaves estrangeiras, coluna de versão) e migrations Alembic incrementais e reversíveis em `migrations/`; nas duas, `docs/dados/DICIONARIO.md` (obrigatório). Áreas: as do adaptador (`src/` ou `app/` e `migrations/`) e `docs/dados/`.
+- Na stack `dotnet` a migration **não** é escrita à mão (`dotnet ef migrations add`, ARQ-PER-13). ERD, scripts `up`/`down` por modelo e linter SQL do desenho acima não existem no nó; só `dotnet` e `python` têm adaptador (`stacks.py`), o resto do desenho (Go, Node, Prisma, MongoDB) é proposta.
 
 ---
 

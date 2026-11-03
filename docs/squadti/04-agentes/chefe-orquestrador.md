@@ -11,7 +11,7 @@ verificado-em: 2026-11-03
 
 # 🤖 CHEFE (Tech Lead e Prompt Architect)
 
-> Público-alvo: quem mantém ou estende a SquadTI. Responde: qual é o papel deste agente no desenho, o que o orquestrador realmente executa hoje (sem nó próprio: o papel é exercido pelo grafo (`graph.py`)) e onde o desenho ainda é proposta. Contexto em [catálogo de agentes](../01-catalogo-de-agentes.md) e [visão geral](../00-visao-geral-e-arquitetura.md); componente em execução: [squadti.md](../../componentes/squadti.md).
+> Público-alvo: quem mantém ou estende a SquadTI. Responde: qual é o papel deste agente no desenho, o que o orquestrador realmente executa hoje (quatro nós em `chefe.py` e a conversa pela API) e onde o desenho ainda é proposta. Contexto em [catálogo de agentes](../01-catalogo-de-agentes.md) e [visão geral](../00-visao-geral-e-arquitetura.md); componente em execução: [squadti.md](../../componentes/squadti.md).
 
 ## 1. Identidade e Perfil
 - **Nome:** Chefe_Orquestrador
@@ -56,19 +56,29 @@ Sua responsabilidade é liderar o ciclo de desenvolvimento de software, garantin
 
 - `read_file`: Ler o estado do projeto, documentações e saídas dos agentes.
 - `write_file`: Atualizar o estado da sprint (`state.json`) e planos de tarefas.
-- `invoke_subagent`: Disparar a execução de cada agente especialista (no código, quem dispara é o grafo).
+- `invoke_subagent`: Disparar a execução de cada agente especialista (no código, quem dispara é o grafo; o CHEFE não chama agentes).
 - `ask_user`: Consultar o usuário para decisões de negócio ou aprovação de escopo.
 
 ---
 
-## 4. Nó no orquestrador
-Não existe nó nem chamada de modelo para o CHEFE. O que o prompt acima descreve é feito pelo código:
+## 4. Nós no orquestrador (`chefe.py`)
+Na v2 o CHEFE existe como código e como **canal único** do usuário. Ele não despacha ordens de serviço aos agentes: o grafo (`graph.py`) segue o fluxo, e o CHEFE entra em quatro pontos e na conversa.
 
+| Ponto | Modelo? | O que faz |
+|---|---|---|
+| `chefe_intake` (primeiro nó) | sim (papel `chefe` da Doutrina, agente `chefe`) | Planeja a demanda: um JSON com `tamanho` (trivial, pequeno, padrao, grande), `stack` (`dotnet` ou `python`), `precisa_banco`, `motor_banco`, `precisa_frontend`, `precisa_api`, `resumo` e até 8 `riscos`, validado campo a campo (`validar_plano`). Duas tentativas; sem plano válido usa o **plano padrão** (API e banco, `origem: padrao`). Grava `docs/chefe/PLANO.json` e `PLANO.md`, `stack_id`, as famílias da Doutrina dispensadas e ajusta o `target_stack`. Stack fixada pelo usuário prevalece. O plano decide se há `dba`, `dev_frontend` e contrato OpenAPI |
+| `chefe_gate_requisitos` | não | Critério de pronto da `BUSINESS_SPEC`: 400+ caracteres, cenários Dado-Quando-Então, erro de negócio nomeado em SCREAMING_SNAKE, sem `TODO`/`TBD`/"a definir"/`???`. Reprovou: devolve ao analista com a lista (`feedback_chefe`), no máximo 2 rodadas, depois escala. Aprovou: o grafo pausa para a aprovação humana |
+| `chefe_gate_design` | não | PRD com 300+ caracteres e, se o plano tem API, OpenAPI 3.x em YAML válido com `paths`. Reprovou: escala (a arquitetura não volta sozinha, porque exige aprovação) |
+| `chefe_escalada` | não | Quando a execução para por roteamento (QA/revisor 3x, Sênior 3x, validação 3x, Mantenedor 2x, estagnação, AppSec ou DevOps bloqueando, gates): escreve `docs/chefe/ESCALADA.md` com motivo, fase, consumo, último erro sem segredos e o que decidir |
+| Conversa (`POST /api/tarefas/{id}/mensagem`, `responder` em `chefe.py`) | só para pergunta livre | Resposta à entrevista segue ao analista; `/ajuste <texto>` vira instrução (dado sanitizado) para as próximas fases; pergunta de andamento tem resposta determinística; o resto vai ao modelo com só o resumo da tarefa. **Nunca** altera aprovação, portão nem configuração |
+
+Outras responsabilidades do desenho que o código cumpre fora do CHEFE:
 - **Precedência da Doutrina e consumo em camadas:** `doutrina_tec.py` injeta o núcleo e as regras do papel de cada nó (perfil `gerado/perfis/<papel>.json` da Doutrina; `DOUTRINA_FAMILIAS` força as mesmas famílias para todos; sem perfil legível o nó falha fechado). Versão e hash da Doutrina ficam no estado e doutrina que muda no meio da tarefa aborta (`verificar_versao`). Os tamanhos em tokens citados no desenho (3.600 a 6.700) não foram conferidos; o orçamento de regras é `DOUTRINA_REGRAS_MAX_TOKENS`.
-- **Auto-cura limitada:** `LIMITE_ITERACOES = 3` em `graph.py`; QA e revisor dividem o mesmo `iteration_count`. No limite o grafo termina (`END`) com escalação humana.
-- **Pausas humanas:** `interrupt_before=["arquiteto", "release"]`; os nós `arquiteto` e `release` também recusam rodar sem `business_spec_approved` / `release_approved`.
+- **Auto-cura limitada:** `LIMITE_ITERACOES = 3` em `graph.py`; QA e revisor dividem o mesmo `iteration_count`; os demais laços têm contador próprio (ver [protocolo](../02-protocolo-de-comunicacao-e-estado.md#4-loop-de-auto-cura-limitado-bounded-self-healing)). No limite o fluxo vai a `chefe_escalada`.
+- **Pausas humanas:** `interrupt_before=["arquiteto", "release"]`; os nós `arquiteto` e `release` também recusam rodar sem `business_spec_approved` / `release_approved` e sem o hash do conteúdo aprovado.
 - **Roteamento de falha:** `falha_origem` (`frontend` ou `backend`) decide quem corrige.
-- **Citação de IDs de regra:** exigida do revisor (achados com ID); para os demais nós é só instrução em prompt, sem verificação automática. A cobertura medida pelo QA e a lista de regras com teste (`regras_com_teste_na_doutrina`) aparecem em `tests/reports/qa_report.json`.
+- **Orçamento e estagnação:** `auditoria.py` para a execução quando os tetos de tokens, tempo ou chamadas se esgotam, ou quando a mesma falha se repete.
+- **Citação de IDs de regra:** exigida do revisor e do Sênior Master (achados com ID existente); para os demais nós é só instrução em prompt, sem verificação automática. A cobertura medida pelo QA e a lista de regras com teste (`regras_com_teste_na_doutrina`) aparecem em `tests/reports/qa_report.json`.
 
 ---
 
