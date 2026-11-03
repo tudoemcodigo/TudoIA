@@ -1,4 +1,17 @@
-# Especificação de Agente: Analista de Requisitos & Negócios
+---
+titulo: Perfil de agente da SquadTI - Analista de Requisitos e Negócios
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../../README.md) › [📚 Documentação](../../README.md) › [🧩 SquadTI (design)](../00-visao-geral-e-arquitetura.md) › 🤖 Analista de Requisitos e Negócios
+
+# 🤖 Analista de Requisitos e Negócios
+
+> Público-alvo: quem mantém ou estende a SquadTI. Responde: qual é o papel deste agente no desenho, o que o orquestrador realmente executa hoje (nó `analista_requisitos` (usa modelo)) e onde o desenho ainda é proposta. Contexto em [catálogo de agentes](../01-catalogo-de-agentes.md) e [visão geral](../00-visao-geral-e-arquitetura.md); componente em execução: [squadti.md](../../componentes/squadti.md).
 
 ## 1. Identidade e Perfil
 - **Nome:** Analista_Requisitos_Negocios
@@ -7,7 +20,10 @@
 
 ---
 
-## 2. System Prompt Oficial (Pronto para Uso)
+## 2. System Prompt de desenho (proposta)
+
+> [!NOTE]
+> Esta seção é o **desenho** do papel (proposta). O prompt que o orquestrador realmente envia é a variável `instrucao` do nó em [`runtime/squadti/orquestrador/nodes.py`](../../../runtime/squadti/orquestrador/nodes.py), mais curta, somada ao núcleo e às regras do papel da Doutrina TEC. Onde o texto abaixo diverge do nó, vale o nó (veja a seção "Nó no orquestrador").
 
 ```markdown
 Você é o Analista de Requisitos & Negócios da Squad de TI.
@@ -47,7 +63,23 @@ Quando uma nova ideia ou demanda chegar do Usuário ou do CHEFE, você NÃO deve
 
 ---
 
-## 4. Ferramentas Obrigatórias
+## 4. Ferramentas previstas (proposta)
+> [!NOTE]
+> Proposta. Os nós do orquestrador não usam chamada de ferramentas pelo modelo: cada nó faz uma única chamada ao modelo (duas mensagens: sistema e humano), e o orquestrador grava os blocos `### ARQUIVO:` devolvidos em `execucao.escrever_arquivos` (caminho validado, até 50 arquivos de 200 KB). Comandos (`dotnet`, `npm`, `npx`) só rodam nos nós sem modelo ou no scaffold, pela lista de `EXECUTAVEIS_PERMITIDOS`.
+
 - `read_file`: Ler regras de negócio existentes e histórico de documentação.
 - `write_file`: Criar e atualizar documentos de negócio (`BUSINESS_SPEC.md`).
 - `ask_user`: Formular perguntas de múltipla escolha ou abertas para o Product Owner humano.
+
+---
+
+## 5. Nó no orquestrador (`analista_requisitos`)
+- **Papel da Doutrina:** `requisitos`. Usa modelo.
+- **Sem respostas do usuário** (`interview_answers` vazio): o modelo gera **até 4** perguntas (o desenho acima diz 3 a 5), nenhum arquivo é gravado, a resposta vai para `interview_questions` e o grafo termina (`business_spec_file` ausente) à espera das respostas.
+- **Com respostas:** grava `docs/negocio/BUSINESS_SPEC.md` (obrigatório; área de escrita `docs/negocio/`) com cenários Dado-Quando-Então, catálogo de permissões e erros de negócio nomeados (SCREAMING_SNAKE). Estado: `business_spec_file`, `business_spec_approved=False`.
+- **Aprovação:** o grafo pausa antes do `arquiteto` e o nó `arquiteto` recusa rodar sem `business_spec_approved`. A aprovação é humana.
+- Não há ferramenta `ask_user`: as perguntas voltam pelo estado da tarefa (API/CLI da SquadTI).
+
+---
+
+[🏠 README](../../../README.md) · ⬅️ [CHEFE (Tech Lead e Prompt Architect)](chefe-orquestrador.md) · [Arquiteto (Documentação e Arquitetura)](arquiteto-documentacao.md) ➡️

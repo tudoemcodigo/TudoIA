@@ -1,4 +1,30 @@
-# Análise Crítica, Estado da Arte (2025/2026) e Recomendações Finais
+---
+titulo: Análise crítica e benchmarks da SquadTI
+tipo: explicacao
+dono: TudoIA (mantenedor do repositório)
+status: historico
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🔎 Análise crítica e benchmarks da SquadTI
+
+# 🔎 Análise crítica e benchmarks da SquadTI
+
+> **Público:** quem avalia a evolução da SquadTI. Registro datado do desenho inicial; o mérito não é reescrito.
+
+> [!NOTE]
+> **Documento histórico.** Data: 2026-11-02 (data do arquivo; o original não traz data). Versão analisada: desenho inicial da SquadTI (documentos 00 a 06), anterior ao orquestrador atual (`runtime/squadti`, versão 0.1.0). O texto abaixo é mantido como estava (DOC-COD-08). Situação em 2026-11-03 de cada recomendação: (1) subgrafos: **não** adotado, o grafo é plano (`graph.py`); (2) poda de logs: **adotado** em `sanitizar_logs_de_erro` (`nodes.py`); (3) isolamento: **parcial**, cada tarefa grava em `workspace/<task_id>`, sem git worktrees ou branches; (4) testes dourados: **não** encontrados em `orquestrador/tests`.
+
+## 📑 Sumário
+
+- [1. Diagnóstico do Entendimento Atual: O que está 100% aderente](#1-diagnóstico-do-entendimento-atual-o-que-está-100-aderente)
+- [2. Benchmark com o Estado da Arte (Padrões da Indústria 2025/2026)](#2-benchmark-com-o-estado-da-arte-padrões-da-indústria-20252026)
+- [3. As 4 Recomendações de Engenharia para Blindar o Projeto](#3-as-4-recomendações-de-engenharia-para-blindar-o-projeto)
+- [4. Parecer de Conclusão e Prontidão para Início](#4-parecer-de-conclusão-e-prontidão-para-início)
+
+---
+
 
 ## 1. Diagnóstico do Entendimento Atual: O que está 100% aderente
 
@@ -73,4 +99,8 @@ A documentação gerada em este repositório cobre **100% dos requisitos funcion
 Com a incorporação das recomendações acima:
 1. O ecossistema está **à prova de vazamento de contexto** e **otimizado para modelos locais**.
 2. A separação de responsabilidades segue o estado da arte da engenharia de software (Subgrafos + Bounded Loops).
-3. O projeto web especificado em [06_SISTEMA_WEB_SQUADTI.md](file:///D:/SquadTI/06_SISTEMA_WEB_SQUADTI.md) possui modelo relacional, arquitetura de eventos via SignalR e Clean Architecture .NET 10 prontos para execução.
+3. O projeto web especificado em [06-sistema-web-squadti.md](06-sistema-web-squadti.md) possui modelo relacional, arquitetura de eventos via SignalR e Clean Architecture .NET 10 prontos para execução.
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Sistema web da SquadTI (proposta)](06-sistema-web-squadti.md)

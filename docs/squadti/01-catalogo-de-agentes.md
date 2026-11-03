@@ -1,6 +1,40 @@
-# Catálogo e Descrição Detalhada dos Agentes da Squad
+---
+titulo: Catálogo de agentes da SquadTI
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 👥 Catálogo de agentes da SquadTI
+
+# 👥 Catálogo de agentes da SquadTI
+
+> **Público:** quem mantém os agentes. Lista cada papel, entradas, saídas e regras, marcando o que o orquestrador implementa e o que é intenção de projeto.
+
+## 📑 Sumário
+
+- [1. Agente Analista de Requisitos & Negócios (Product Analyst & Requirements Engineer)](#1-agente-analista-de-requisitos--negócios-product-analyst--requirements-engineer)
+- [2. Agente CHEFE (Tech Lead, Prompt Architect & Orquestrador)](#2-agente-chefe-tech-lead-prompt-architect--orquestrador)
+- [3. Agente de Documentação & Arquitetura (nó `arquiteto`)](#3-agente-de-documentação--arquitetura-nó-arquiteto)
+- [4. Agente de Banco de Dados / DBA (Data Architect & Database Engineer)](#4-agente-de-banco-de-dados--dba-data-architect--database-engineer)
+- [5. Agente de Desenvolvimento Backend (Senior Backend Engineer)](#5-agente-de-desenvolvimento-backend-senior-backend-engineer)
+- [6. Agente de Desenvolvimento Frontend (Senior Frontend Engineer)](#6-agente-de-desenvolvimento-frontend-senior-frontend-engineer)
+- [7. Agente de QA & Testes (Quality Assurance & Test Automation Engineer)](#7-agente-de-qa--testes-quality-assurance--test-automation-engineer)
+- [8. Agente de Infraestrutura & DevOps (SRE & Platform Engineer)](#8-agente-de-infraestrutura--devops-sre--platform-engineer)
+- [9. Agente de Segurança / AppSec (Application Security & Red Team)](#9-agente-de-segurança--appsec-application-security--red-team)
+- [10. Agente Revisor de Código](#10-agente-revisor-de-código)
+- [11. Agente de Documentação (Redator Técnico)](#11-agente-de-documentação-redator-técnico)
+- [12. Release (sem modelo)](#12-release-sem-modelo)
+
+---
+
 
 Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma, suas fronteiras de atuação, entradas, saídas e ferramentas obrigatórias.
+
+> [!NOTE]
+> Cada seção descreve o papel de projeto. Onde o orquestrador (`runtime/squadti/orquestrador/nodes.py`) faz menos ou diferente, há uma linha **No orquestrador**. Ferramentas e stacks citadas sem essa linha (Go, Python, Playwright, Testcontainers, trivy, semgrep, gitleaks) **não** são executadas hoje: são intenção de projeto. Os perfis por papel estão em [`04-agentes/`](04-agentes/chefe-orquestrador.md).
 
 ---
 
@@ -35,13 +69,14 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
 - **Ferramentas Necessárias:**
   - Manipulação de estado e arquivos de planejamento.
   - Controle de nós e transições no LangGraph.
+- **No orquestrador:** não há nó "chefe"; o grafo (`graph.py`) exerce o papel. Ver [`04-agentes/chefe-orquestrador.md`](04-agentes/chefe-orquestrador.md).
 - **Regras Operacionais:**
   - Mantém o isolamento de contexto (não envia histórico de conversa, apenas a ordem de serviço e os artefatos estritamente necessários).
   - Limita loops de auto-cura a 3 tentativas por tarefa.
 
 ---
 
-## 3. Agente de Documentação & Arquitetura (System Architect & Tech Writer)
+## 3. Agente de Documentação & Arquitetura (nó `arquiteto`)
 
 - **Missão:** Estruturar a especificação técnica (PRD Técnico), registros de decisão de arquitetura (ADRs), diagramas C4/Mermaid e especificações de contratos de API (OpenAPI 3.1 em YAML).
 - **Entradas:**
@@ -54,6 +89,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
 - **Ferramentas Necessárias:**
   - Leitura e escrita de documentação técnica.
   - Validadores de OpenAPI e JSON Schema.
+- **No orquestrador:** o nó `arquiteto` grava só `docs/arquitetura/PRD_TECNICO.md` e `contracts/openapi.yaml`; ADRs e validadores de OpenAPI não são gerados nem executados. Ver [`04-agentes/arquiteto-documentacao.md`](04-agentes/arquiteto-documentacao.md).
 
 ---
 
@@ -71,6 +107,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
 - **Ferramentas Necessárias:**
   - `dotnet ef` (stack .NET); `sqlfluff` apenas para SQL escrito à mão em outras stacks.
   - CLI de banco de dados (`sqlcmd`, `psql`).
+- **No orquestrador:** o nó `dba` grava o mapeamento em `src/` e o dicionário em `docs/dados/DICIONARIO.md`; não executa `dotnet ef`, `sqlcmd` nem `psql`. Ver [`04-agentes/dba-dados.md`](04-agentes/dba-dados.md).
 
 ---
 
@@ -86,6 +123,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
   - Testes unitários com mock cirúrgico.
 - **Ferramentas Necessárias:**
   - SDK da linguagem (`dotnet build`, `dotnet format`, `python`, `cargo`).
+- **No orquestrador:** só .NET; build e testes rodam no nó `qa_testes`, a partir dos comandos do `stack_config`. Ver [`04-agentes/dev-backend.md`](04-agentes/dev-backend.md).
 - **Regras Operacionais:**
   - Código deve compilar com 0 erros e 0 warnings antes de entregar ao CHEFE.
   - Erros e sucessos usam o envelope `ApiResponse` da Doutrina TEC, com status derivado do `ErrorType` (ARQ-API-04). Não use RFC 7807 / Problem Details: conflita com a Doutrina.
@@ -105,6 +143,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
   - Testes de componentes (Vitest + Testing Library).
 - **Ferramentas Necessárias:**
   - CLI do Node/npm/pnpm (`npm run build`, `npm run lint`).
+- **No orquestrador:** só React + TypeScript, com `build_command`/`test_command` do `stack_config`. Ver [`04-agentes/dev-frontend.md`](04-agentes/dev-frontend.md).
 
 ---
 
@@ -120,6 +159,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
   - Relatório de execução estruturado com cobertura e tempos de resposta.
 - **Ferramentas Necessárias:**
   - Executores de teste do terminal (`dotnet test`, `pytest`, `npx playwright test`).
+- **No orquestrador:** nó `qa_testes` **sem LLM**: roda build e testes do backend e do frontend e mede a cobertura mínima (`quality.coverage_min`); grava `tests/reports/qa_report.json`. Sem projeto gerado, ou com frontend esperado e ausente, reprova. Não roda Playwright nem Testcontainers. Ver [`04-agentes/qa-testes.md`](04-agentes/qa-testes.md).
 
 ---
 
@@ -134,7 +174,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
   - Pipelines de CI/CD (GitHub Actions / Azure Pipelines).
 - **Ferramentas Necessárias:**
   - Docker CLI, docker-compose config validator, linters de pipeline.
-- **No orquestrador:** nó `devops` estático, sem modelo e sem rede (CI, Dockerfile sem `latest`, actions fixadas por SHA, `.gitignore`, sem `.env` com conteúdo); ver `04_AGENTES/devops_infra.md`.
+- **No orquestrador:** o nó `devops` **verifica** (não gera) o que o projeto já tem; é estático, sem modelo e sem rede (CI, Dockerfile sem `latest`, actions fixadas por SHA, `.gitignore`, sem `.env` com conteúdo); ver [`04-agentes/devops-infra.md`](04-agentes/devops-infra.md).
 
 ---
 
@@ -150,7 +190,7 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
   - `trivy`, `semgrep`, `gitleaks`, `dotnet list package --vulnerable`.
 - **Regras Operacionais:**
   - Fail-closed: bloqueia deploys na presença de vulnerabilidade Alta ou Crítica.
-- **No orquestrador:** nó `appsec`, separado do `devops` (hoje só dependências e segredos; ver `04_AGENTES/appsec_seguranca.md`).
+- **No orquestrador:** nó `appsec`, separado do `devops` (hoje só `dotnet list package --vulnerable`, `npm audit --audit-level=high` e varredura de segredos por padrões, que não substitui gitleaks/trufflehog; ver [`04-agentes/appsec-seguranca.md`](04-agentes/appsec-seguranca.md)).
 
 ---
 
@@ -159,18 +199,22 @@ Este catálogo descreve os agentes que compõem a equipe de engenharia autônoma
 - **Missão:** Revisar o código gerado contra as regras da Doutrina depois que o QA aprova.
 - **Entradas:** arquivos sob `src/`, `tests/` e `frontend/` (até 60.000 caracteres) e as regras dos papéis backend/frontend.
 - **Saídas:** `docs/revisao/REVISAO.md` com `VEREDITO: APROVADO|REPROVADO` e achados por severidade, regra e `arquivo:linha`.
-- **Regras Operacionais:** fail-closed (sem veredito único e válido, ou com achado CRITICO, é reprovado); reprovação volta ao dev responsável dentro do mesmo limite de 3 iterações. Ver `04_AGENTES/revisor_codigo.md`.
+- **Regras Operacionais:** fail-closed (sem veredito único e válido, ou com achado CRITICO, é reprovado); reprovação volta ao dev responsável dentro do mesmo limite de 3 iterações. Ver [`04-agentes/revisor-codigo.md`](04-agentes/revisor-codigo.md).
 
 ---
 
 ## 11. Agente de Documentação (Redator Técnico)
 
 - **Missão:** Escrever `README.md` e a documentação em `docs/` a partir dos artefatos aprovados.
-- **Saídas:** `README.md` e arquivos em `docs/`, sem tocar em `docs/negocio/`, `docs/revisao/`, `docs/release/`, no PRD técnico nem no dicionário de dados. A saída passa por varredura de segredos. Ver `04_AGENTES/documentacao_redator.md`.
+- **Saídas:** `README.md` e arquivos em `docs/`, sem tocar em `docs/negocio/`, `docs/revisao/`, `docs/release/`, no PRD técnico nem no dicionário de dados. A saída passa por varredura de segredos. Ver [`04-agentes/documentacao-redator.md`](04-agentes/documentacao-redator.md).
 
 ---
 
 ## 12. Release (sem modelo)
 
 - **Missão:** Consolidar `docs/release/RELEASE_NOTES.md` (versão SemVer sugerida, hash da Doutrina, arquivos e resultado das verificações).
-- **Regras Operacionais:** o grafo pausa antes do nó e ele só roda com `release_approved` explícito (`aprovar-release`); nunca roda git, tag, push nem publicação. Ver `04_AGENTES/release_notas.md`.
+- **Regras Operacionais:** o grafo pausa antes do nó e ele só roda com `release_approved` explícito (`aprovar-release`); nunca roda git, tag, push nem publicação. Ver [`04-agentes/release-notas.md`](04-agentes/release-notas.md).
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Visão geral e arquitetura da SquadTI](00-visao-geral-e-arquitetura.md) · [Protocolo de comunicação e estado](02-protocolo-de-comunicacao-e-estado.md) ➡️

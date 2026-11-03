@@ -32,7 +32,7 @@
 - [🔌 API local (painel do TudoIA)](#-api-local-painel-do-tudoia)
 - [🛡️ O que o orquestrador não faz](#️-o-que-o-orquestrador-não-faz)
 - [🧪 Testes](#-testes)
-- [📂 Estrutura do repositório](#-estrutura-do-repositório)
+- [📂 Estrutura](#-estrutura)
 - [🚧 Limites conhecidos](#-limites-conhecidos)
 - [🤝 Contribuindo](#-contribuindo)
 
@@ -85,19 +85,19 @@ flowchart TD
 
 | Agente | Faz | Escreve em |
 |---|---|---|
-| [`analista_requisitos`](../../docs/squadti/04_AGENTES/analista_requisitos_negocios.md) | Entrevista e `BUSINESS_SPEC` com cenários Dado-Quando-Então | `docs/negocio/` |
-| [`arquiteto`](../../docs/squadti/04_AGENTES/arquiteto_documentacao.md) | PRD técnico e contrato `openapi.yaml` | `docs/arquitetura/`, `contracts/` |
-| [`dba`](../../docs/squadti/04_AGENTES/dba_dados.md) | Mapeamento de dados e dicionário (a migration é gerada pela ferramenta, não à mão) | `src/`, `docs/dados/` |
-| [`dev_backend`](../../docs/squadti/04_AGENTES/dev_backend.md) | Backend .NET a partir do template TEC, com testes feliz e adversarial | `src/`, `tests/` |
-| [`dev_frontend`](../../docs/squadti/04_AGENTES/dev_frontend.md) | React + TypeScript consumindo o OpenAPI | `frontend/` |
-| [`qa_testes`](../../docs/squadti/04_AGENTES/qa_testes.md) | **Sem LLM.** Roda build e testes, mede cobertura, reprova frontend ausente | `tests/reports/` |
-| [`revisor`](../../docs/squadti/04_AGENTES/revisor_codigo.md) | Revisa o código contra a Doutrina; veredito rígido (sem veredito válido = reprovado) | `docs/revisao/` |
-| [`appsec`](../../docs/squadti/04_AGENTES/appsec_seguranca.md) | **Sem LLM.** Auditoria de dependências e varredura de segredos | `tests/reports/` |
-| [`devops`](../../docs/squadti/04_AGENTES/devops_infra.md) | **Sem LLM.** CI, Dockerfile sem `latest`, actions fixadas por SHA, `.gitignore` | `tests/reports/` |
-| [`documentacao`](../../docs/squadti/04_AGENTES/documentacao_redator.md) | `README.md` e `docs/`, sem tocar nos artefatos dos outros nós | `README.md`, `docs/` |
-| [`release`](../../docs/squadti/04_AGENTES/release_notas.md) | **Sem LLM.** Notas de release e versão **sugerida**; nunca cria tag nem publica | `docs/release/` |
+| [`analista_requisitos`](../../docs/squadti/04-agentes/analista-requisitos-negocios.md) | Entrevista e `BUSINESS_SPEC` com cenários Dado-Quando-Então | `docs/negocio/` |
+| [`arquiteto`](../../docs/squadti/04-agentes/arquiteto-documentacao.md) | PRD técnico e contrato `openapi.yaml` | `docs/arquitetura/`, `contracts/` |
+| [`dba`](../../docs/squadti/04-agentes/dba-dados.md) | Mapeamento de dados e dicionário (a migration é gerada pela ferramenta, não à mão) | `src/`, `docs/dados/` |
+| [`dev_backend`](../../docs/squadti/04-agentes/dev-backend.md) | Backend .NET a partir do template TEC, com testes feliz e adversarial | `src/`, `tests/` |
+| [`dev_frontend`](../../docs/squadti/04-agentes/dev-frontend.md) | React + TypeScript consumindo o OpenAPI | `frontend/` |
+| [`qa_testes`](../../docs/squadti/04-agentes/qa-testes.md) | **Sem LLM.** Roda build e testes, mede cobertura, reprova frontend ausente | `tests/reports/` |
+| [`revisor`](../../docs/squadti/04-agentes/revisor-codigo.md) | Revisa o código contra a Doutrina; veredito rígido (sem veredito válido = reprovado) | `docs/revisao/` |
+| [`appsec`](../../docs/squadti/04-agentes/appsec-seguranca.md) | **Sem LLM.** Auditoria de dependências e varredura de segredos | `tests/reports/` |
+| [`devops`](../../docs/squadti/04-agentes/devops-infra.md) | **Sem LLM.** CI, Dockerfile sem `latest`, actions fixadas por SHA, `.gitignore` | `tests/reports/` |
+| [`documentacao`](../../docs/squadti/04-agentes/documentacao-redator.md) | `README.md` e `docs/`, sem tocar nos artefatos dos outros nós | `README.md`, `docs/` |
+| [`release`](../../docs/squadti/04-agentes/release-notas.md) | **Sem LLM.** Notas de release e versão **sugerida**; nunca cria tag nem publica | `docs/release/` |
 
-O papel de cada um, com entradas, saídas e o prompt oficial, está em [`04_AGENTES/`](../../docs/squadti/04_AGENTES/) e no [catálogo](../../docs/squadti/01_CATALOGO_DE_AGENTES.md).
+O papel de cada um, com entradas, saídas e o prompt oficial, está em [`04-agentes/`](../../docs/squadti/04-agentes/) e no [catálogo](../../docs/squadti/01-catalogo-de-agentes.md).
 
 ## 🚀 Início rápido
 
@@ -178,7 +178,7 @@ A stack vem de um `stack_config.json` (modelo em [`orquestrador/stack_config.exa
 
 Cada agente lê `gerado/perfis/<papel>.json` da Doutrina: carrega o **núcleo** das famílias do papel (sempre `ia` e `ecossistema`, mais as dele) e
 as **regras** do papel, com orçamento de contexto (regras `MUST` primeiro, depois `SHOULD`; o que não coube é declarado, nunca omitido em silêncio).
-Papel sem perfil, JSON corrompido ou pasta que não é a Doutrina **derrubam a tarefa**. Veja a [fonte da verdade](../../docs/squadti/05_FONTE_DA_VERDADE_ARQUITETURA.md).
+Papel sem perfil, JSON corrompido ou pasta que não é a Doutrina **derrubam a tarefa**. Veja a [fonte da verdade](../../docs/squadti/05-fonte-da-verdade-arquitetura.md).
 
 ## 🔒 Privacidade e modelo
 
@@ -219,13 +219,13 @@ As ações respondem `202` e rodam em segundo plano, **uma por vez** (`409` se h
 ## 🧪 Testes
 
 ```bash
-cd orquestrador
-python -m unittest discover -s tests -v                                  # sem DOUTRINA_TEC, o teste contra a doutrina real é pulado
-DOUTRINA_TEC=/caminho/para/Doutrina python -m unittest discover -s tests # com a doutrina real
+cd runtime/squadti
+uv run python -W error -m pytest -q                               # sem DOUTRINA_TEC, o teste contra a doutrina real é pulado
+DOUTRINA_TEC=<pasta-da-doutrina> uv run python -W error -m pytest -q   # com a doutrina real
 ```
 
 A suíte cobre as fronteiras (arquivos e comandos), os nós com dublês do modelo, o **grafo real do LangGraph** (topologia, pausas humanas e rotas de correção) e a CLI,
-com entradas válidas e hostis. Sem `langgraph` instalado, os testes de grafo e de CLI são pulados; por isso o CI instala o `requirements.lock`.
+com entradas válidas e hostis. Sem `langgraph` instalado, os testes de grafo e de CLI são pulados; por isso o CI instala as dependências travadas em `uv.lock` (`uv sync --frozen`).
 
 ## 📂 Estrutura
 
@@ -238,7 +238,8 @@ runtime/squadti/
     servico.py · api.py                                      camada de serviço e API local (usada pelo painel)
     execucao.py · cobertura.py · segredos.py · verificacoes.py · revisao.py
     tests/                                                   fronteiras, nós, grafo real, entrega, CLI e API
-docs/squadti/                                                visão geral, catálogo, protocolo, guia, fonte da verdade, agentes
+../../docs/squadti/                                          design: visão geral, catálogo, protocolo, guia, fonte da verdade, agentes
+../../docs/componentes/squadti.md                           operação no TudoIA: container, API, segurança, diagnóstico
 scripts/squadti/chave.py                                     chave virtual do LiteLLM (tudoia squadti-chave)
 ```
 
@@ -254,5 +255,5 @@ scripts/squadti/chave.py                                     chave virtual do Li
 
 ## 🤝 Contribuindo
 
-Leia o guia de contribuição do [TudoIA](https://github.com/tudoemcodigo/TudoIA) e o Código de Conduta do projeto. Falha de segurança: **não abra issue pública**, veja o [SECURITY](SECURITY.md).
+Leia o guia de contribuição do [TudoIA](https://github.com/tudoemcodigo/TudoIA) e o Código de Conduta do projeto. Falha de segurança: **não abra issue pública**, veja a [política de segurança](../../docs/seguranca.md).
 Licença: [Apache 2.0](../../LICENSE) · [NOTICE](../../NOTICE).
