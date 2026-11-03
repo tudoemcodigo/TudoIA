@@ -409,7 +409,7 @@
 </div>
           <div style="display:flex; gap:8px; align-items:center;">
             <span id="badge-drift" class="badge"></span>
-            <button class="btn btn-primary btn-sm" id="btn-sync-governanca" title="Compila e distribui regras, skills e MCPs para todas as instâncias ativas">Sincronizar Clientes Agora</button>
+            <button class="btn btn-primary btn-sm" id="btn-sync-governanca" title="Compila e distribui regras, skills e MCPs (incluindo o caminho do MCP doutrina-tec) para todas as instâncias ativas. Não muda a versão da Doutrina.">Sincronizar Clientes Agora</button>
 </div>
 </div>
 
@@ -431,6 +431,8 @@
               Garante conformidade estrita (Zero Drift) entre todas as IAs sem sobrescrever blocos customizados de cada cliente.
 </p>
 </div>
+          <p class="celula-sub texto-ajuda">Esta sincronização também grava o servidor <code>doutrina-tec</code>, que aponta para a pasta <code>DOUTRINA_TEC</code> do <code>.env</code>, mas <strong>não muda a versão da Doutrina</strong>: a versão fixada é atualizada pelo comando do cartão abaixo.</p>
+          <div id="card-doutrina" style="margin-bottom:16px;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h3 style="font-size:16px;">Componentes do Ecossistema</h3>
             <div style="display:flex; gap:8px; align-items:center;">

@@ -13,6 +13,7 @@ from ..envfile import ler_env
 from ..erros import ErroApi
 from .. import mcp_teste
 from ..ambiente import Contexto
+from ..doutrina_servico import estado_doutrina
 from ..skills_servico import ID
 from .. import skills_servico
 from ..schemas import Ativo, EditarConteudoGovernanca, EditarInstanciaGovernanca, ImportarSkill, NovaInstanciaGovernanca, NovaRegra, NovaSkill, NovoMcp
@@ -109,6 +110,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
         catalogo = catalogo_governanca()
         return {
             "drift": drift,
+            "doutrina": estado_doutrina(raiz, ler_env(raiz / ".env")),
             "alertas_mcp": alertas_mcp,
             "mcp_configs": dados_mcp,
             "instancias": cfg.get("instancias", []),
