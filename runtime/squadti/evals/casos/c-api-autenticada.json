@@ -1,0 +1,26 @@
+{
+  "id": "c-autenticada",
+  "titulo": "API com token e papéis (admin/usuário) e escopo de dados por dono (alvo de IDOR)",
+  "complexidade": 3,
+  "stack": "python",
+  "perfil": "auto",
+  "briefing": "Preciso de uma API REST de anotações pessoais com autenticação por token e dois papéis: usuario e admin. Cada anotação pertence a um dono. O usuário comum só enxerga e altera as próprias anotações; o admin enxerga todas e pode remover qualquer uma, mas não altera o conteúdo de anotações alheias. A segurança é o ponto central: um usuário nunca pode acessar dados de outro, adivinhando ou trocando identificadores. Todos os dados são fictícios.",
+  "respostas_da_entrevista": [
+    "Autenticação: POST /login recebe usuario e senha e devolve um token opaco (aleatório, 32 bytes, URL-safe) com validade de 1 hora. As requisições seguintes usam o cabeçalho Authorization: Bearer <token>. Sem token, token inválido ou expirado devolve 401. As senhas são guardadas com hash lento e salgado (nunca em texto puro) e a comparação de segredos é em tempo constante.",
+    "Usuários iniciais vêm de variáveis de ambiente de semente (um admin e um usuário), documentadas no README só por nome da variável; nenhuma senha vai no código nem no repositório.",
+    "Papéis: usuario e admin. Anotação: id (UUID), dono (id do usuário), titulo (1 a 120 caracteres), texto (até 5000 caracteres), criada_em.",
+    "Operações: POST /notas, GET /notas (o usuário vê só as suas; o admin vê todas), GET /notas/{id}, PUT /notas/{id} (somente o dono), DELETE /notas/{id} (o dono ou o admin).",
+    "Acesso a anotação de outro dono por usuário comum deve devolver 404 (não 403), para não revelar a existência do identificador. Papel insuficiente numa operação reservada devolve 403. O dono nunca vem do corpo da requisição: é sempre o usuário autenticado.",
+    "Limitar tentativas de login: após 5 falhas seguidas para o mesmo usuário em 5 minutos, devolver 429 por 5 minutos. Mensagens de erro de login não revelam se o usuário existe.",
+    "Critério de pronto: testes automatizados do caminho feliz e adversariais: IDOR (usuário B lê, altera e apaga anotação do usuário A: 404), escalonamento de papel (usuário comum tentando operação de admin: 403), token ausente, malformado e expirado (401), e limite de tentativas de login (429). OpenAPI com esquema de segurança bearer, Dockerfile e README."
+  ],
+  "limites": {"tokens": 2500000, "tempo_s": 7200},
+  "orcamento": {"tokens": 3750000, "tempo_s": 10800, "chamadas": 500},
+  "timeout_s": 10800,
+  "cobertura_minima": 90,
+  "verificadores_extra": [
+    {"tipo": "conteudo_contem", "nome": "openapi_declara_bearer", "glob": ["contracts/openapi.*"], "termos_todos": ["bearer", "/notas", "/login"]},
+    {"tipo": "conteudo_contem", "nome": "testes_cobrem_idor_e_papel", "glob": ["tests/**/*.py"], "termos_todos": ["404", "403", "401"]},
+    {"tipo": "conteudo_contem", "nome": "codigo_nao_guarda_senha_pura", "glob": ["app/**/*.py"], "termos_qualquer": ["argon2", "bcrypt", "scrypt", "pbkdf2", "hashlib"]}
+  ]
+}
