@@ -18,7 +18,8 @@ except ImportError:  # dependÃªncias nÃ£o instaladas: o restante da suÃ­te
 
 
 def dubles(ordem, qa_aprova=True, qa_origem=None, revisor_aprova=True, revisor_origem=None, appsec_aprova=True,
-           devops_aprova=True, revisor_reprova_vezes=0):
+           devops_aprova=True, revisor_reprova_vezes=0, senior_aprova=True, runtime_aprova=True, runtime_pulada=False,
+           manutencao_aprova=True, extras=None):
     """NÃ³s falsos que imitam as chaves que os nÃ³s reais devolvem (inclusive as que os dois devs gravam em paralelo)."""
     def analista(state):
         ordem.append("analista_requisitos")
@@ -75,7 +76,23 @@ def dubles(ordem, qa_aprova=True, qa_origem=None, revisor_aprova=True, revisor_o
         # o CHEFE não conta na ordem dos agentes que trabalham: só planeja, confere e escala
         return lambda state: {"current_phase": fase}
 
-    return {"node_chefe_intake": silencioso("PLANEJADO"), "node_chefe_gate_requisitos": lambda state: {},
+    def senior(state):
+        (extras if extras is not None else []).append("senior_master")
+        return {"current_phase": "SENIOR", "senior_passed": senior_aprova, "falha_origem": None if senior_aprova else "backend"}
+
+    def runtime(state):
+        (extras if extras is not None else []).append("validacao_runtime")
+        if runtime_pulada:
+            return {"validacao_executada": False, "validacao_motivo": "Docker ausente", "hacker_passed": None, "macaco_passed": None}
+        return {"validacao_executada": True, "hacker_passed": runtime_aprova, "macaco_passed": runtime_aprova, "carga_passed": True,
+                "falha_origem": None if runtime_aprova else "backend"}
+
+    def manutencao(state):
+        (extras if extras is not None else []).append("mantenedor")
+        return {"current_phase": "MANUTENCAO", "manutencao_passed": manutencao_aprova}
+
+    return {"node_senior_master": senior, "node_validacao_runtime": runtime, "node_mantenedor": manutencao,
+            "node_chefe_intake": silencioso("PLANEJADO"), "node_chefe_gate_requisitos": lambda state: {},
             "node_chefe_gate_design": lambda state: {}, "node_chefe_escalada": lambda state: {},
             "node_analista_requisitos": analista, "node_arquiteto": simples("arquiteto", "ARQ"),
             "node_dba": simples("dba", "DBA"), "node_dev_backend": dev("dev_backend", "src/a.cs"),
@@ -111,10 +128,15 @@ class GrafoReal(unittest.TestCase):
         self.assertIn(("chefe_gate_design", "dba"), arestas)
         self.assertIn(("qa_testes", "chefe_escalada"), arestas)  # toda parada que exige humano passa pelo CHEFE
         self.assertIn(("qa_testes", "revisor"), arestas)
-        self.assertIn(("revisor", "appsec"), arestas)
-        self.assertIn(("appsec", "devops"), arestas)
+        self.assertIn(("revisor", "senior_master"), arestas)      # o Sênior Master revisa a qualidade depois do revisor
+        self.assertIn(("senior_master", "appsec"), arestas)
+        self.assertIn(("appsec", "validacao_runtime"), arestas)   # hacker, macaco e carga atacam o sistema rodando
+        self.assertIn(("validacao_runtime", "devops"), arestas)
+        self.assertIn(("validacao_runtime", "dev_backend"), arestas)
         self.assertIn(("devops", "documentacao"), arestas)
-        self.assertIn(("documentacao", "release"), arestas)
+        self.assertIn(("documentacao", "mantenedor"), arestas)    # "eu daqui a 1 ano" lê a documentação a frio
+        self.assertIn(("mantenedor", "release"), arestas)
+        self.assertIn(("mantenedor", "documentacao"), arestas)
         self.assertIn(("release", "__end__"), arestas)
         self.assertNotIn("appsec_devops", self.app.get_graph().nodes)
         self.assertEqual(list(self.app.interrupt_before_nodes), ["arquiteto", "release"])

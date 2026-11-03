@@ -123,7 +123,8 @@ MIN_RESPOSTA_CHARS = 24  # abaixo disso a resposta é lixo (visto: 6 a 15 caract
 
 # papel da Doutrina -> agente configurável no painel
 _AGENTE_DO_PAPEL = {"requisitos": "analista", "arquiteto": "arquiteto", "dba": "dba", "backend": "backend", "frontend": "frontend",
-                    "documentacao": "documentacao", "chefe": "chefe"}
+                    "documentacao": "documentacao", "chefe": "chefe", "appsec": "hacker", "qualidade": "senior",
+                    "manutencao": "mantenedor"}
 
 
 def _agente_de(papel) -> str:
@@ -633,7 +634,12 @@ def _resumo_relatorio(ws, relativo) -> str:
                            for e in dados.get("etapas", []) if isinstance(e, dict))
     except (OSError, ValueError, AttributeError):
         return "indisponível (relatório ilegível)"
-    return f"{'APROVADO' if dados.get('aprovado') else 'REPROVADO'}; etapas: {etapas or 'nenhuma'}"
+    achados = dados.get("achados") if isinstance(dados.get("achados"), list) else None
+    contagem = ""
+    if achados is not None:  # relatórios dos agentes de validação: só contagem por severidade (nunca o texto do achado)
+        contagem = "; achados: " + (", ".join(f"{sev}={sum(1 for a in achados if isinstance(a, dict) and a.get('severidade') == sev)}"
+                                           for sev in ("CRITICO", "ALTO", "MEDIO", "BAIXO")))
+    return f"{'APROVADO' if dados.get('aprovado') else 'REPROVADO'}; etapas: {etapas or 'nenhuma'}{contagem}"
 
 
 def _resumo_revisao(ws, relativo) -> str:
@@ -651,7 +657,12 @@ def _resumos(ws, state) -> dict:
     return {"QA": _resumo_relatorio(ws, state.get("qa_report_file")),
             "Revisão de código": _resumo_revisao(ws, state.get("review_file")),
             "AppSec": _resumo_relatorio(ws, state.get("security_report_file")),
-            "DevOps": _resumo_relatorio(ws, state.get("devops_report_file"))}
+            "DevOps": _resumo_relatorio(ws, state.get("devops_report_file")),
+            "Sênior Master": _resumo_relatorio(ws, state.get("senior_report_file")),
+            "Hacker": _resumo_relatorio(ws, state.get("hacker_report_file")),
+            "Macaco (QA)": _resumo_relatorio(ws, state.get("macaco_report_file")),
+            "Carga": _resumo_relatorio(ws, state.get("carga_report_file")),
+            "Manutenibilidade": _resumo_relatorio(ws, state.get("manutencao_report_file"))}
 
 
 AREA_DOCUMENTACAO = ("docs/", "README.md")
@@ -661,7 +672,8 @@ def _validar_antes_de_gravar(resposta: str, ws, state) -> None:
     """Antes de gravar QUALQUER coisa (sem gravação parcial): falha alto se um bloco tiver caminho inválido, estiver fora da
     área da documentação ou apontar para arquivo de outro nó. Compara o caminho já resolvido e sem diferença de
     maiúsculas (no Windows 'Docs/Negocio' é a mesma pasta)."""
-    ja_gerados = {str(g).replace("\\", "/").casefold() for g in state.get("arquivos_gerados") or []}
+    proprios = {str(g).replace("\\", "/").casefold() for g in state.get("docs_proprios") or []}  # a documentação pode reescrever o que ela mesma escreveu
+    ja_gerados = {str(g).replace("\\", "/").casefold() for g in state.get("arquivos_gerados") or []} - proprios
     violacoes = []
     for m in RE_BLOCO.finditer(resposta or ""):
         caminho = m.group("caminho").strip()
@@ -687,8 +699,12 @@ def node_documentacao(state: SquadState) -> dict:
                 f"OpenAPI:\n{_entrada_doc(ws, state.get('openapi_file'), 'openapi_file')}",
                 "Arquivos gerados:\n" + "\n".join(f"- {a}" for a in sorted(state.get("arquivos_gerados") or [])),
                 "Resumo dos relatórios (sem valores):\n" + "\n".join(f"- {k}: {v}" for k, v in _resumos(ws, state).items())]
+    if state.get("feedback_manutencao"):  # o "eu daqui a 1 ano" não conseguiu se orientar: o que faltou, em lista fixa
+        entradas.append("O desenvolvedor que vai manter este sistema daqui a 1 ano não conseguiu se orientar só com a documentação. "
+                        "Corrija TODAS as lacunas (README com como rodar, testar e configurar; mapa de arquitetura e de pastas; onde "
+                        "ficam as regras de negócio, os erros nomeados e a autorização):\n" + state["feedback_manutencao"])
     instrucao = ("Você é o Redator Técnico da Squad. Escreva README.md (na raiz) e, se útil, arquivos em docs/ (guia de uso, "
-                 "operação, API). NÃO escreva em docs/negocio/, docs/revisao/, docs/release/, nem em "
+                 "operação, API, arquitetura e mapa de pastas). NÃO escreva em docs/negocio/, docs/revisao/, docs/release/, nem em "
                  "docs/arquitetura/PRD_TECNICO.md e docs/dados/DICIONARIO.md: esses pertencem a outros agentes e a saída que os "
                  "reescrever será rejeitada por inteiro. Descreva só o que está nos artefatos recebidos, sem inventar "
                  "funcionalidade. NUNCA escreva segredo, senha, token ou connection string, nem valor de exemplo que pareça um.")
@@ -700,7 +716,9 @@ def node_documentacao(state: SquadState) -> dict:
     if achados:  # só tipo e arquivo:linha, nunca o valor
         raise RuntimeError("documentação gerada contém possível segredo: "
                            + "; ".join(f"{a['tipo']} em {a['arquivo']}:{a['linha']}" for a in achados[:20]))
-    return {"current_phase": "DOCUMENTACAO_CONCLUIDA", "docs_file": "README.md", "arquivos_gerados": arquivos}
+    escritos = [a for a in arquivos if a not in (state.get("arquivos_gerados") or [])] or ["README.md"]
+    return {"current_phase": "DOCUMENTACAO_CONCLUIDA", "docs_file": "README.md", "arquivos_gerados": arquivos,
+            "docs_proprios": escritos, "feedback_manutencao": None}
 
 
 _RE_SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
@@ -714,8 +732,16 @@ def node_release(state: SquadState) -> dict:
     dout.verificar_versao(state)
     if state.get("release_approved") is not True:
         raise RuntimeError("release não aprovado pelo usuário: as notas de release não podem ser geradas")
-    pendentes = [k for k in ("tests_passed", "review_passed", "security_passed", "devops_passed")
+    pendentes = [k for k in ("tests_passed", "review_passed", "security_passed", "devops_passed", "senior_passed", "manutencao_passed")
                  if state.get(k) is not True]
+    # validação em execução (macaco, hacker, carga): se rodou, os portões valem; se foi PULADA, tem de haver o motivo explícito
+    # (Docker ausente ou desligada na configuração) e as notas de release dizem que o sistema NÃO foi validado em execução
+    if state.get("validacao_executada") is True:
+        pendentes += [k for k in ("hacker_passed", "macaco_passed") if state.get(k) is not True]
+        if state.get("carga_passed") is False:
+            pendentes.append("carga_passed")
+    elif not state.get("validacao_motivo"):
+        pendentes.append("validacao_em_execucao")
     if pendentes or not state.get("docs_file"):
         raise RuntimeError(f"release recusado: portões não aprovados ou ausentes: {pendentes + ([] if state.get('docs_file') else ['docs_file'])}")
     anterior = state.get("ultima_versao")
@@ -738,7 +764,9 @@ def node_release(state: SquadState) -> dict:
         "## Arquivos", "", *[f"- {a}" for a in arquivos], "",
         "## Pendências humanas", "",
         "- Este agente NÃO criou commit, tag nem publicação. Revise, versione e publique manualmente.",
-        "- AppSec automático cobre só dependências e padrões de segredo; revisão de segurança humana continua necessária.", ""]
+        "- AppSec automático cobre só dependências e padrões de segredo; revisão de segurança humana continua necessária.",
+        *([f"- ATENÇÃO: o sistema NÃO foi validado em execução (hacker, macaco e carga): {state.get('validacao_motivo')}."]
+          if state.get("validacao_executada") is not True else []), ""]
     destino = caminho_seguro(ws, ARQUIVO_RELEASE)
     destino.parent.mkdir(parents=True, exist_ok=True)
     destino.write_text("\n".join(linhas), encoding="utf-8", newline="\n")

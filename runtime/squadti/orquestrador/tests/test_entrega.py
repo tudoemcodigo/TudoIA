@@ -608,7 +608,9 @@ class Release(Base):
         self.state.update({
             "release_approved": True, "tests_passed": True, "review_passed": True, "security_passed": True,
             "devops_passed": True, "docs_file": "README.md", "qa_report_file": "tests/reports/qa_report.json",
-            "review_file": "docs/revisao/REVISAO.md", "arquivos_gerados": ["src/A.cs", "README.md"]})
+            "review_file": "docs/revisao/REVISAO.md", "arquivos_gerados": ["src/A.cs", "README.md"],
+            "senior_passed": True, "manutencao_passed": True, "validacao_executada": True, "hacker_passed": True, "macaco_passed": True,
+            "carga_passed": True})
         import aprovacao
         self.state["release_gate_hash"] = aprovacao.hash_do_pacote(self.ws, self.state)  # o que o humano viu ao aprovar
 
@@ -639,6 +641,23 @@ class Release(Base):
                          "QA: APROVADO; etapas: cobertura=ok", "Revisão de código: APROVADO", "NÃO criou commit",
                          "tests/reports/qa_report.json"):
             self.assertIn(esperado, texto)
+
+    def test_portoes_novos_bloqueiam_o_release(self):
+        for chave in ("senior_passed", "manutencao_passed", "hacker_passed", "macaco_passed"):
+            with self.assertRaises(RuntimeError, msg=chave):
+                self.n.node_release({**self.state, chave: False})
+        with self.assertRaises(RuntimeError):
+            self.n.node_release({**self.state, "carga_passed": False})   # carga saturada abaixo do mínimo
+
+    def test_validacao_pulada_so_passa_com_motivo_explicito_e_as_notas_avisam(self):
+        pulada = {**self.state, "validacao_executada": False, "hacker_passed": None, "macaco_passed": None}
+        with self.assertRaises(RuntimeError) as cm:
+            self.n.node_release(pulada)               # pulada sem motivo registrado = recusa (falha fechado)
+        self.assertIn("validacao_em_execucao", str(cm.exception))
+        r = self.n.node_release({**pulada, "validacao_motivo": "o Docker não respondeu"})
+        texto = (self.ws / r["release_notes_file"]).read_text(encoding="utf-8")
+        self.assertIn("NÃO foi validado em execução", texto)
+        self.assertIn("o Docker não respondeu", texto)
 
     def test_nunca_chama_modelo_processo_nem_git(self):
         with mock.patch.object(self.n, "executar", side_effect=AssertionError("release não executa comandos")), \

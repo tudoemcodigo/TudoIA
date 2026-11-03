@@ -24,7 +24,9 @@ from nodes import (
     node_release,
     node_revisor,
 )
+from qualidade import node_mantenedor, node_senior_master
 from state import SquadState
+from validacao import node_validacao_runtime
 
 LIMITE_ITERACOES = 3  # QA e revisor dividem o mesmo contador: 3 passagens de verificação no total, depois escalação humana
 ESCALADA = "chefe_escalada"
@@ -53,9 +55,12 @@ def build_squad_graph(db_path: str = "squad_state.db"):
     workflow.add_node("dev_frontend", node_dev_frontend)
     workflow.add_node("qa_testes", node_qa_testes)
     workflow.add_node("revisor", node_revisor)
+    workflow.add_node("senior_master", node_senior_master)
     workflow.add_node("appsec", node_appsec)
+    workflow.add_node("validacao_runtime", node_validacao_runtime)
     workflow.add_node("devops", node_devops)
     workflow.add_node("documentacao", node_documentacao)
+    workflow.add_node("mantenedor", node_mantenedor)
     workflow.add_node("release", node_release)
     workflow.add_node(ESCALADA, node_chefe_escalada)
 
@@ -111,23 +116,53 @@ def build_squad_graph(db_path: str = "squad_state.db"):
                 print("[Escalação Humana]: Revisão de código reprovou e o limite de iterações foi atingido. Requer intervenção.")
                 return ESCALADA
             return rota_correcao(state)
-        return "appsec"
+        return "senior_master"
+
+    def rota_pos_senior(state: SquadState):
+        # o Sênior Master devolve ao desenvolvimento até o código estar bem feito (3 voltas, depois escala)
+        if state.get("escalada"):
+            return ESCALADA
+        return "appsec" if state.get("senior_passed", False) else rota_correcao(state)
 
     def rota_pos_appsec(state: SquadState):
-        return "devops" if state.get("security_passed", False) else ESCALADA  # ENTREGA_BLOQUEADA
+        return "validacao_runtime" if state.get("security_passed", False) else ESCALADA  # ENTREGA_BLOQUEADA
+
+    def validacao_ok(state: SquadState) -> bool:
+        """Pulada (Docker ausente ou desligada, com motivo registrado) segue; executada exige hacker e macaco sem achado grave e a carga no SLO."""
+        if state.get("validacao_executada") is False:
+            return True
+        return bool(state.get("hacker_passed") and state.get("macaco_passed") and state.get("carga_passed") is not False)
+
+    def rota_pos_validacao(state: SquadState):
+        # hacker invadiu, macaco quebrou ou a carga saturou: o relatório volta ao desenvolvimento (3 voltas, depois escala)
+        if state.get("escalada"):
+            return ESCALADA
+        return "devops" if validacao_ok(state) else rota_correcao(state)
 
     def rota_pos_devops(state: SquadState):
         return "documentacao" if state.get("devops_passed", False) else ESCALADA  # ENTREGA_BLOQUEADA
+
+    def rota_pos_mantenedor(state: SquadState):
+        # "eu daqui a 1 ano" não se orientou: volta à documentação (2 voltas, depois escala)
+        if state.get("escalada"):
+            return ESCALADA
+        return "release" if state.get("manutencao_passed", False) else "documentacao"
 
     workflow.add_edge("dev_backend", "qa_testes")
     workflow.add_edge("dev_frontend", "qa_testes")
     workflow.add_conditional_edges("qa_testes", rota_pos_qa, {"dev_backend": "dev_backend", "dev_frontend": "dev_frontend",
                                                                 "revisor": "revisor", ESCALADA: ESCALADA})
     workflow.add_conditional_edges("revisor", rota_pos_revisor, {"dev_backend": "dev_backend", "dev_frontend": "dev_frontend",
-                                                                   "appsec": "appsec", ESCALADA: ESCALADA})
-    workflow.add_conditional_edges("appsec", rota_pos_appsec, {"devops": "devops", ESCALADA: ESCALADA})
+                                                                   "senior_master": "senior_master", ESCALADA: ESCALADA})
+    workflow.add_conditional_edges("senior_master", rota_pos_senior, {"dev_backend": "dev_backend", "dev_frontend": "dev_frontend",
+                                                                        "appsec": "appsec", ESCALADA: ESCALADA})
+    workflow.add_conditional_edges("appsec", rota_pos_appsec, {"validacao_runtime": "validacao_runtime", ESCALADA: ESCALADA})
+    workflow.add_conditional_edges("validacao_runtime", rota_pos_validacao, {"dev_backend": "dev_backend", "dev_frontend": "dev_frontend",
+                                                                               "devops": "devops", ESCALADA: ESCALADA})
     workflow.add_conditional_edges("devops", rota_pos_devops, {"documentacao": "documentacao", ESCALADA: ESCALADA})
-    workflow.add_edge("documentacao", "release")
+    workflow.add_edge("documentacao", "mantenedor")
+    workflow.add_conditional_edges("mantenedor", rota_pos_mantenedor, {"release": "release", "documentacao": "documentacao",
+                                                                         ESCALADA: ESCALADA})
     workflow.add_edge("release", END)
     workflow.add_edge(ESCALADA, END)
 

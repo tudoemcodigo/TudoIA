@@ -305,7 +305,7 @@ class ConfigDosAgentes(unittest.TestCase):
         ruins = [
             {"agentes": {"backend": {"temperatura": 9}}}, {"agentes": {"backend": {"temperatura": True}}},
             {"agentes": {"backend": {"max_tokens": 10}}}, {"agentes": {"backend": {"max_tokens": "muito"}}},
-            {"agentes": {"backend": {"perfil": "gpt-5"}}}, {"agentes": {"hacker": {}}}, {"agentes": {"backend": {"modelo": "x"}}},
+            {"agentes": {"backend": {"perfil": "gpt-5"}}}, {"agentes": {"inexistente": {}}}, {"agentes": {"backend": {"modelo": "x"}}},
             {"revisao": {"modo": "tripla"}}, {"orcamento": {"tokens": 1}}, {"orcamento": {"dinheiro": 5}}, {"extra": 1},
         ]
         for cfg in ruins:

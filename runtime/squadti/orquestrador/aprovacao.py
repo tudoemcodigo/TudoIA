@@ -32,7 +32,8 @@ def hash_arquivo(raiz: Path, relativo: str) -> str:
 def arquivos_do_pacote(state: dict) -> List[str]:
     """Arquivos que o humano revisa antes de aprovar o release, na ordem fixa."""
     chaves = ("business_spec_file", "technical_prd_file", "openapi_file", "qa_report_file", "review_file",
-              "security_report_file", "devops_report_file", "docs_file")
+              "security_report_file", "devops_report_file", "senior_report_file", "hacker_report_file", "macaco_report_file",
+              "carga_report_file", "manutencao_report_file", "docs_file")
     return [state[c] for c in chaves if state.get(c)]
 
 
