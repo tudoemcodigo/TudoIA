@@ -37,10 +37,12 @@ def criar_router(ctx: Contexto) -> APIRouter:
         if not comfy_online:
             raise ErroApi(503, "servico_offline", "O serviço ComfyUI (:8188) está offline no host. Inicie-o para carregar o modelo YuE2 na GPU.", extras={"servico_offline": "comfyui", "modelo_solicitado": corpo.modelo, "porta": 8188})
 
-        seed_final = corpo.seed or int(time.time() * 1000) % 1_000_000_000
+        seed_final = corpo.seed if corpo.seed is not None else int(time.time() * 1000) % 1_000_000_000
 
         # Tradução e enriquecimento musical automático
-        style_efetivo, foi_otimizado, msg_otimizado = _otimizar_prompt_musica(corpo.style, raiz)
+        style_efetivo, foi_otimizado, msg_otimizado = (
+            _otimizar_prompt_musica(corpo.style, raiz) if corpo.otimizar_prompt else (corpo.style, False, "")
+        )
 
         res_exec = _executar_comfyui_musica(
             raiz=raiz,

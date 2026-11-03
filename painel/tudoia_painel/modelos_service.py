@@ -146,14 +146,29 @@ def descarregar_modelo_vram(nome_modelo: str) -> dict[str, Any]:
 
 
 CATEGORIAS_COMFY = {
-    "checkpoints": "Checkpoint SDXL/Flux",
-    "diffusion_models": "Modelo de Difusão (Vídeo/Imagem)",
-    "unet": "UNet (GGUF / Quantizado)",
-    "vae": "VAE (Autoencoder)",
-    "clip": "CLIP Text Encoder",
-    "text_encoders": "Text Encoder (T5 / Qwen)",
-    "loras": "LoRA (Adaptador Rápido)",
+    "checkpoints": "Checkpoint de imagem (SDXL/Flux)",
+    "diffusion_models": "Modelo de difusão (vídeo e imagem)",
+    "unet": "UNet quantizado (GGUF)",
+    "vae": "VAE (autoencoder)",
+    "clip": "Codificador de texto (CLIP)",
+    "text_encoders": "Codificador de texto (T5/Qwen)",
+    "loras": "LoRA (adaptador)",
 }
+
+# A pasta do ComfyUI diz como o arquivo é carregado, não o que ele gera: o YuE (música) e alguns modelos de vídeo
+# também ficam em checkpoints/ ou diffusion_models/. O nome do arquivo desempata.
+_PADROES_MUSICA = ("yue", "ace-step", "ace_step", "acestep", "stable-audio", "stable_audio", "musicgen", "audioldm")
+_PADROES_VIDEO = ("wan2", "wan_", "hunyuan", "ltx", "cogvideo", "mochi", "minimax", "svd")
+
+
+def categoria_do_arquivo(pasta: str, nome_arquivo: str) -> str:
+    nome = nome_arquivo.lower()
+    if pasta in ("checkpoints", "diffusion_models", "unet"):
+        if any(p in nome for p in _PADROES_MUSICA):
+            return "Modelo de música"
+        if any(p in nome for p in _PADROES_VIDEO):
+            return "Modelo de vídeo"
+    return CATEGORIAS_COMFY.get(pasta, pasta)
 
 
 def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
@@ -167,7 +182,7 @@ def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
     # Modelos ComfyUI (em modelos/comfyui/ComfyUI_windows_portable/ComfyUI/models)
     dir_comfy_models = comfyui_dir(raiz) / "models"
     if dir_comfy_models.is_dir():
-        for pasta_cat, label_cat in CATEGORIAS_COMFY.items():
+        for pasta_cat in CATEGORIAS_COMFY:
             sub_dir = dir_comfy_models / pasta_cat
             if not sub_dir.is_dir():
                 continue
@@ -186,7 +201,7 @@ def listar_midia_detalhada(raiz: Path) -> dict[str, Any]:
                     "nome": arq.name,
                     "arquivo": arq.name,
                     "motor": "ComfyUI",
-                    "categoria": label_cat,
+                    "categoria": categoria_do_arquivo(pasta_cat, arq.name),
                     "pasta": pasta_cat,
                     "formato": arq.suffix.lstrip("."),
                     "tamanho_gb": tam_gb,

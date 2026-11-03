@@ -157,7 +157,9 @@ def obter_metricas_limites(raiz: Path, periodo_horas: int | None = 24) -> dict[s
     chamadas_processadas: dict[str, dict] = {}
 
     for item in logs_llm:
-        cid = str(item.get("request_id") or item.get("litellm_call_id") or "")
+        # O eventos.jsonl do hook usa o litellm_call_id; o request_id do LiteLLM é outro (chatcmpl-...).
+        # Juntar pelo request_id contava cada chamada duas vezes, com nomes de modelo diferentes.
+        cid = str(item.get("litellm_call_id") or item.get("request_id") or "")
         if not cid:
             continue
         st_raw = item.get("startTime") or item.get("created_at") or ""
@@ -277,6 +279,7 @@ def obter_metricas_limites(raiz: Path, periodo_horas: int | None = 24) -> dict[s
             "chave": chave_var,
             "chave_configurada": configurada,
             "site_chave": pdata.get("site_chave", ""),
+            "site_limites": pdata.get("site_limites", ""),
             "limites": pdata.get("limites") or {},
             "fonte_limites": pdata.get("fonte_limites") or "",
             "modelos_cadastrados": mod_nomes,
@@ -466,6 +469,7 @@ def obter_metricas_limites(raiz: Path, periodo_horas: int | None = 24) -> dict[s
             "chave": pbase.get("chave"),
             "chave_configurada": pbase["chave_configurada"],
             "site_chave": pbase.get("site_chave"),
+            "site_limites": pbase.get("site_limites") or "",
             "limites": limites,
             "fonte_limites": pbase.get("fonte_limites"),
             "consumo": {

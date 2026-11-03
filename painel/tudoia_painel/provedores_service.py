@@ -4,13 +4,16 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 import yaml
 
+from tudoia_painel.catalogo import Provedor, carregar_catalogo
 from tudoia_painel.envfile import gravar_valor, ler_env
 
 RE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -71,9 +74,10 @@ def cadastrar_provedor(
 
     # Campo opcional chega como None quando ausente; str(None) viraria o texto "None", que passa como URL
     site_chave = (dados.get("site_chave") or "").strip()
+    site_limites = (dados.get("site_limites") or "").strip()
     api_base = (dados.get("api_base") or "").strip() or None
     url_modelos = (dados.get("url_modelos") or "").strip() or None
-    fonte_limites = str(dados.get("fonte_limites", "")).strip() or "Configurado pelo usuário no painel"
+    fonte_limites = (dados.get("fonte_limites") or "").strip() or "Configurado pelo usuário no painel"
 
     limites = dados.get("limites") or {}
     if not isinstance(limites, dict):
@@ -93,6 +97,7 @@ def cadastrar_provedor(
         "tier": tier,
         "chave": chave,
         "site_chave": site_chave,
+        **({"site_limites": site_limites} if site_limites else {}),
         "limites": limites,
         "fonte_limites": fonte_limites,
         "modelos": []
@@ -106,7 +111,7 @@ def cadastrar_provedor(
     gravar_yaml_atomico(caminho_yaml, catalogo_dados)
 
     # Se informou o valor da chave, grava no .env
-    valor_chave = str(dados.get("valor_chave", "")).strip()
+    valor_chave = (dados.get("valor_chave") or "").strip()   # None (ausente) gravava o texto "None" no .env
     if valor_chave:
         backup = dir_backup or (caminho_env.parent / "dados" / "backups" / "env")
         gravar_valor(caminho_env, chave, valor_chave, backup)
@@ -270,7 +275,8 @@ def _prefixo_litellm(p: dict[str, Any], provedor_id: str) -> str:
         for m in p.get("modelos") or []
         if isinstance(m, dict) and "/" in str(m.get("id", ""))
     )
-    return contagem.most_common(1)[0][0] if contagem else provedor_id
+    # Catálogo vazio: o namespace do LiteLLM nem sempre é o id do provedor (NVIDIA NIM é "nvidia_nim").
+    return contagem.most_common(1)[0][0] if contagem else _PREFIXO_LITELLM_CONHECIDO.get(provedor_id, provedor_id)
 
 
 def _id_na_api(id_catalogo: str, prefixo: str) -> str:
@@ -519,6 +525,173 @@ def listar_novos_catalogo(caminho_yaml: Path, caminho_env: Path, provedor: str |
     return {"ok": True, "novos": novos, "erros": erros}
 
 
+# ------------------------------------------------------------ teste direto na API do provedor (sem o LiteLLM)
+# Serve para testar um modelo ANTES de ele entrar no catálogo: o teste pelo LiteLLM só alcança o que já está no config.
+TIMEOUT_TESTE_DIRETO = 20.0
+ESPACAMENTO_MAX_S = 3.0          # teto do intervalo 60/rpm entre chamadas (rpm baixo não trava o lote por minutos)
+MENSAGEM_TESTE = "Responda apenas: ok"
+# Namespace do LiteLLM que difere do id do provedor no catálogo (gerador.py usa o id do catálogo como `model`).
+_PREFIXO_LITELLM_CONHECIDO = {"nvidia": "nvidia_nim"}
+
+
+def _cliente_teste_direto(transporte: httpx.BaseTransport | None = None) -> httpx.Client:
+    """Sem seguir redirecionamento: x-api-key e x-goog-api-key não são removidos pelo httpx ao trocar de host."""
+    return httpx.Client(timeout=TIMEOUT_TESTE_DIRETO, follow_redirects=False, transport=transporte)
+
+
+def _id_para_api(mid: str, p: dict[str, Any], provedor_id: str) -> str:
+    """Aceita o id do catálogo (com o namespace do LiteLLM) ou o id cru da API e devolve o que a API espera.
+
+    Ambiguidade conhecida: id cru que começa com '<prefixo>/' (ex.: NVIDIA 'nvidia/x' com o catálogo vazio, prefixo
+    'nvidia') perde esse trecho. Mande o id do catálogo (o de /api/provedores/novos) para não cair nisso."""
+    mid = mid.strip()
+    for prefixo in (_PREFIXO_LITELLM_CONHECIDO.get(provedor_id), _prefixo_litellm(p, provedor_id)):
+        if prefixo and mid.startswith(prefixo + "/"):
+            return _id_na_api(mid, prefixo)
+    return mid
+
+
+def _api_base_resolvida(p: dict[str, Any], env: dict[str, str]) -> str:
+    """api_base do catálogo, com 'os.environ/NOME' lido do .env. Vazio quando ausente (o LiteLLM usa o padrão dele)."""
+    base = str(p.get("api_base") or "").strip()
+    if base.startswith("os.environ/"):
+        base = env.get(base.removeprefix("os.environ/"), "").strip()
+    return base.rstrip("/")
+
+
+def _destino_teste(p: dict[str, Any], env: dict[str, str]) -> tuple[str, str]:
+    """(URL do chat, formato 'openai'|'anthropic'). Levanta FalhaApi quando não dá para montar a URL."""
+    base = _api_base_resolvida(p, env)
+    url_modelos = str(p.get("url_modelos") or "").strip()
+    host = (urlsplit(base or url_modelos).hostname or "").lower()
+
+    if host == "api.anthropic.com" or host.endswith(".anthropic.com"):
+        # https://docs.anthropic.com/en/api/messages — POST /v1/messages, x-api-key + anthropic-version
+        url, formato = f"{base or 'https://api.anthropic.com'}/v1/messages", "anthropic"
+    elif base:
+        url, formato = f"{base}/chat/completions", "openai"
+    elif host == "generativelanguage.googleapis.com":
+        # https://ai.google.dev/gemini-api/docs/openai — endpoint compatível com OpenAI, Authorization: Bearer
+        url, formato = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "openai"
+    elif host == "api.cloudflare.com":
+        # https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/
+        url = _resolver_url(
+            "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions", env)
+        formato = "openai"
+    elif url_modelos.rstrip("/").endswith("/models"):
+        # OpenAI-compatível: a listagem é {base}/models e o chat é {base}/chat/completions
+        url, formato = f"{_resolver_url(url_modelos.rstrip('/').removesuffix('/models'), env)}/chat/completions", "openai"
+    else:
+        raise FalhaApi("Não foi possível derivar o endpoint de chat: configure 'api_base' ou uma 'url_modelos' "
+                       "terminada em /models.")
+
+    partes = urlsplit(url)
+    local = partes.hostname in ("localhost", "127.0.0.1", "::1")
+    if partes.scheme != "https" and not (partes.scheme == "http" and local):
+        raise FalhaApi(f"Endpoint de chat recusado (exige https): {partes.scheme}://{partes.hostname}")
+    return url, formato
+
+
+def _cabecalhos_teste(url: str, formato: str, token: str) -> dict[str, str]:
+    if formato == "anthropic":
+        return _montar_cabecalhos("https://api.anthropic.com", token)
+    # O endpoint OpenAI do Gemini usa Bearer (a API nativa é que exige x-goog-api-key).
+    return {"User-Agent": "TudoIA-Scanner/1.0", "Authorization": f"Bearer {token}"}
+
+
+def _corpo_teste(formato: str, mid: str) -> dict[str, Any]:
+    corpo: dict[str, Any] = {"model": mid, "messages": [{"role": "user", "content": MENSAGEM_TESTE}],
+                             "max_tokens": 8}
+    if formato == "openai":
+        corpo["temperature"] = 0
+        corpo["stream"] = False
+    # Anthropic: os modelos novos recusam `temperature` com 400 ("is deprecated"), e o teste não precisa dela.
+    return corpo
+
+
+def _resposta_valida(formato: str, dados: Any) -> bool:
+    """200 só conta com uma mensagem do assistente. Modelo de raciocínio pode gastar os 8 tokens pensando e voltar
+    com content vazio: a mensagem existir basta. 200 com corpo de erro (OpenRouter faz isso) não conta."""
+    if not isinstance(dados, dict) or dados.get("error"):
+        return False
+    if formato == "anthropic":
+        return dados.get("type") == "message" and isinstance(dados.get("content"), list)
+    escolhas = dados.get("choices")
+    return isinstance(escolhas, list) and bool(escolhas) and isinstance(escolhas[0], dict) \
+        and isinstance(escolhas[0].get("message"), dict)
+
+
+def _sem_segredo(texto: str, token: str) -> str:
+    return texto.replace(token, "***") if token else texto
+
+
+def _testar_um(cliente: httpx.Client, url: str, formato: str, headers: dict[str, str], mid_api: str,
+               token: str) -> dict[str, Any]:
+    inicio = time.monotonic()
+    try:
+        resp = cliente.post(url, headers=headers, json=_corpo_teste(formato, mid_api))
+    except httpx.TimeoutException:
+        return {"ok": False, "latencia_ms": int((time.monotonic() - inicio) * 1000), "status_http": 0,
+                "erro": f"Tempo esgotado ({int(TIMEOUT_TESTE_DIRETO)} s) sem resposta do provedor"}
+    except httpx.HTTPError as e:
+        return {"ok": False, "latencia_ms": int((time.monotonic() - inicio) * 1000), "status_http": 0,
+                "erro": _sem_segredo(f"Falha de conexão ({type(e).__name__}): {e}", token)[:300]}
+    latencia = int((time.monotonic() - inicio) * 1000)
+    status = resp.status_code
+    if status != 200:
+        if 300 <= status < 400:
+            erro = f"Provedor respondeu com redirecionamento ({status}); não seguido para não levar a chave a outro host"
+        else:
+            erro = f"Provedor retornou status {status}: {resp.text[:200]}"
+        return {"ok": False, "latencia_ms": latencia, "status_http": status, "erro": _sem_segredo(erro, token)}
+    try:
+        dados = resp.json()
+    except ValueError:
+        dados = None
+    if not _resposta_valida(formato, dados):
+        return {"ok": False, "latencia_ms": latencia, "status_http": status,
+                "erro": _sem_segredo(f"Resposta 200 sem mensagem do assistente: {resp.text[:200]}", token)}
+    return {"ok": True, "latencia_ms": latencia, "status_http": status, "erro": None}
+
+
+def testar_modelos_direto(caminho_yaml: Path, caminho_env: Path, provedor_id: str, ids: list[str]) -> list[dict]:
+    """Uma chamada mínima de chat por modelo direto na API do provedor, em sequência. Nunca levanta por modelo:
+    toda falha vira {"ok": False, "erro": ...}. Levanta ProvedorNaoEncontrado se o provedor não está no catálogo.
+
+    Só faz rede: quem chama NÃO deve segurar a trava do painel (até 40 modelos x 20 s)."""
+    p = _provedor_do_catalogo(_ler_catalogo(caminho_yaml), provedor_id)
+    env = ler_env(Path(caminho_env))
+
+    def todos_falham(erro: str) -> list[dict]:
+        return [{"id": mid, "ok": False, "latencia_ms": 0, "erro": erro, "status_http": 0} for mid in ids]
+
+    chave = str(p.get("chave") or "")
+    token = (env.get(chave) or "").strip() if chave else ""
+    if not token:
+        return todos_falham(f"Chave {chave or '(sem variável no catálogo)'} não configurada no .env")
+    try:
+        url, formato = _destino_teste(p, env)
+    except FalhaApi as e:
+        return todos_falham(str(e))
+    headers = _cabecalhos_teste(url, formato, token)
+
+    rpm = (p.get("limites") or {}).get("rpm") if isinstance(p.get("limites"), dict) else None
+    intervalo = min(60.0 / rpm, ESPACAMENTO_MAX_S) if isinstance(rpm, (int, float)) and rpm > 0 else 0.0
+
+    resultados = []
+    with _cliente_teste_direto() as cliente:
+        for i, mid in enumerate(ids):
+            if i and intervalo:
+                time.sleep(intervalo)
+            try:
+                res = _testar_um(cliente, url, formato, headers, _id_para_api(mid, p, provedor_id), token)
+            except Exception as e:  # noqa: BLE001 — a falha de um modelo não derruba o lote
+                res = {"ok": False, "latencia_ms": 0, "status_http": 0,
+                       "erro": _sem_segredo(f"Erro inesperado ({type(e).__name__}): {e}", token)[:300]}
+            resultados.append({"id": mid, **res})
+    return resultados
+
+
 _SINAIS_MODELO_EXTINTO = ("decommissioned", "deprecated", "does not exist", "no longer supported",
                           "no longer available", "model_not_found", "model not found", "not a valid model")
 # Erros do próprio LiteLLM: o modelo não está no config carregado (config gerado e ainda não recarregado). Não é o
@@ -670,3 +843,191 @@ def adicionar_modelo_provedor(
     gravar_yaml_atomico(caminho_yaml, catalogo_dados)
 
     return {"ok": True, "provedor": provedor_id, "modelo": novo_mod}
+
+
+# ------------------------------------------------------------ CRUD de provedores e modelos do catálogo
+class ProvedorNaoEncontrado(LookupError):
+    """Provedor (ou modelo dele) que não está no catálogo."""
+
+
+class EmUsoNoRoteamento(RuntimeError):
+    """Remoção recusada: o roteamento cita o modelo. `referencias`: [{"modelo", "grupos"}]."""
+
+    def __init__(self, mensagem: str, referencias: list[dict[str, Any]]):
+        super().__init__(mensagem)
+        self.referencias = referencias
+
+
+def _ler_catalogo(caminho_yaml: Path) -> dict[str, Any]:
+    return yaml.safe_load(Path(caminho_yaml).read_text(encoding="utf-8")) or {}
+
+
+def _provedor_do_catalogo(catalogo_dados: dict[str, Any], provedor_id: str) -> dict[str, Any]:
+    p = (catalogo_dados.get("provedores") or {}).get(provedor_id)
+    if not isinstance(p, dict):
+        raise ProvedorNaoEncontrado(f"Provedor '{provedor_id}' não encontrado no catálogo.")
+    return p
+
+
+def _referencias_no_roteamento(caminho_roteamento: Path, modelos: list[Any]) -> list[dict[str, Any]]:
+    """Modelos da lista citados no roteamento, com os grupos de `ordem` que os usam (vazio: citado fora de `ordem`)."""
+    referenciados = _nomes_e_ids_referenciados(caminho_roteamento)
+    if not referenciados:
+        return []
+    ordem = (yaml.safe_load(Path(caminho_roteamento).read_text(encoding="utf-8")) or {}).get("ordem") or {}
+    refs = []
+    for m in modelos:
+        if not isinstance(m, dict):
+            continue
+        citados = {m.get("nome"), m.get("id")} & referenciados
+        if citados:
+            grupos = [g for g, membros in ordem.items() if isinstance(membros, list) and citados & set(membros)]
+            refs.append({"modelo": m.get("nome"), "grupos": grupos})
+    return refs
+
+
+def _item_provedor(p: Provedor, env: dict[str, str], referenciados: set[str]) -> dict[str, Any]:
+    """Visão do provedor para o painel. Só NOMES de variáveis do .env, nunca valores."""
+    faltando = [k for k in p.todas_as_chaves() if not (env.get(k) or "").strip()]
+    modelos = [{
+        "nome": m.nome,
+        "id": m.id,
+        "papeis": list(m.papeis),
+        "contexto": m.contexto,
+        "ativo": m.ativo,
+        "em_uso": m.nome in referenciados or m.id in referenciados,
+    } for m in p.modelos]
+    return {
+        "id": p.chave_id,
+        "nome": p.nome,
+        "tier": p.tier,
+        "chave": p.chave,
+        "chaves_extras": list(p.chaves_extras),
+        "tem_chave": not faltando,
+        "chaves_faltando": faltando,
+        "site_chave": p.site_chave or "",
+        "site_limites": p.site_limites or "",
+        "api_base": p.api_base or "",
+        "url_modelos": p.url_modelos or "",
+        "limites": dict(p.limites),
+        "fonte_limites": p.fonte_limites or "",
+        "descartar_params": list(p.descartar_params),
+        "total_modelos": len(modelos),
+        "modelos_ativos": sum(1 for m in modelos if m["ativo"]),
+        "modelos": modelos,
+    }
+
+
+def listar_provedores(caminho_yaml: Path, caminho_env: Path, caminho_roteamento: Path) -> list[dict[str, Any]]:
+    """Todos os provedores do catálogo, na ordem do arquivo."""
+    cat = carregar_catalogo(Path(caminho_yaml))
+    env = ler_env(caminho_env)
+    referenciados = _nomes_e_ids_referenciados(caminho_roteamento)
+    return [_item_provedor(p, env, referenciados) for p in cat.provedores]
+
+
+def obter_provedor(caminho_yaml: Path, caminho_env: Path, caminho_roteamento: Path, provedor_id: str) -> dict[str, Any]:
+    for item in listar_provedores(caminho_yaml, caminho_env, caminho_roteamento):
+        if item["id"] == provedor_id:
+            return item
+    raise ProvedorNaoEncontrado(f"Provedor '{provedor_id}' não encontrado no catálogo.")
+
+
+def _numero(valor: float) -> int | float:
+    """10.0 volta a ser 10 no YAML (o JSON não distingue, e o catálogo usa inteiros)."""
+    return int(valor) if float(valor).is_integer() else valor
+
+
+def _definir(p: dict[str, Any], campo: str, valor: Any) -> None:
+    """Grava o campo mantendo `modelos` por último no bloco do provedor (o YAML fica legível)."""
+    novo = campo not in p
+    p[campo] = valor
+    if novo and "modelos" in p:
+        p["modelos"] = p.pop("modelos")
+
+
+def editar_provedor(caminho_yaml: Path, provedor_id: str, campos: dict[str, Any]) -> bool:
+    """Aplica a edição parcial validada pelo schema. None = não muda; "" limpa. Devolve se gravou algo."""
+    catalogo_dados = _ler_catalogo(caminho_yaml)
+    p = _provedor_do_catalogo(catalogo_dados, provedor_id)
+    antes = yaml.safe_dump(p, allow_unicode=True, sort_keys=False)
+
+    if campos.get("nome") is not None:
+        nome = campos["nome"].strip()
+        if not nome:
+            raise ValueError("nome não pode ficar vazio")
+        p["nome"] = nome
+    if campos.get("tier") is not None:
+        p["tier"] = campos["tier"]
+    for campo in ("site_chave", "site_limites"):
+        if campos.get(campo) is not None:
+            _definir(p, campo, campos[campo])
+    for campo in ("api_base", "url_modelos", "fonte_limites"):
+        valor = campos.get(campo)
+        if valor is None:
+            continue
+        valor = valor.strip()
+        if valor:
+            _definir(p, campo, valor)
+        else:
+            p.pop(campo, None)
+    if campos.get("limites") is not None:
+        _definir(p, "limites", {
+            k: (v if k == "reset" else _numero(v)) for k, v in campos["limites"].items() if v is not None})
+
+    if yaml.safe_dump(p, allow_unicode=True, sort_keys=False) == antes:
+        return False
+    gravar_yaml_atomico(Path(caminho_yaml), catalogo_dados)
+    return True
+
+
+def remover_provedor(caminho_yaml: Path, caminho_roteamento: Path, provedor_id: str) -> dict[str, Any]:
+    """Tira o provedor do catálogo. Recusa se algum modelo dele está no roteamento. O .env não é tocado."""
+    catalogo_dados = _ler_catalogo(caminho_yaml)
+    p = _provedor_do_catalogo(catalogo_dados, provedor_id)
+    refs = _referencias_no_roteamento(caminho_roteamento, p.get("modelos") or [])
+    if refs:
+        raise EmUsoNoRoteamento(
+            f"Provedor '{provedor_id}' tem modelos em uso no roteamento; tire-os dos grupos antes de remover.", refs)
+    chaves = [k for k in (p.get("chave"), *(p.get("chaves_extras") or ())) if k]
+    del catalogo_dados["provedores"][provedor_id]
+    gravar_yaml_atomico(Path(caminho_yaml), catalogo_dados)
+    return {"ok": True, "id": provedor_id, "chaves_mantidas": chaves}
+
+
+def _modelo_do_provedor(p: dict[str, Any], provedor_id: str, nome: str) -> dict[str, Any]:
+    for m in p.get("modelos") or []:
+        if isinstance(m, dict) and m.get("nome") == nome:
+            return m
+    raise ProvedorNaoEncontrado(f"Modelo '{nome}' não encontrado no provedor '{provedor_id}'.")
+
+
+def editar_modelo_provedor(caminho_yaml: Path, provedor_id: str, nome: str, campos: dict[str, Any]) -> dict[str, Any]:
+    """Liga/desliga, troca papéis ou contexto de um modelo. None = não muda. Devolve o modelo como ficou."""
+    catalogo_dados = _ler_catalogo(caminho_yaml)
+    m = _modelo_do_provedor(_provedor_do_catalogo(catalogo_dados, provedor_id), provedor_id, nome)
+    antes = dict(m)
+    if campos.get("ativo") is not None:
+        m["ativo"] = bool(campos["ativo"])
+    if campos.get("papeis") is not None:
+        papeis = list(dict.fromkeys(x.strip() for x in campos["papeis"] if x.strip()))
+        m["papeis"] = papeis or inferir_papeis(str(m.get("id", "")))
+    if campos.get("contexto") is not None:
+        m["contexto"] = int(campos["contexto"])
+    alterado = m != antes
+    if alterado:
+        gravar_yaml_atomico(Path(caminho_yaml), catalogo_dados)
+    return {"ok": True, "provedor": provedor_id, "modelo": m, "alterado": alterado}
+
+
+def remover_modelo_provedor(caminho_yaml: Path, caminho_roteamento: Path, provedor_id: str, nome: str) -> dict[str, Any]:
+    """Tira o modelo do catálogo. Recusa se o roteamento o cita (o grupo ficaria apontando para o nada)."""
+    catalogo_dados = _ler_catalogo(caminho_yaml)
+    p = _provedor_do_catalogo(catalogo_dados, provedor_id)
+    m = _modelo_do_provedor(p, provedor_id, nome)
+    refs = _referencias_no_roteamento(caminho_roteamento, [m])
+    if refs:
+        raise EmUsoNoRoteamento(f"Modelo '{nome}' está em uso no roteamento; tire-o dos grupos antes de remover.", refs)
+    p["modelos"] = [x for x in p["modelos"] if x is not m]
+    gravar_yaml_atomico(Path(caminho_yaml), catalogo_dados)
+    return {"ok": True, "provedor": provedor_id, "removido": nome}

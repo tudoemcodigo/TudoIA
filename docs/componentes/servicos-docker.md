@@ -1,151 +1,297 @@
-# Serviços Docker e processos do host
+---
+titulo: Serviços Docker e processos do host
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-O TudoIA mistura containers Docker e processos do Windows. Os containers estão definidos em `runtime/docker-compose.yml`. Ollama e ComfyUI rodam direto no host, porque precisam da GPU e ficam fora do compose. Este documento descreve os dois grupos, como subir e parar, e o que vale saber antes de mexer.
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🐳 Serviços Docker
 
-## Visão geral
+# 🐳 Serviços Docker e processos do host
 
-- **Arquivo:** `runtime/docker-compose.yml`, nome de projeto `tudoia` (`name: tudoia`).
-- **Variáveis:** o compose lê o `.env` da raiz com `--env-file` só para substituir `${VAR}`. Nenhum serviço recebe o `.env` inteiro (não há `env_file`). Cada um recebe só as variáveis listadas na tabela.
-- **Portas:** todas publicadas em `127.0.0.1`. Nenhum container fica acessível pela rede local.
-- **Healthcheck:** `litellm-db`, `litellm`, `searxng`, `cerebro` e `n8n`.
-- **Imagens:** seis das sete imagens estão fixadas por digest (`@sha256:`). O `cerebro` é construído localmente a partir de `runtime/cerebro/Dockerfile` e a base dele não tem digest (ver riscos).
+> Para quem opera e mantém o stack. Responde: quais containers existem, em que porta, com que volumes, usuário e limites,
+> quais perfis os ligam, como subir e parar, e o que fica fora do Docker (Ollama e ComfyUI).
+> Fonte da verdade: `runtime/docker-compose.yml`, guardado por `tests/runtime/test_compose.py`.
 
-## Containers
+## 📑 Sumário
 
-| Serviço | Container | Imagem | Porta no host | Variáveis (nomes) | Volumes | Depende de | Healthcheck |
-|---|---|---|---|---|---|---|---|
-| `litellm-db` | `litellm-db` | `postgres:17.6-alpine` | `127.0.0.1:5433` para `5432` | `POSTGRES_USER`, `POSTGRES_PASSWORD` (de `LITELLM_DB_PASSWORD`), `POSTGRES_DB`, `TZ` | volume `litellm-db` | nada | `pg_isready`, a cada 5 s, 10 tentativas |
-| `litellm` | `litellm` | `ghcr.io/berriai/litellm:main-latest` | `127.0.0.1:4000` | `DATABASE_URL`, `LITELLM_MASTER_KEY`, `OLLAMA_URL` (padrão `http://host.docker.internal:11434`), `TZ` e as chaves de provedor: `NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `HF_TOKEN` | `config/` (leitura), `runtime/litellm/*.py` (leitura), `runtime/litellm/config.yaml` (leitura), `dados/logs` | `litellm-db` saudável | `GET /health/liveliness`, a cada 30 s (início: 60 s) |
-| `searxng` | `searxng` | `searxng/searxng:2026.10.19-81371861f` | `127.0.0.1:8080` | `SEARXNG_SECRET` | `runtime/searxng` para `/etc/searxng` | nada | `GET /healthz` responde `OK`, a cada 30 s |
-| `cerebro` | `cerebro` | construído de `runtime/cerebro/Dockerfile` | `127.0.0.1:8765` | `OLLAMA_URL`, `SEARXNG_URL`, `CEREBRO_DOCS`, `CEREBRO_DOCS_HOST` (opcional), `CEREBRO_DADOS`, `CEREBRO_OIDC_ISSUER`, `CEREBRO_OIDC_JWKS_URL`, `CEREBRO_OIDC_CLIENT_ID`, `CEREBRO_TOKEN_ESTATICO` | `dados/documentos` para `/docs` (leitura), `dados/cerebro` para `/dados` | `searxng` (só ordem de início) | `GET /saude`, a cada 30 s |
-| `kokoro` | `kokoro` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` | `127.0.0.1:8880` | nenhuma | nenhum | nada | nenhum |
-| `open-webui` | `open-webui` | `ghcr.io/open-webui/open-webui:main` | `127.0.0.1:3000` para `8080` | `OLLAMA_BASE_URL`, `WEBUI_NAME`, `WEBUI_SECRET_KEY`, `ENABLE_API_KEYS`, `TZ` | volume `open-webui` em `/app/backend/data`, `runtime/open-webui/env.py` e nove imagens de `runtime/open-webui/static` (leitura) | `searxng`, `kokoro` (só ordem de início) | nenhum |
-| `n8n` | `n8n` | `docker.n8n.io/n8nio/n8n:latest` (digest fixo; o container em execução respondeu `n8n --version` = 2.44.6) | `127.0.0.1:5678` | `GENERIC_TIMEZONE`, `TZ`, `N8N_HOST`, `N8N_WEBHOOK_URL`, `N8N_RESTRICT_FILE_ACCESS_TO`, `N8N_ENCRYPTION_KEY`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` | volume `n8n` em `/home/node/.n8n`, `dados/documentos` em `/data/docs` | nada | `GET /healthz`, a cada 30 s (início: 60 s) |
+- [🎯 Visão geral](#-visão-geral)
+- [📦 Containers](#-containers)
+- [🗄️ Postgres e o init de bancos](#️-postgres-e-o-init-de-bancos)
+- [🚀 Uso](#-uso)
+- [⚙️ Opções](#️-opções)
+- [🖥️ Processos do host](#️-processos-do-host)
+- [❌ Erros / diagnóstico](#-erros--diagnóstico)
+- [🛡️ Segurança](#️-segurança)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
 
-Todas as imagens de terceiros, exceto `cerebro`, têm digest no compose. Os nomes das imagens estão também em [../terceiros.md](../terceiros.md).
+## 🎯 Visão geral
+
+Os containers vivem em `runtime/docker-compose.yml` (projeto `tudoia`, `name: tudoia`). Ollama e ComfyUI rodam direto no
+Windows porque precisam da GPU e ficam fora do compose.
+
+- **Perfis.** Só `postgres` e `litellm` sobem sem perfil. O resto é escolhido em `COMPOSE_PROFILES` no `.env`
+  (o `.env.example` traz `cerebro,webui,n8n,keycloak`; o perfil `squadti` não vem ligado):
+
+  | Perfil | Serviços |
+  |---|---|
+  | (nenhum) | `postgres`, `litellm` |
+  | `cerebro` | `cerebro`, `searxng` |
+  | `webui` | `open-webui`, `kokoro`, `searxng` |
+  | `n8n` | `n8n` |
+  | `keycloak` | `keycloak` |
+  | `squadti` | `squadti` |
+
+- **Portas.** Todas publicadas só em `127.0.0.1` (o teste `test_portas_so_em_loopback` falha se alguma não for).
+- **Segredos.** O compose lê o `.env` da raiz (`--env-file`) só para substituir `${VAR}`. Nenhum serviço usa `env_file`:
+  cada um recebe só as variáveis listadas em `environment`.
+- **Rede.** O compose não declara redes: todos os serviços ficam na rede padrão do projeto (`<projeto>_default`) e se
+  alcançam pelo nome do serviço (`postgres`, `litellm`, `searxng`, `cerebro`). Para o host (Ollama, Keycloak a partir
+  do Cérebro) usam `host.docker.internal`, mapeado por `extra_hosts: host-gateway`.
+- **Projeto.** `TUDOIA_COMPOSE_PROJETO` no `.env` (padrão `tudoia`) muda o prefixo dos volumes e containers de rede;
+  outro nome isola uma segunda instalação. Os `container_name` são fixos, então duas instalações não coexistem sem
+  ajuste.
+- **Imagens.** As de terceiros estão fixadas por digest `@sha256:`. `cerebro` e `squadti` são construídos localmente
+  (ver [Riscos e limites](#️-segurança)).
+
+```mermaid
+C4Container
+  title Stack Docker do TudoIA (loopback 127.0.0.1)
+  Person(u, "Usuário")
+  System_Boundary(h, "Host Windows") {
+    Container(ol, "Ollama", "processo", ":11434, GPU")
+    Container(cf, "ComfyUI", "processo", ":8188, GPU")
+    Container(pn, "Painel", "processo", ":3100")
+  }
+  System_Boundary(d, "Docker compose (projeto tudoia)") {
+    ContainerDb(pg, "postgres", "Postgres 17", ":5433")
+    Container(lt, "litellm", "Gateway", ":4000")
+    Container(ce, "cerebro", "MCP", ":8765")
+    Container(sx, "searxng", "Busca", ":8080")
+    Container(wu, "open-webui", "Chat", ":3000")
+    Container(ko, "kokoro", "TTS", ":8880")
+    Container(n8, "n8n", "Automação", ":5678")
+    Container(kc, "keycloak", "OIDC", ":8180")
+    Container(sq, "squadti", "Agentes", ":8790")
+  }
+  Rel(u, pn, "usa")
+  Rel(lt, pg, "SQL")
+  Rel(kc, pg, "SQL")
+  Rel(lt, ol, "host.docker.internal")
+  Rel(wu, ol, "direto")
+  Rel(ce, sx, "busca")
+  Rel(sq, lt, "chat")
+```
+
+## 📦 Containers
+
+Digests omitidos por legibilidade; a tag completa está no compose. Todos têm `restart: unless-stopped`.
+
+| Serviço | Container | Imagem | Porta no host | Healthcheck |
+|---|---|---|---|---|
+| `postgres` | `tudoia-postgres` | `postgres:17.6-alpine` | `5433` para `5432` | `pg_isready -U tudoia_admin -d postgres`, 5 s, timeout 5 s, 10 tentativas |
+| `litellm` | `litellm` | `ghcr.io/berriai/litellm:main-latest` | `4000` | `GET /health/liveliness`, 30 s, timeout 10 s, 3 tentativas, início 60 s |
+| `searxng` | `searxng` | `searxng/searxng:2026.10.19-81371861f` | `8080` | `GET /healthz` contém `OK`, 30 s, início 20 s |
+| `cerebro` | `cerebro` | build de `runtime/cerebro/Dockerfile` | `8765` | `GET /saude`, 30 s, início 30 s |
+| `squadti` | `squadti` | build de `runtime/squadti/Dockerfile` | `8790` | `GET /saude`, 30 s, início 30 s |
+| `kokoro` | `kokoro` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` | `8880` | nenhum |
+| `open-webui` | `open-webui` | `ghcr.io/open-webui/open-webui:main` | `3000` para `8080` | nenhum |
+| `n8n` | `n8n` | `docker.n8n.io/n8nio/n8n:latest` | `5678` | `GET /healthz` (via `node -e fetch`), 30 s, início 60 s |
+| `keycloak` | `keycloak` | `quay.io/keycloak/keycloak:26.3` | `8180` para `8080` | `GET /health/ready` na porta de gerenciamento 9000 (só dentro do container) por `/dev/tcp` do bash, 10 s, 30 tentativas, início 90 s |
+
+### Variáveis, volumes e dependências
+
+| Serviço | Variáveis recebidas (nomes) | Volumes | Depende de |
+|---|---|---|---|
+| `postgres` | `POSTGRES_USER=tudoia_admin`, `POSTGRES_DB=postgres`, `POSTGRES_PASSWORD` (de `POSTGRES_ADMIN_PASSWORD`), `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `TZ` | volume `postgres` em `/var/lib/postgresql/data`; `runtime/postgres/init` em `/docker-entrypoint-initdb.d` (somente leitura) | nada |
+| `litellm` | `DATABASE_URL` (monta com `LITELLM_DB_PASSWORD`), `LITELLM_MASTER_KEY`, `OLLAMA_URL`, `TZ`, `NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `FAL_AI_API_KEY`, `HF_TOKEN` | `runtime/litellm/config.yaml` (gerado), `roteador.py`, `roteador_regras.py`, `roteador_eventos.py`, `roteador_resiliente.py` (todos somente leitura); `config/` em `/app/config` (somente leitura); `dados/logs` em `/app/logs` | `postgres` saudável |
+| `searxng` | `SEARXNG_SECRET` | `runtime/searxng` em `/etc/searxng` (leitura e escrita) | nada |
+| `cerebro` | `OLLAMA_URL` (fixo no compose, `http://host.docker.internal:11434`), `SEARXNG_URL`, `CEREBRO_DOCS`, `CEREBRO_DOCS_HOST`, `CEREBRO_DADOS`, `CEREBRO_OIDC_ISSUER`, `CEREBRO_OIDC_JWKS_URL`, `CEREBRO_OIDC_CLIENT_ID`, `CEREBRO_TOKEN_ESTATICO` | `dados/documentos` em `/docs` (somente leitura); `dados/cerebro` em `/dados` | `searxng` (só início) |
+| `squadti` | `TUDOIA_SQUADTI_TOKEN`, `TUDOIA_API_KEY` (de `SQUADTI_API_KEY`), `TUDOIA_GATEWAY_URL`, `TUDOIA_TIMEOUT_S`, `TUDOIA_CONTEXTO_TOKENS`, `TUDOIA_NUGET_USER`, `TUDOIA_NUGET_PAT`, `TUDOIA_NUGET_FEED_URL`, `TESTCONTAINERS_HOST_OVERRIDE` | volume `squadti-dados` em `/dados`; `SQUADTI_TEMPLATE_DIR` (padrão `dados/squadti-template`) em `/template` (somente leitura); `/var/run/docker.sock` | `litellm` saudável |
+| `kokoro` | nenhuma | nenhum | nada |
+| `open-webui` | `OLLAMA_BASE_URL`, `WEBUI_NAME=TudoIA`, `WEBUI_SECRET_KEY`, `ENABLE_API_KEYS=true`, `TZ` | volume `open-webui` em `/app/backend/data`; `runtime/open-webui/env.py` e nove imagens de `runtime/open-webui/static` sobre `/app/build/static` (somente leitura) | `searxng`, `kokoro` (só início) |
+| `n8n` | `GENERIC_TIMEZONE`, `TZ`, `N8N_HOST=localhost`, `N8N_WEBHOOK_URL`, `N8N_RESTRICT_FILE_ACCESS_TO=/data/docs`, `N8N_ENCRYPTION_KEY`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` | volume `n8n` em `/home/node/.n8n`; `dados/documentos` em `/data/docs` | nada |
+| `keycloak` | `KC_BOOTSTRAP_ADMIN_USERNAME` (de `TUDOIA_KEYCLOAK_ADMIN`, padrão `admin`), `KC_BOOTSTRAP_ADMIN_PASSWORD` (de `TUDOIA_KEYCLOAK_ADMIN_PASSWORD`), `KC_DB*`, `KC_DB_PASSWORD` (de `KEYCLOAK_DB_PASSWORD`), `KC_HEALTH_ENABLED`, `TZ` | `infra/keycloak/tema/tudoia` em `/opt/keycloak/themes/tudoia` (somente leitura) | `postgres` saudável |
+
+Volumes nomeados (declarados no compose): `open-webui`, `n8n`, `postgres`, `squadti-dados`. Com o prefixo do projeto, viram
+`tudoia_n8n` etc. O `scripts/backup/backup.py` empacota os volumes `n8n` e `open-webui` e faz `pg_dump` dentro do container do Postgres.
+
+Contratos que os testes cobrem (`tests/runtime/test_compose.py`): sem `env_file`; toda chave `chave:` do catálogo de
+modelos e do `config/video-nuvem.yaml` está no `environment` do `litellm`; o `litellm` não recebe segredo alheio; o `n8n`
+bloqueia `$env` e não recebe `TUDOIA_MCP_CLIENT_SECRET`; só `litellm` e `postgres` não têm perfil; dependência fica no
+mesmo perfil do dependente; um único Postgres e `POSTGRES_ADMIN_PASSWORD` fora de todo outro serviço.
 
 ### Ordem de início
 
-O compose respeita só o que está em `depends_on`:
+Só `litellm`, `keycloak` (ambos esperam o `postgres` saudável) e `squadti` (espera o `litellm` saudável) têm `depends_on`
+com condição. Os demais `depends_on` (`cerebro` e `open-webui`) garantem só a ordem de criação, não a prontidão.
 
-1. `litellm-db` sobe e fica saudável (`pg_isready`).
-2. `litellm` sobe depois que o banco está saudável.
-3. `searxng` sobe. Em seguida, `cerebro`, `kokoro` e `open-webui` sobem, nessa ordem de dependência. Nada garante que o `searxng` esteja pronto, só que o container foi iniciado.
-4. `n8n` não tem dependências.
+### SquadTI: isolamento e docker.sock
 
-O `litellm` é o único serviço com dependência condicionada a saúde. Os demais dependem só de o container ter iniciado.
-Os healthchecks de `litellm`, `searxng`, `cerebro` e `n8n` só marcam o estado (`healthy` ou `unhealthy`). Nenhum
-`depends_on` espera por eles.
+O serviço `squadti` compila e testa código escrito por modelo, por isso roda com: `read_only: true`, `tmpfs /tmp` de 1 GB,
+`cap_drop: [ALL]`, `no-new-privileges`, `pids_limit: 1024`, `mem_limit` (`SQUADTI_MEMORIA`, padrão `6g`) e `cpus`
+(`SQUADTI_CPUS`, padrão `4`). O processo é o usuário `squadti` (uid 10001, `Dockerfile`), e só o volume `squadti-dados`
+é gravável. A imagem é construída com o argumento `DOUTRINA_SHA` (de `SQUADTI_DOUTRINA_SHA`). Detalhes do serviço em
+[squadti.md](squadti.md).
 
-### Open WebUI e o arquivo `env.py`
+> [!CAUTION]
+> O `/var/run/docker.sock` do host está montado (decisão do dono, registrada no comentário do compose) para os testes de
+> integração com Testcontainers, e `group_add: ["0"]` dá ao usuário 10001 acesso ao socket (no Docker Desktop ele é
+> `root:root 0660`). Quem controla o socket controla o Docker do host e pode virar root nele: o código gerado pelo modelo
+> deixa de estar isolado do host. O endurecimento restante reduz o dano por outros caminhos, não por este. Para voltar ao
+> isolamento, remova a linha do socket, o `group_add` e `TESTCONTAINERS_HOST_OVERRIDE`; os testes de integração deixam
+> de rodar.
 
-O arquivo `runtime/open-webui/env.py` é montado sobre `/app/backend/open_webui/env.py` (volumes do serviço `open-webui` no compose). Não é um arquivo novo: é uma **cópia completa** do `env.py` original do Open WebUI, com duas mudanças. A comparação foi feita contra o `env.py` extraído da imagem `ghcr.io/open-webui/open-webui:main@sha256:4860ba...`, que traz o Open WebUI 0.12.3 (`/app/package.json`). Só 11 linhas diferem:
+Feed NuGet das bibliotecas `TEC.*` (todos opcionais, só por ambiente): `TUDOIA_NUGET_FEED_URL` (feed público, sem
+credencial) ou o par `TUDOIA_NUGET_USER` + `TUDOIA_NUGET_PAT` (feed privado `tec-interno`; o GitHub Packages exige PAT com
+`read:packages`). Sem nenhum, o restore dos pacotes `TEC.*` não tem origem. Como cada um é consumido: [squadti.md](squadti.md).
 
-| Trecho | Upstream | No TudoIA |
-|---|---|---|
-| `WEBUI_NAME` | padrão `Open WebUI`, com a regra que acrescenta ` (Open WebUI)` ao nome | padrão `TudoIA` |
-| `WEBUI_FAVICON_URL` | fixo em `https://openwebui.com/favicon.png` | lido da variável, com padrão `/static/favicon.png` |
+## 🗄️ Postgres e o init de bancos
 
-Com `WEBUI_NAME=TudoIA` no compose, o nome final é o mesmo nos dois casos. O efeito prático das mudanças é o padrão do favicon servido localmente.
+Um único servidor Postgres atende o LiteLLM e o Keycloak, com um database e um role por consumidor.
 
-Além do `env.py`, o compose monta nove imagens de `runtime/open-webui/static/` sobre os ícones de `/app/build/static/`. Nenhuma delas tem o mesmo hash do arquivo original da imagem. `logo.png`, `splash.png` e `splash-dark.png` são o mesmo arquivo. `favicon.png`, `favicon-96x96.png` e os dois `web-app-manifest` são outro arquivo, igual ao `painel/tudoia_painel/static/logo-512.png`. Isso indica que a marca foi substituída pela do TudoIA, o que tem implicação de licença (ver [../terceiros.md](../terceiros.md)).
+- `runtime/postgres/init/01-bancos.sh` roda **uma vez**, na primeira subida de um volume `postgres` vazio (`initdb`). Num
+  volume existente, o Postgres ignora a pasta.
+- Exige `LITELLM_DB_PASSWORD` e `KEYCLOAK_DB_PASSWORD`; sem elas, o script sai com erro.
+- Cria os roles `litellm` e `keycloak` (`LOGIN`), os databases `litellm` e `keycloak` (donos respectivos) e faz
+  `REVOKE CONNECT ... FROM PUBLIC` nos databases `litellm`, `keycloak` e `postgres`. Resultado: nenhum role conecta no
+  database do outro.
+- As senhas entram no SQL como variáveis do `psql` (`:'nome'`, escapadas como literal), não na linha de comando.
+- O superusuário `tudoia_admin` (`POSTGRES_ADMIN_PASSWORD`) é entregue só ao próprio Postgres, nunca a outro serviço.
+- O arquivo precisa ter fim de linha LF (o teste confere): com CRLF o `sh` do container não o executa.
 
-Ao atualizar o digest do Open WebUI, extraia de novo o `env.py` da imagem, compare com o arquivo do repositório e reaplique as duas mudanças. Se a estrutura de `/app/build/static` mudar, os montes do compose precisam ser revistos.
+> [!WARNING]
+> Trocar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env` depois da primeira subida **não** altera a senha dentro
+> do banco. Use `ALTER ROLE` (ver [configuracao.md](../configuracao.md)). Porta no host: `127.0.0.1:5433`.
 
-## Processos do host
-
-### Ollama
-
-- **Início:** o painel (`painel/tudoia_painel/servicos.py`, `_start_ollama`) executa `ollama serve` com `OLLAMA_HOST=127.0.0.1:11434` e `OLLAMA_MODELS` apontando para `TUDOIA_OLLAMA_MODELS` ou, sem ela, `modelos\ollama\models`. O `scripts\tudoia.ps1 up` faz o mesmo e também lê `TUDOIA_OLLAMA_MODELS` do `.env`.
-- **Parada:** o painel encerra o processo que escuta na porta 11434 e também `ollama.exe` e `ollama_llama_server.exe` (`taskkill`).
-- **Bind:** no Windows e no Docker Desktop, só `127.0.0.1:11434`. Os containers chegam ao loopback do host por `host.docker.internal` (testado). No Linux com Docker Engine sem Docker Desktop, `host.docker.internal` (`host-gateway`) é o IP da bridge `docker0`, não o loopback. Por isso o `scripts/tudoia.sh` (`endereco_ollama`) faz o Ollama escutar no IPv4 da `docker0` (ex.: `172.17.0.1`), nunca em `0.0.0.0`. Nesse caso, a CLI do Ollama e o painel no host precisam de `OLLAMA_HOST=<esse IP>:11434`, e o firewall (ufw) precisa liberar a porta para as redes do Docker. Não testado em Linux.
-
-### ComfyUI
-
-- **Início:** o painel executa `cmd.exe /c run_nvidia_gpu.bat` dentro de `TUDOIA_COMFYUI_PORTABLE` (padrão `modelos\comfyui\ComfyUI_windows_portable`). A saída vai para `dados/logs/comfyui.log`.
-- **Parada:** o painel encerra o processo que escuta na porta 8188 e os processos cuja linha de comando contém o caminho do portable.
-- **Porta:** 8188, em `127.0.0.1` (padrão do ComfyUI). Não é configurável pelo `.env`.
-- Detalhes do uso pelo Estúdio em [estudio.md](estudio.md).
-
-### Como o painel controla os serviços
-
-O painel (`painel/tudoia_painel/servicos.py`) faz três coisas:
-
-- **Estado:** `docker ps` diz se um container está rodando. Para Ollama e ComfyUI, o painel testa se a porta responde em `127.0.0.1`.
-- **Ação em um serviço:** `POST /api/servicos/{nome}/{acao}` com `start`, `stop` ou `restart`. Para containers, o painel roda `docker compose` com `up -d`, `stop` e `restart`. Para os processos do host, aplica a lógica descrita acima.
-- **Ação em todos:** `POST /api/servicos/todos/{acao}`. No `start`, sobe Ollama e ComfyUI (se as portas estiverem fechadas), depois faz `up -d` do compose. Falhas ao subir os processos do host são ignoradas em silêncio: a resposta diz sucesso mesmo se o ComfyUI não iniciou. Confira o estado na aba de serviços ou em `dados/logs/comfyui.log`.
-
-## Subir, parar e ver o estado
+## 🚀 Uso
 
 ### Pelo script (recomendado)
 
-Execute na raiz do repositório, no PowerShell (ou `scripts\tudoia.cmd`, que chama o `.ps1`):
+Na raiz do repositório, em PowerShell (ou `scripts\tudoia.cmd`):
 
 ```powershell
-scripts\tudoia.ps1 up       # sobe Ollama (se a porta 11434 estiver livre), sincroniza a governança e roda compose up -d --build
+scripts\tudoia.ps1 up       # sobe Ollama se a 11434 estiver livre; py sync (governança); compose up -d --build; sobe o painel
 scripts\tudoia.ps1 status   # docker compose ps
 scripts\tudoia.ps1 down     # docker compose down (remove containers e rede; mantém os volumes)
-scripts\tudoia.ps1 painel   # sobe o painel em http://127.0.0.1:3100/app/
+scripts\tudoia.ps1 painel   # painel em primeiro plano, em http://127.0.0.1:3100/app/
 ```
 
-Atenções:
-
-- `up` **não** sobe o ComfyUI. Para ele, use o painel ou inicie `run_nvidia_gpu.bat` manualmente.
-- `up` faz `--build`, então reconstrói o `cerebro`. O `start` do painel não faz `--build`.
-- `down` remove os containers. O `stop` do painel só pausa os containers. Ambos preservam os volumes nomeados.
-- O script para com o código de saída do primeiro comando nativo que falhar (função `Nativo`). Um `sync` que falha não deixa o `up` seguir para o `compose up`.
-
-Os demais comandos do script (`sync`, `verificar`, `segredos`, `keycloak`, `modelos`, `n8n-credencial`, `backup`) são descritos em [../instalacao.md](../instalacao.md#comandos-disponíveis) e nos documentos de cada componente.
-
-No Linux, o equivalente é `scripts/tudoia.sh`, com os mesmos comandos (ver [../instalacao.md](../instalacao.md#linux)).
+- `up` não sobe o ComfyUI (use o painel ou `run_nvidia_gpu.bat`) e faz `--build`, reconstruindo `cerebro` e `squadti`.
+- O script usa `TUDOIA_COMPOSE_PROJETO` do `.env` como nome do projeto.
+- Se um comando nativo falhar (por exemplo o `sync`), o script encerra com o mesmo código e o `up` não segue.
+- Há também `scripts\iniciar.ps1`, `parar.ps1` e `reiniciar.ps1` (ciclo de vida do painel e do stack). O que cada um faz
+  está em [../operacao.md](../operacao.md) e [painel.md](painel.md).
+- Outros comandos (`sync`, `verificar`, `segredos`, `keycloak`, `modelos`, `n8n-credencial`, `squadti-chave`, `backup`,
+  `verificar-openwebui`, `empacotar`) estão em [../instalacao.md](../instalacao.md) e nos docs de cada componente.
+- Linux: `scripts/tudoia.sh`, mesmos comandos principais.
 
 ### Direto pelo Docker Compose
-
-Na raiz do repositório:
 
 ```powershell
 docker compose -p tudoia -f runtime\docker-compose.yml --env-file .env up -d
 docker compose -p tudoia -f runtime\docker-compose.yml ps
 docker compose -p tudoia -f runtime\docker-compose.yml logs -f litellm
 docker compose -p tudoia -f runtime\docker-compose.yml stop
-docker compose -p tudoia -f runtime\docker-compose.yml down
 ```
 
-Para um serviço só, acrescente o nome no fim: `up -d cerebro`, `restart n8n`, `logs -f cerebro`.
+Um serviço só: acrescente o nome (`up -d cerebro`, `logs -f n8n`). Serviço com perfil só aparece se o perfil estiver em
+`COMPOSE_PROFILES` ou for passado com `--profile`.
+
+### Pelo painel
+
+`painel/tudoia_painel/servicos.py` expõe `POST /api/servicos/{nome}/{acao}` (`start`, `stop`, `restart`) e
+`POST /api/servicos/todos/{acao}`:
+
+| Ação em container | Comando compose |
+|---|---|
+| `start` | `up -d <serviço>` |
+| `stop` | `stop <serviço>` |
+| `restart` | `up -d --no-deps --force-recreate <serviço>` (recria para reler o `.env`; `compose restart` manteria as variáveis antigas) |
+
+Em `todos`: `start` sobe Ollama e ComfyUI (se as portas estiverem fechadas) e faz `up -d`; `stop` encerra os dois e faz
+`stop`; `restart` reinicia os dois e faz `up -d --force-recreate`. Falha ao subir Ollama ou ComfyUI é só registrada em log:
+a resposta não acusa. Confira em `dados/logs/comfyui.log`. O painel lê `TUDOIA_COMPOSE_PROJETO` a cada chamada.
 
 ### Checar a saúde
 
-- `litellm-db`, `litellm`, `searxng`, `cerebro`, `n8n`: `docker inspect --format "{{.State.Health.Status}}" <nome>` deve retornar `healthy`. O `tudoia.ps1 status` mostra o mesmo estado.
-- Painel: `http://127.0.0.1:3100/saude` responde `{"ok": true}`, sem login.
-- Cérebro: `http://127.0.0.1:8765/saude` retorna contagens e o estado da última indexação.
-- LiteLLM: a interface em `http://localhost:4000/ui`.
-- Ollama: `http://127.0.0.1:11434` responde (a resposta exata da raiz não foi conferida nesta versão; a confirmar).
-- ComfyUI: `http://127.0.0.1:8188/system_stats`.
+- Containers com healthcheck: `docker inspect --format "{{.State.Health.Status}}" <nome>` deve dar `healthy`.
+- Painel: `http://127.0.0.1:3100/saude`. Cérebro: `http://127.0.0.1:8765/saude`. LiteLLM: `http://127.0.0.1:4000/ui`.
+- ComfyUI: `http://127.0.0.1:8188/system_stats`. Ollama: `http://127.0.0.1:11434`.
 
-## Riscos e divergências
+## ⚙️ Opções
 
-Itens verificados no código. Os de maior impacto vêm primeiro.
+Variáveis do `.env` que mudam o compose (lista completa em [../configuracao.md](../configuracao.md)):
 
-1. **Lista de variáveis do LiteLLM precisa acompanhar o catálogo** (antes: o LiteLLM recebia o `.env` inteiro; corrigido). Provedor novo em `config/catalogo-modelos.yaml` precisa da chave em `environment` do serviço `litellm`. Sem isso, o `config.yaml` referencia `os.environ/<CHAVE>` e o container não tem o valor. `tests/runtime/test_compose.py` falha nesse caso.
-2. **O Open WebUI não passa pelo LiteLLM para o Ollama.** O comentário no topo do compose diz que o LiteLLM é o gateway de chat. Mas `OLLAMA_BASE_URL` do serviço `open-webui` aponta direto para o Ollama no host. Chamadas feitas pelo Open WebUI ao Ollama não passam pelo roteador, pela quarentena nem pelos limites do LiteLLM. A ligação do Open WebUI ao LiteLLM, se existir, é feita na interface (a confirmar).
-3. **Ollama escuta só em loopback** (`127.0.0.1:11434`) no Windows e no Docker Desktop, como explicado acima.
-4. **`N8N_ENCRYPTION_KEY` é parte do backup do n8n** (antes: a chave não chegava ao container; corrigido). O compose repassa a chave do `.env`. As credenciais do volume `n8n` só decifram com ela. O `tudoia.ps1 backup` não copia o `.env`: guarde a chave à parte. Uma instalação que já tinha credenciais cifradas com a chave gerada pelo próprio n8n, antes da mudança, pode precisar recriá-las (a confirmar na instância).
-5. **`runtime/litellm/config.yaml` precisa existir antes do `up`.** O compose monta esse arquivo. Ele é gerado pelo painel (`POST /api/roteador/gerar`) e está no `.gitignore`. Em um clone limpo, ele não existe e o Docker cria um diretório no lugar, o que impede o `litellm` de subir (a confirmar em clone limpo). Gere o arquivo pelo painel antes do primeiro `up`.
-6. **A base do Cérebro não tem digest.** O `runtime/cerebro/Dockerfile` usa `python:3.12-slim` e `ghcr.io/astral-sh/uv:0.13.0`, ambos por tag. Isso contradiz a política de imagens fixadas por digest. A versão do uv está fixada, mas não o conteúdo da imagem.
-7. **Cérebro na rede Docker** (antes: sem autenticação; corrigido). `/mcp` e `/indexar` exigem token (JWT do cliente `tudoia-mcp` ou `CEREBRO_TOKEN_ESTATICO`). Só `/saude` é público. Ver [cerebro.md](cerebro.md#autenticação).
-8. **Healthcheck não condiciona a ordem de início.** `litellm-db`, `litellm`, `searxng`, `cerebro` e `n8n` têm `healthcheck`; Kokoro e Open WebUI não. Só o `litellm` espera um deles (`litellm-db` saudável). `depends_on` sem condição só garante o início, não a prontidão.
-9. **Reinicialização após reboot.** Os containers têm `restart: unless-stopped`. Ollama e ComfyUI não sobem sozinhos ao ligar a máquina (a confirmar). Use o `up` ou o painel.
-10. **Imagens `main`, `latest` e `main-latest`.** A tag muda, mas o digest fixa o conteúdo. Atualizar exige trocar o digest no compose, e isso deve ser feito com conferência (ver o item do `env.py` do Open WebUI).
-11. **`kokoro` sem ligação explícita.** O Open WebUI declara dependência de `kokoro`, mas nenhuma variável do compose aponta para ele. A configuração do TTS fica na interface (a confirmar).
-12. **Kill por porta.** O painel encerra o processo que escuta na porta do serviço (8188 ou 11434), seja ele qual for. Se outro programa usar a porta, ele também é encerrado.
+| Variável | Padrão | Efeito |
+|---|---|---|
+| `COMPOSE_PROFILES` | `cerebro,webui,n8n,keycloak` (no `.env.example`) | Perfis ligados |
+| `TUDOIA_COMPOSE_PROJETO` | `tudoia` | Nome do projeto compose |
+| `TZ` | vazia no `.env.example`; sem padrão no compose | Fuso de postgres, litellm, open-webui, n8n, keycloak (`UTC` se ausente) |
+| `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | obrigatórias (`:?`) | Senhas do Postgres; sem elas o `up` falha |
+| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama visto pelo LiteLLM |
+| `SQUADTI_MEMORIA` / `SQUADTI_CPUS` | `6g` / `4` | Teto de memória e CPU da SquadTI |
+| `SQUADTI_TIMEOUT_S` / `SQUADTI_CONTEXTO_TOKENS` | `300` / `32768` | Timeout e contexto da SquadTI |
+| `SQUADTI_TEMPLATE_DIR` / `SQUADTI_DOUTRINA_SHA` | `../dados/squadti-template` / SHA fixo no compose | Template TEC e versão da Doutrina embutida |
 
-## Veja também
+## 🖥️ Processos do host
 
-- [../instalacao.md](../instalacao.md): preparação da máquina.
-- [../configuracao.md](../configuracao.md): variáveis do `.env`.
-- [estudio.md](estudio.md): ComfyUI, fluxos e modelos.
-- [automacao-n8n.md](automacao-n8n.md): workflows do n8n.
-- [cerebro.md](cerebro.md): o serviço `cerebro` em detalhe.
-- [painel.md](painel.md): a interface de controle dos serviços.
-- [keycloak.md](keycloak.md): autenticação do painel.
-- [../terceiros.md](../terceiros.md): imagens e licenças de terceiros.
+### Ollama
+
+- Início: o painel (`_start_ollama`) e o `tudoia.ps1 up` executam `ollama serve` com `OLLAMA_HOST=127.0.0.1:11434` e
+  `OLLAMA_MODELS` = `TUDOIA_OLLAMA_MODELS` ou `modelos\ollama\models`.
+- Parada: o painel encerra o processo que escuta na 11434 e `ollama.exe`/`ollama_llama_server.exe`.
+- No Windows com Docker Desktop, `host.docker.internal` alcança o loopback do host. No Linux sem Docker Desktop, é o IP
+  da bridge `docker0`; o `scripts/tudoia.sh` faz o Ollama escutar nesse IPv4 (nunca `0.0.0.0`). Não testado em Linux.
+
+### ComfyUI
+
+- Início: `cmd.exe /c run_nvidia_gpu.bat` em `TUDOIA_COMFYUI_PORTABLE` (padrão `modelos\comfyui\ComfyUI_windows_portable`),
+  saída em `dados/logs/comfyui.log`. Porta 8188, não configurável pelo `.env`. Parada por porta e pelo caminho do portable.
+  Uso em [estudio.md](estudio.md).
+
+## ❌ Erros / diagnóstico
+
+| Sintoma | Causa provável | Ação |
+|---|---|---|
+| `up` falha com `defina no .env (tudoia segredos)` | senha obrigatória ausente | rodar `scripts\tudoia.ps1 segredos` (nomes) e preencher o `.env` |
+| `litellm` não sobe, `config.yaml` é diretório | `runtime/litellm/config.yaml` não existe (gerado pelo painel, `POST /api/roteador/gerar`; fora do git) | gerar pelo painel antes do `up`; no Windows, remover o diretório criado pelo Docker |
+| Provedor novo sem chave dentro do LiteLLM | chave do catálogo não está no `environment` do `litellm` | acrescentar a variável; `tests/runtime/test_compose.py` detecta |
+| Senha do banco trocada e serviço não autentica | o init só roda no volume novo | `ALTER ROLE` (ver configuracao.md) |
+| `up` recusa perfil | dependência em outro perfil | manter dependência no mesmo perfil (teste cobre) |
+| Chave nova no `.env` não chega ao container | `restart` simples não relê o `.env` | usar o `restart` do painel (recria) ou `up -d --force-recreate <serviço>` |
+| `squadti` não cria containers de teste | socket ausente ou sem grupo 0 | ver aviso do docker.sock acima |
+
+## 🛡️ Segurança
+
+- Tudo em loopback; o Keycloak roda em modo `start` com HTTP (`--http-enabled=true`, `--hostname-strict=false`): não
+  exponha a porta 8180.
+- O LiteLLM não recebe `.env` inteiro: o container mais exposto a texto de terceiros fica sem a senha do Keycloak, o token
+  do GitHub e as chaves do n8n.
+- Usuários: `cerebro` e `squadti` rodam como uid 10001 (sem root). `postgres`, `litellm`, `searxng`, `kokoro`,
+  `open-webui`, `n8n` e `keycloak` usam o usuário padrão de cada imagem (não alterado pelo compose; não conferido aqui).
+- Imagens `cerebro` e `squadti`: o `cerebro` parte de `python:3.12-slim` e `ghcr.io/astral-sh/uv:0.13.0` por tag, sem
+  digest; o `squadti` fixa todas as bases por digest. Risco residual do `cerebro`: a tag pode mudar o conteúdo.
+- Imagens `main`/`latest`/`main-latest`: a tag muda, o digest fixa o conteúdo; atualizar exige trocar o digest com
+  conferência. Para o Open WebUI, o `env.py` da imagem é comparado por `scripts\tudoia.ps1 verificar-openwebui` contra
+  `runtime/open-webui/env.py.aprovado.diff`: o `env.py` do repositório substitui o da imagem (volume somente leitura).
+- O Open WebUI fala direto com o Ollama (`OLLAMA_BASE_URL`), sem passar pelo roteador, quarentena ou limites do LiteLLM.
+- `N8N_ENCRYPTION_KEY` é parte do backup do n8n: sem ela, o volume `n8n` restaurado não decifra as credenciais. O backup
+  não copia o `.env`. Ver [automacao-n8n.md](automacao-n8n.md).
+- Modelo de ameaças geral: [../seguranca.md](../seguranca.md). Imagens e licenças: [../terceiros.md](../terceiros.md).
+
+## ❓ Perguntas frequentes
+
+**Os containers sobem sozinhos depois de reiniciar a máquina?** Têm `restart: unless-stopped`, então voltam com o Docker.
+Ollama e ComfyUI são processos do host e não voltam sozinhos; use `up` ou o painel.
+
+**`down` ou `stop`?** `down` remove containers e rede; `stop` (do painel) só pausa. Ambos preservam os volumes nomeados.
+
+**Kokoro está ligado ao Open WebUI?** O compose só declara a dependência de início; nenhuma variável aponta o Open WebUI
+para o Kokoro. A configuração do TTS fica na interface do Open WebUI (não verificado).
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Roteador](roteador.md) · [Automação n8n](automacao-n8n.md) ➡️

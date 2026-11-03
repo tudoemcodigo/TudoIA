@@ -7,8 +7,8 @@
   <link rel="icon" type="image/svg+xml" href="/app/logo.svg">
   <link rel="icon" type="image/x-icon" href="/app/favicon.ico">
   <link rel="stylesheet" href="/app/fontes.css">
-  <link rel="stylesheet" href="/app/painel.css">
-  <link rel="stylesheet" href="/app/squadti.css">
+  <link rel="stylesheet" href="/app/painel.css?v=12">
+  <link rel="stylesheet" href="/app/squadti.css?v=1">
 </head>
 <body>
   <header class="app-header">
@@ -16,127 +16,135 @@
       <img src="/app/logo.svg" alt="TudoIA" class="brand-icon">
       <div class="brand-logo">
         <span class="brand-name">TUDOIA</span>
-        <span class="brand-badge">STUDIO</span>
-</div>
-      <div class="header-status-pill">
+        <span class="brand-badge">Studio</span>
+      </div>
+      <a class="header-status-pill" href="#servicos" title="Ver os serviços">
         <span class="status-dot online" id="global-indicator"></span>
         <span id="global-status" class="status-label">Verificando…</span>
-</div>
-</div>
+      </a>
+    </div>
     <div class="header-actions">
-      <button class="btn btn-primary-outline btn-sm" id="btn-iniciar-tudo" title="Inicia Ollama e sobe containers da stack">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-        <span>Iniciar Stack</span>
-</button>
-      <button class="btn btn-ghost-danger btn-sm" id="btn-desligar-tudo" title="Pausa a stack Docker e libera recursos">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
-        <span>Desligar</span>
-</button>
-      <div class="header-divider"></div>
-      <button class="btn btn-outline btn-sm" id="btn-sync-global" title="Propaga regras, skills e MCPs para todas as IAs">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-        <span>Sincronizar IAs</span>
-</button>
-</div>
-</header>
+      <button class="btn btn-outline btn-sm" id="btn-iniciar-tudo" title="Liga o Ollama e sobe os containers da pilha">
+        <i data-icone="play"></i><span>Ligar tudo</span>
+      </button>
+      <button class="btn btn-ghost-danger btn-sm" id="btn-desligar-tudo" title="Para os containers da pilha e libera memória">
+        <i data-icone="power"></i><span>Desligar tudo</span>
+      </button>
+    </div>
+  </header>
 
   <div class="app-container">
-    <nav class="app-sidebar">
+    <nav class="app-sidebar" aria-label="Menu principal">
       <div class="nav-section">
-        <div class="nav-section-label">Estúdio de criação</div>
-        <a class="nav-item" data-view="chat">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-          <span>Chat Playground</span>
-</a>
-        <a class="nav-item" data-view="imagens">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-          <span>Gerador de Imagens</span>
-</a>
-        <a class="nav-item" data-view="videos">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
-          <span>Gerador de Vídeos</span>
-</a>
-        <a class="nav-item" data-view="musicas">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          <span>Gerador de Músicas</span>
-</a>
-</div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Plataforma</div>
-        <a class="nav-item active" data-view="servicos">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
-          <span>Serviços & Runtime</span>
-</a>
-        <a class="nav-item" data-view="hardware">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          <span>Hardware & VRAM</span>
-</a>
-</div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Roteamento e modelos</div>
-        <a class="nav-item" data-view="modelos">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-          <span>Modelos & Motores</span>
-</a>
-        <a class="nav-item" data-view="roteador">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 9v12"/><path d="M18 15a9 9 0 0 0-9-9"/></svg>
-          <span>Roteador LiteLLM</span>
-</a>
-</div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Governança e segurança</div>
-        <a class="nav-item" data-view="governanca">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span>Governança Canônica</span>
-</a>
-        <a class="nav-item" data-view="segredos">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
-          <span>Cofre de Segredos</span>
-</a>
-        <a class="nav-item" data-view="limites">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-          <span>Limites & Tokens</span>
-</a>
-        <a class="nav-item" data-view="telemetria">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
-          <span>Telemetria & Logs</span>
-          <span class="badge badge-pulse-mini">LIVE</span>
-</a>
-</div>
-      <div class="nav-section">
-        <div class="nav-section-label">Agentes</div>
-        <a class="nav-item" data-view="squadti" href="#squadti">
-          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
-          <span>SquadTI</span>
-        </a>
+        <a class="nav-item" data-view="inicio" href="#inicio"><i class="nav-svg" data-icone="layoutDashboard"></i><span>Início</span></a>
       </div>
       <div class="nav-section">
-        <div class="nav-section-label">Conta</div>
+        <div class="nav-section-label">Criar</div>
+        <a class="nav-item" data-view="chat" href="#chat"><i class="nav-svg" data-icone="messageSquare"></i><span>Chat</span></a>
+        <a class="nav-item" data-view="imagens" href="#imagens"><i class="nav-svg" data-icone="image"></i><span>Imagens</span></a>
+        <a class="nav-item" data-view="videos" href="#videos"><i class="nav-svg" data-icone="video"></i><span>Vídeos</span></a>
+        <a class="nav-item" data-view="musicas" href="#musicas"><i class="nav-svg" data-icone="music"></i><span>Músicas</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">IA</div>
+        <a class="nav-item" data-view="modelos" href="#modelos"><i class="nav-svg" data-icone="layers"></i><span>Modelos</span></a>
+        <a class="nav-item" data-view="provedores" href="#provedores"><i class="nav-svg" data-icone="cloud"></i><span>Provedores</span></a>
+        <a class="nav-item" data-view="roteador" href="#roteador"><i class="nav-svg" data-icone="zap"></i><span>Roteador</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Agentes</div>
+        <a class="nav-item" data-view="squadti" href="#squadti"><i class="nav-svg" data-icone="layers"></i><span>SquadTI</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Uso</div>
+        <a class="nav-item" data-view="telemetria" href="#telemetria"><i class="nav-svg" data-icone="activity"></i><span>Atividade</span><span class="badge badge-pulse-mini">ao vivo</span></a>
+        <a class="nav-item" data-view="limites" href="#limites"><i class="nav-svg" data-icone="coins"></i><span>Custos e cotas</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Sistema</div>
+        <a class="nav-item" data-view="servicos" href="#servicos"><i class="nav-svg" data-icone="server"></i><span>Serviços</span></a>
+        <a class="nav-item" data-view="hardware" href="#hardware"><i class="nav-svg" data-icone="cpu"></i><span>Hardware</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Segurança</div>
+        <a class="nav-item" data-view="segredos" href="#segredos"><i class="nav-svg" data-icone="keyRound"></i><span>Chaves e segredos</span></a>
+        <a class="nav-item" data-view="governanca" href="#governanca"><i class="nav-svg" data-icone="shield"></i><span>Agentes e regras</span></a>
+      </div>
+      <div class="nav-section nav-conta">
         <a class="nav-item" data-view="usuario" href="#usuario" id="nav-usuario" style="display:none">
           <span class="nav-avatar" id="nav-usuario-iniciais">?</span>
           <span id="nav-usuario-nome">Usuário</span>
-</a>
-</div>
-</nav>
+        </a>
+      </div>
+    </nav>
 
     <main class="app-content">
-      <!-- 1. SERVIÇOS -->
-      <section class="page-view active" id="view-servicos">
+      <!-- 0. INÍCIO -->
+      <section class="page-view" id="view-inicio">
         <div class="page-header">
           <div class="page-title">
-            <h2>Serviços e Infraestrutura Local</h2>
-            <p>Gerenciamento do gateway LiteLLM, memória Cérebro, Ollama, ComfyUI e serviços de apoio.</p>
-</div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-outline btn-sm" id="btn-recarregar-servicos">↻ Atualizar Status</button>
-            <button class="btn btn-primary-outline btn-sm" id="btn-reiniciar-todos-servicos" title="Reinicia todos os serviços Docker e processos locais (Ollama, ComfyUI)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-              <span>Reiniciar Todos os Serviços</span>
-</button>
-</div>
+            <h2>Início</h2>
+            <p>Como o TudoIA está agora e o que precisa da sua atenção.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="btn-atualizar-inicio"><i data-icone="refreshCw"></i><span>Atualizar</span></button>
+          </div>
+        </div>
+        <div class="grid-stats" id="inicio-stats"></div>
+        <section class="bloco" aria-labelledby="inicio-pendencias-titulo">
+          <h3 class="bloco-titulo" id="inicio-pendencias-titulo">Precisa de atenção</h3>
+          <ul class="lista-pendencias" id="inicio-pendencias"></ul>
+        </section>
+        <section class="bloco" aria-labelledby="inicio-atalhos-titulo">
+          <h3 class="bloco-titulo" id="inicio-atalhos-titulo">Criar</h3>
+          <div class="atalhos">
+            <a class="atalho" href="#chat"><i data-icone="messageSquare" data-tamanho="18"></i><span><strong>Chat</strong><small>Conversar com o roteador ou um modelo</small></span></a>
+            <a class="atalho" href="#imagens"><i data-icone="image" data-tamanho="18"></i><span><strong>Imagens</strong><small>Gerar e editar no ComfyUI</small></span></a>
+            <a class="atalho" href="#videos"><i data-icone="video" data-tamanho="18"></i><span><strong>Vídeos</strong><small>Texto, imagem ou vídeo para vídeo</small></span></a>
+            <a class="atalho" href="#musicas"><i data-icone="music" data-tamanho="18"></i><span><strong>Músicas</strong><small>Faixas com ou sem letra</small></span></a>
+          </div>
+        </section>
+      </section>
+
+      <!-- IA. PROVEDORES EXTERNOS -->
+      <section class="page-view" id="view-provedores">
+        <div class="page-header">
+          <div class="page-title">
+            <h2>Provedores</h2>
+            <p>Serviços de IA na nuvem: chave, links, limites e os modelos que cada um oferece ao roteador.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="btn-provedores-escolher-novos" title="Lista os modelos novos de todos os provedores para você escolher quais incluir"><i data-icone="search"></i><span>Procurar modelos novos</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-provedores-sincronizar" title="Adiciona os modelos novos como inativos e remove os descontinuados, em todos os provedores"><i data-icone="refreshCw"></i><span>Sincronizar catálogo</span></button>
+            <button class="btn btn-primary btn-sm" id="btn-provedores-novo"><i data-icone="plus"></i><span>Novo provedor</span></button>
+          </div>
+        </div>
+        <div class="barra-filtros">
+          <div class="subtabs" role="tablist" aria-label="Filtrar provedores">
+            <button class="subtab-btn active" data-filtro-provedor="todos">Todos <span class="contagem" id="cont-prov-todos"></span></button>
+            <button class="subtab-btn" data-filtro-provedor="FREE">Gratuitos <span class="contagem" id="cont-prov-FREE"></span></button>
+            <button class="subtab-btn" data-filtro-provedor="PAID">Pagos <span class="contagem" id="cont-prov-PAID"></span></button>
+            <button class="subtab-btn" data-filtro-provedor="sem-chave">Sem chave <span class="contagem" id="cont-prov-sem-chave"></span></button>
+          </div>
+          <label class="campo-busca">
+            <i data-icone="search"></i>
+            <input type="search" id="busca-provedores" placeholder="Buscar provedor ou modelo" aria-label="Buscar provedor ou modelo">
+          </label>
+        </div>
+        <div class="lista-provedores" id="lista-provedores"></div>
+      </section>
+
+      <!-- 1. SERVIÇOS -->
+      <section class="page-view" id="view-servicos">
+        <div class="page-header">
+          <div class="page-title">
+            <h2>Serviços</h2>
+            <p>Gateway, Cérebro, Ollama, ComfyUI e os serviços de apoio. Ligue, pare ou reinicie cada um.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="btn-recarregar-servicos"><i data-icone="refreshCw"></i><span>Atualizar</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-reiniciar-todos-servicos" title="Reinicia os containers e os processos locais (Ollama, ComfyUI)"><i data-icone="rotateCcw"></i><span>Reiniciar tudo</span></button>
+          </div>
 </div>
         <div class="grid-cards" id="grid-servicos"></div>
 </section>
@@ -171,7 +179,7 @@
 </dl>
             <p class="card-desc" style="margin-top:12px;">
               Senha, e-mail e autenticação em dois fatores são feitos na própria conta do Keycloak.
-              <a href="#" id="usu-conta-link" target="_blank" rel="noopener">Gerenciar minha conta ↗</a>
+              <a href="#" id="usu-conta-link" target="_blank" rel="noopener">Gerenciar minha conta <i data-icone="externalLink" data-tamanho="12" class="icone-inline"></i></a>
 </p>
 </div>
 
@@ -198,14 +206,14 @@
       <section class="page-view" id="view-hardware">
         <div class="page-header">
           <div class="page-title">
-            <h2>Monitoramento do Servidor & Recursos</h2>
-            <p>Telemetria de baixo nível: carga de CPU, memória RAM, VRAM e temperatura da GPU em tempo real.</p>
-</div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn btn-outline btn-sm" id="btn-limpar-vram" title="Descarrega todos os modelos da VRAM no Ollama para liberar memória">Limpar VRAM</button>
-            <button class="btn btn-outline btn-sm" id="btn-toggle-stream-hardware">Pausar Monitor (2s)</button>
-            <button class="btn btn-outline btn-sm" id="btn-recarregar-hardware">Atualizar</button>
-</div>
+            <h2>Hardware</h2>
+            <p>Processador, memória, placa de vídeo e discos desta máquina, atualizados a cada 2 segundos.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="btn-toggle-stream-hardware"><i data-icone="pause"></i><span>Pausar</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-recarregar-hardware"><i data-icone="refreshCw"></i><span>Atualizar</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-limpar-vram" title="Tira todos os modelos do Ollama da memória de vídeo"><i data-icone="cpu"></i><span>Liberar memória de vídeo</span></button>
+          </div>
 </div>
 
         <div class="hardware-grid">
@@ -294,58 +302,60 @@
       <section class="page-view" id="view-modelos">
         <div class="page-header">
           <div class="page-title">
-            <h2>Catálogo de Modelos do Ecossistema</h2>
-            <p>Modelos locais acelerados em GPU e catálogo de modelos de nuvem roteados pelo LiteLLM.</p>
-</div>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span id="progresso-teste-modelos" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono);"></span>
-            <button class="btn btn-outline btn-sm" id="btn-modal-baixar-modelo-local">+ Baixar Modelo Ollama</button>
-            <button class="btn btn-outline btn-sm" id="btn-modal-novo-provedor">+ Novo Provedor</button>
-            <button class="btn btn-outline btn-sm" id="btn-escolher-novos" title="Lista os modelos novos de todos os provedores e você escolhe quais incluir">Escolher Novos</button>
-            <button class="btn btn-outline btn-sm" id="btn-sincronizar-novos" title="Adiciona modelos novos (inativos) e remove os descontinuados de todos os provedores">Sincronizar Novos</button>
-            <button class="btn btn-primary btn-sm" id="btn-testar-todos-modelos">Testar Todos</button>
-            <button class="btn btn-outline btn-sm" id="btn-limpar-historico-testes" title="Limpar resultados salvos de testes">Limpar Histórico</button>
-</div>
-</div>
-        <div class="subtabs">
-          <button class="subtab-btn active" data-filter-modelo="todos">Todos</button>
-          <button class="subtab-btn" data-filter-modelo="local">Locais (Ollama)</button>
-          <button class="subtab-btn" data-filter-modelo="free">Nuvem Free</button>
-          <button class="subtab-btn" data-filter-modelo="paid">Nuvem Pagos</button>
-          <button class="subtab-btn" data-filter-modelo="midia">Vídeo & Imagem</button>
-</div>
-        <div class="subtabs" id="subfiltro-provedores" style="display:none;"></div>
-        <div class="busca-modelos-container" style="display:flex; gap:12px; align-items:center; margin:12px 0 16px 0;">
-          <div style="position:relative; flex:1;">
-            <input type="text" id="input-busca-modelos-catalogo" placeholder="🔍 Pesquisar no catálogo por nome, ID, papéis (ex: coder, vision), família, formato..." style="width:100%; padding:9px 36px 9px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:6px; color:var(--text); outline:none;">
-            <button id="btn-limpar-busca-modelos" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; display:none;" title="Limpar pesquisa">✕</button>
+            <h2>Modelos</h2>
+            <p>Todos os modelos, agrupados por origem e tipo. Os da nuvem são cadastrados e editados em Provedores.</p>
           </div>
-          <span id="contagem-busca-modelos" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); white-space:nowrap;"></span>
+          <div class="page-actions">
+            <span id="progresso-teste-modelos" class="grupo-resumo"></span>
+            <button class="btn btn-outline btn-sm" id="btn-limpar-historico-testes" title="Apaga os resultados de teste guardados neste navegador"><i data-icone="rotateCcw"></i><span>Limpar resultados</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-testar-todos-modelos"><i data-icone="zap"></i><span>Testar todos</span></button>
+            <button class="btn btn-primary btn-sm" id="btn-modal-baixar-modelo-local"><i data-icone="download"></i><span>Baixar modelo</span></button>
+          </div>
         </div>
-        <div class="grid-cards" id="grid-modelos"></div>
+        <div class="barra-filtros">
+          <div class="subtabs" role="tablist" aria-label="Filtrar modelos">
+            <button class="subtab-btn active" data-filter-modelo="todos">Todos</button>
+            <button class="subtab-btn" data-filter-modelo="local">Ollama (texto)</button>
+            <button class="subtab-btn" data-filter-modelo="midia">ComfyUI (imagem, vídeo, música)</button>
+            <button class="subtab-btn" data-filter-modelo="nuvem">Nuvem</button>
+          </div>
+          <label class="campo-busca">
+            <i data-icone="search"></i>
+            <input type="search" id="input-busca-modelos-catalogo" placeholder="Buscar por nome, família ou formato" aria-label="Buscar modelo">
+            <button id="btn-limpar-busca-modelos" class="btn-limpar-busca" type="button" aria-label="Limpar busca" title="Limpar busca" style="display:none"><i data-icone="x"></i></button>
+          </label>
+          <span id="contagem-busca-modelos" class="grupo-resumo"></span>
+        </div>
+        <div class="subtabs" id="subfiltro-provedores" style="display:none;"></div>
+        <div id="grid-modelos"></div>
 </section>
 
       <!-- 3. ROTEADOR -->
       <section class="page-view" id="view-roteador">
         <div class="page-header">
           <div class="page-title">
-            <h2>Roteador Inteligente tudoia-auto</h2>
-            <p>Roteamento semântico kNN com quarentena, failover automático e controle fino de membros locais e nuvem.</p>
+            <h2>Roteador</h2>
+            <p>Grupos do tudoia-auto: a ordem de tentativa de cada um e o que acontece quando um modelo falha.</p>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <span id="badge-roteador-pendente" class="badge badge-warning" style="display:none; font-size:11px; padding:4px 8px; animation:pulse 2s infinite;">● Alterações pendentes</span>
-            <button class="btn btn-outline btn-sm" id="btn-modal-novo-grupo">+ Novo Grupo</button>
-            <button class="btn btn-outline btn-sm" id="btn-auto-bind-roteador" title="Vincula modelos ativos automaticamente aos grupos correspondentes aos seus papéis declarados">Auto-Vincular por Papel</button>
-            <button class="btn btn-primary btn-sm" id="btn-salvar-ordem-roteador">Salvar Grupos</button>
-            <button class="btn btn-outline btn-sm" id="btn-gerar-roteador">Regenerar config.yaml</button>
+          <div class="page-actions">
+            <span id="badge-roteador-pendente" class="badge badge-aviso" style="display:none;">Alterações não salvas</span>
+            <button class="btn btn-outline btn-sm" id="btn-modal-novo-grupo"><i data-icone="plus"></i><span>Novo grupo</span></button>
+            <button class="btn btn-primary btn-sm" id="btn-salvar-ordem-roteador"><i data-icone="check"></i><span>Salvar e aplicar</span></button>
+            <details class="menu-mais">
+              <summary class="btn btn-outline btn-sm btn-icone" aria-label="Mais ações do roteador" title="Mais ações"><i data-icone="ellipsis"></i></summary>
+              <div class="menu-mais-lista" role="menu">
+                <button type="button" role="menuitem" id="btn-auto-bind-roteador" title="Coloca cada modelo ligado nos grupos que combinam com os papéis dele"><i data-icone="sparkles"></i>Vincular modelos por papel</button>
+                <button type="button" role="menuitem" id="btn-gerar-roteador" title="Reescreve o config.yaml do LiteLLM a partir do catálogo e dos grupos"><i data-icone="refreshCw"></i>Regenerar config do LiteLLM</button>
+              </div>
+            </details>
           </div>
         </div>
         <div id="aviso-banner-roteador-pendente" class="info-callout" style="display:none; margin-bottom:14px; background:rgba(234, 179, 8, 0.1); border-color:rgba(234, 179, 8, 0.4);">
           <div class="info-callout-title" style="color:var(--warning);">
-            <span>⚠ Modificações na Composição dos Grupos</span>
+            <i data-icone="triangleAlert"></i><span>Alterações nos grupos ainda não salvas</span>
           </div>
           <p class="info-callout-text" style="font-size:12px; margin-top:2px;">
-            Você adicionou, reordenou ou removeu modelos nesta sessão. Clique no botão <strong>"Salvar Grupos"</strong> acima para aplicar as mudanças e sincronizar com o LiteLLM.
+            Você adicionou, reordenou ou removeu modelos. Clique em <strong>Salvar e aplicar</strong> para gravar e atualizar o LiteLLM.
           </p>
         </div>
         <div class="roteador-grid-container">
@@ -375,7 +385,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="input-teste-roteador">Prompt de Teste</label>
+              <label for="input-teste-roteador">Mensagem de teste</label>
               <textarea id="input-teste-roteador" rows="4" placeholder="Ex: Refatore esta função para C# 12 ou Olá, tudo bem?" style="resize:vertical;"></textarea>
             </div>
             <button class="btn btn-primary" id="btn-executar-teste-roteador" style="width:100%; padding:10px 14px;" disabled>
@@ -404,40 +414,30 @@
       <section class="page-view" id="view-governanca">
         <div class="page-header">
           <div class="page-title">
-            <h2>Governança Canônica Multi-Agente</h2>
-            <p>Fonte única de Regras, Skills procedurais e Servidores MCP propagados para Antigravity, Claude Code (múltiplas instâncias), Cursor e Codex.</p>
+            <h2>Agentes e regras</h2>
+            <p>Regras, skills e servidores MCP mantidos aqui e copiados para Claude Code, Cursor, Codex, Antigravity e OpenCode.</p>
 </div>
           <div style="display:flex; gap:8px; align-items:center;">
             <span id="badge-drift" class="badge"></span>
-            <button class="btn btn-primary btn-sm" id="btn-sync-governanca" title="Compila e distribui regras, skills e MCPs (incluindo o caminho do MCP doutrina-tec) para todas as instâncias ativas. Não muda a versão da Doutrina.">Sincronizar Clientes Agora</button>
+            <button class="btn btn-primary btn-sm" id="btn-sync-governanca" title="Compila e distribui regras, skills e MCPs (incluindo o caminho do MCP doutrina-tec) para todas as instâncias ativas. Não muda a versão da Doutrina."><i data-icone="refreshCw"></i><span>Sincronizar com os clientes</span></button>
 </div>
 </div>
 
         <div class="subtabs" id="subtabs-governanca">
-          <button class="subtab-btn active" data-subtab-gov="componentes">Componentes (Regras, Skills & MCP)</button>
-          <button class="subtab-btn" data-subtab-gov="instancias">Instâncias de Clientes & Perfis</button>
+          <button class="subtab-btn active" data-subtab-gov="componentes">Regras, skills e MCP</button>
+          <button class="subtab-btn" data-subtab-gov="instancias">Clientes e perfis</button>
 </div>
 
         <!-- SUB-ABA 1: COMPONENTES -->
         <div id="gov-subview-componentes">
-          <div class="info-callout" style="margin-bottom:16px;">
-            <div class="info-callout-title">
-              <span>Sincronização Canônica Multi-Agente</span>
-</div>
-            <p class="info-callout-text">
-              Ao clicar em <strong>Sincronizar Clientes Agora</strong>, o sistema lê todas as <strong>Regras Canônicas</strong> (de <code>governanca/regras/</code>), <strong>Skills de Agentes</strong> (de <code>skills/</code>) e configurações de <strong>Servidores MCP</strong> (de <code>config/mcp.json</code>) e as compila e distribui automaticamente para todos os clientes configurados (<strong>Google Antigravity CLI</strong>, múltiplas instâncias do <strong>Claude Code</strong>, <strong>Cursor IDE</strong> e <strong>Codex</strong>).
-</p>
-            <p class="info-callout-text" style="margin-top:6px; color:var(--text-muted); font-size:12px;">
-              Garante conformidade estrita (Zero Drift) entre todas as IAs sem sobrescrever blocos customizados de cada cliente.
-</p>
-</div>
+          <p class="celula-sub texto-ajuda">Sincronizar lê <code>governanca/regras/</code>, <code>governanca/skills/</code> e <code>governanca/mcp.json</code> e grava a configuração de cada cliente, sem apagar o que você personalizou fora do bloco gerenciado.</p>
           <p class="celula-sub texto-ajuda">Esta sincronização também grava o servidor <code>doutrina-tec</code>, que aponta para a pasta <code>DOUTRINA_TEC</code> do <code>.env</code>, mas <strong>não muda a versão da Doutrina</strong>: a versão fixada é atualizada pelo comando do cartão abaixo.</p>
           <div id="card-doutrina" style="margin-bottom:16px;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h3 style="font-size:16px;">Componentes do Ecossistema</h3>
+            <h3 class="bloco-titulo">Componentes</h3>
             <div style="display:flex; gap:8px; align-items:center;">
               <span id="progresso-teste-mcp" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono);"></span>
-              <button class="btn btn-primary btn-sm" id="btn-testar-todos-mcp">Testar Todos os MCPs</button>
+              <button class="btn btn-outline btn-sm" id="btn-testar-todos-mcp"><i data-icone="zap"></i><span>Testar todos os MCP</span></button>
               <button class="btn btn-outline btn-sm" id="btn-modal-nova-regra">+ Nova Regra</button>
               <button class="btn btn-outline btn-sm" id="btn-modal-nova-skill">+ Nova Skill</button>
               <button class="btn btn-outline btn-sm" id="btn-modal-novo-mcp">+ Novo Servidor MCP</button>
@@ -480,182 +480,162 @@
       <section class="page-view" id="view-segredos">
         <div class="page-header">
           <div class="page-title">
-            <h2>Cofre de Segredos & Provedores (.env)</h2>
-            <p>Gerenciamento com mascaramento, backups automáticos na edição e teste de conectividade das credenciais.</p>
-</div>
-</div>
-        <div class="subtabs">
-          <button class="subtab-btn active" data-filter-segredo="todos">Todos</button>
-          <button class="subtab-btn" data-filter-segredo="FREE">Provedores Free</button>
-          <button class="subtab-btn" data-filter-segredo="PAID">Provedores Pagos</button>
-          <button class="subtab-btn" data-filter-segredo="GOVERNANCA">Governança & MCP</button>
-          <button class="subtab-btn" data-filter-segredo="SISTEMA">Sistema</button>
-</div>
-        <div class="grid-cards" id="grid-segredos"></div>
-</section>
+            <h2>Chaves e segredos</h2>
+            <p>Valores guardados no arquivo .env. Ficam mascarados; antes de cada gravação o painel salva uma cópia do arquivo.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-primary btn-sm" id="btn-nova-chave"><i data-icone="plus"></i><span>Nova chave</span></button>
+          </div>
+        </div>
+        <form class="bloco form-linha" id="form-nova-chave" hidden autocomplete="off">
+          <input type="text" id="nova-chave-nome" placeholder="NOME_DA_VARIAVEL (ex.: MISTRAL_API_KEY)" spellcheck="false"
+                 maxlength="64" pattern="[A-Z][A-Z0-9_]{0,63}" aria-label="Nome da variável">
+          <input type="password" id="nova-chave-valor" placeholder="Valor (segredo)" spellcheck="false" aria-label="Valor da chave">
+          <button type="button" class="btn btn-outline btn-sm" id="nova-chave-ver" aria-label="Mostrar o que estou digitando">Mostrar</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="nova-chave-salvar" disabled>Salvar</button>
+          <button type="button" class="btn btn-outline btn-sm" id="nova-chave-cancelar">Cancelar</button>
+          <span class="dica">Só letras maiúsculas, números e _, começando por letra. Se o nome já existe, o valor é substituído (o painel guarda cópia do .env). Serviços que usam a chave podem precisar ser reiniciados.</span>
+        </form>
+        <div class="barra-filtros">
+          <div class="subtabs" role="tablist" aria-label="Filtrar chaves">
+            <button class="subtab-btn active" data-filter-segredo="todos">Todas <span class="contagem" id="cont-seg-todos"></span></button>
+            <button class="subtab-btn" data-filter-segredo="faltando">Faltando <span class="contagem" id="cont-seg-faltando"></span></button>
+          </div>
+          <label class="campo-busca">
+            <i data-icone="search"></i>
+            <input type="search" id="busca-segredos" placeholder="Buscar por nome ou variável" aria-label="Buscar chave">
+          </label>
+        </div>
+        <div id="grid-segredos"></div>
+      </section>
 
       <!-- 5.1 LIMITES & CONSUMO DE TOKENS -->
       <section class="page-view" id="view-limites">
         <div class="page-header">
           <div class="page-title">
-            <h2>Limites e Consumo de Tokens por Provedor</h2>
-            <p>Acompanhamento analítico de quotas diárias (RPD/TPD), limites por minuto (RPM), consumo de tokens e economia de custos.</p>
-</div>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <div class="periodo-selector" style="display:flex; background:var(--bg-card); border:1px solid var(--border-color); border-radius:6px; padding:2px;">
-              <button class="btn btn-sm btn-periodo active" data-periodo="24h" style="padding:4px 10px; font-size:12px; border:none; background:transparent;">Últimas 24h</button>
-              <button class="btn btn-sm btn-periodo" data-periodo="7d" style="padding:4px 10px; font-size:12px; border:none; background:transparent;">7 Dias</button>
-              <button class="btn btn-sm btn-periodo" data-periodo="total" style="padding:4px 10px; font-size:12px; border:none; background:transparent;">Total Geral</button>
-</div>
-            <button class="btn btn-outline btn-sm" id="btn-modal-novo-provedor-limites">+ Novo Provedor</button>
-            <button class="btn btn-outline btn-sm" id="btn-recarregar-limites">↻ Atualizar Agora</button>
-</div>
-</div>
-
-        <!-- KPIs GLOBAIS -->
-        <div class="telemetria-stats" id="limites-stats">
-          <div class="telemetria-stat-card">
-            <span class="telemetria-stat-label">Total de Tokens</span>
-            <span class="telemetria-stat-value" id="stat-limites-tokens-total">-</span>
-            <span class="telemetria-stat-sub" id="stat-limites-tokens-split">Prompt: - | Completion: -</span>
-</div>
-          <div class="telemetria-stat-card">
-            <span class="telemetria-stat-label">Economia Estimada</span>
-            <span class="telemetria-stat-value" id="stat-limites-economia" style="color:var(--success);">$0.00</span>
-            <span class="telemetria-stat-sub">Roteados para Free & Local</span>
-</div>
-          <div class="telemetria-stat-card">
-            <span class="telemetria-stat-label">Custo Real Nuvem</span>
-            <span class="telemetria-stat-value" id="stat-limites-custo-pago">$0.00</span>
-            <span class="telemetria-stat-sub">APIs Pagas (OpenAI / Anthropic)</span>
-</div>
-          <div class="telemetria-stat-card">
-            <span class="telemetria-stat-label">Provedores em Uso</span>
-            <span class="telemetria-stat-value" id="stat-limites-prov-ativos">-</span>
-            <span class="telemetria-stat-sub" id="stat-limites-alertas">0 em alerta de quota</span>
-</div>
-</div>
-
-        <!-- DISTRIBUIÇÃO VISUAL DE CONSUMO -->
-        <div class="card" style="margin-bottom:20px;">
-          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 class="card-title">Distribuição de Volume de Tokens por Provedor</h3>
-            <span style="font-size:12px; color:var(--text-muted);" id="label-distribuicao-periodo">Período Selecionado</span>
-</div>
-          <div class="distribuicao-bar-container" id="container-barra-distribuicao" style="margin:12px 0 16px 0;">
-            <div class="distribuicao-bar" id="barra-distribuicao-tokens" style="display:flex; height:18px; border-radius:9px; overflow:hidden; background:var(--bg-subtle);"></div>
-</div>
-          <div class="distribuicao-legend" id="legenda-distribuicao-tokens" style="display:flex; flex-wrap:wrap; gap:16px; font-size:12px;"></div>
-</div>
-
-        <!-- FILTROS POR TIER -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <div class="subtabs" style="margin-bottom:0;">
-            <button class="subtab-btn active" data-filter-limite-tier="todos">Todos os Provedores</button>
-            <button class="subtab-btn" data-filter-limite-tier="FREE">Planos Free (Quotas Diárias)</button>
-            <button class="subtab-btn" data-filter-limite-tier="PAID">Planos Pagos (Pay-as-you-go)</button>
-            <button class="subtab-btn" data-filter-limite-tier="LOCAL">Locais (GPU)</button>
-</div>
-          <div style="font-size:12px; color:var(--text-muted);">
-            <a href="#segredos" class="btn-link">Ir para o cofre de chaves</a>
-</div>
-</div>
-
-        <!-- GRID DE CARDS DOS PROVEDORES -->
-        <div class="grid-cards" id="grid-limites-provedores"></div>
-
-        <!-- RANKING DE MODELOS -->
-        <div style="margin-top:24px;">
-          <h3 style="font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-            <span></span> Ranking de Modelos Mais Consumidos
-</h3>
-          <div class="stream-table-container">
-            <table class="stream-table">
+            <h2>Custos e cotas</h2>
+            <p>Tokens, gasto e cotas de cada provedor no período. Os números vêm dos registros do LiteLLM.</p>
+          </div>
+          <div class="page-actions">
+            <div class="segmentado" role="group" aria-label="Período">
+              <button class="btn-periodo active" data-periodo="24h">24 horas</button>
+              <button class="btn-periodo" data-periodo="7d">7 dias</button>
+              <button class="btn-periodo" data-periodo="total">Tudo</button>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btn-recarregar-limites"><i data-icone="refreshCw"></i><span>Atualizar</span></button>
+          </div>
+        </div>
+        <div class="grid-stats">
+          <div class="stat"><span class="stat-rotulo">Tokens</span><span class="stat-valor" id="stat-limites-tokens-total">–</span><span class="stat-detalhe" id="stat-limites-tokens-split"></span></div>
+          <div class="stat ok"><span class="stat-rotulo">Economia estimada</span><span class="stat-valor" id="stat-limites-economia">–</span><span class="stat-detalhe">Quanto custaria num modelo pago equivalente</span></div>
+          <div class="stat"><span class="stat-rotulo">Gasto em provedores pagos</span><span class="stat-valor" id="stat-limites-custo-pago">–</span><span class="stat-detalhe">Preço informado pelo LiteLLM</span></div>
+          <div class="stat"><span class="stat-rotulo">Provedores com uso</span><span class="stat-valor" id="stat-limites-prov-ativos">–</span><span class="stat-detalhe" id="stat-limites-alertas"></span></div>
+        </div>
+        <section class="bloco" aria-labelledby="titulo-distribuicao">
+          <div class="bloco-cabecalho">
+            <h3 class="bloco-titulo" id="titulo-distribuicao">Tokens por provedor</h3>
+            <span class="grupo-resumo" id="label-distribuicao-periodo"></span>
+          </div>
+          <div class="distribuicao-bar" id="barra-distribuicao-tokens"></div>
+          <div class="distribuicao-legend" id="legenda-distribuicao-tokens"></div>
+        </section>
+        <div class="barra-filtros">
+          <div class="subtabs" role="tablist" aria-label="Filtrar provedores">
+            <button class="subtab-btn active" data-filter-limite-tier="todos">Todos</button>
+            <button class="subtab-btn" data-filter-limite-tier="FREE">Gratuitos</button>
+            <button class="subtab-btn" data-filter-limite-tier="PAID">Pagos</button>
+            <button class="subtab-btn" data-filter-limite-tier="LOCAL">Local</button>
+          </div>
+          <div class="page-actions">
+            <label class="opcao"><input type="checkbox" id="limites-mostrar-sem-uso"> Mostrar provedores sem uso</label>
+            <a class="link-externo" href="#provedores">Gerenciar provedores</a>
+          </div>
+        </div>
+        <div id="grid-limites-provedores"></div>
+        <section class="bloco" aria-labelledby="titulo-ranking">
+          <h3 class="bloco-titulo" id="titulo-ranking">Modelos que mais consumiram</h3>
+          <div class="grupo">
+            <table class="tabela">
+              <colgroup><col style="width:30%"><col class="col-opcional" style="width:18%"><col style="width:9%"><col class="col-opcional" style="width:11%"><col class="col-opcional" style="width:11%"><col style="width:11%"><col style="width:10%"></colgroup>
               <thead>
                 <tr>
                   <th>Modelo</th>
-                  <th>Provedor</th>
-                  <th>Tier</th>
-                  <th>Requisições</th>
-                  <th>Tokens Prompt</th>
-                  <th>Tokens Completion</th>
-                  <th>Tokens Totais</th>
-                  <th>% do Total</th>
-                  <th>Economia / Custo</th>
-</tr>
-</thead>
+                  <th class="col-opcional">Provedor</th>
+                  <th class="num">Pedidos</th>
+                  <th class="num col-opcional">Entrada</th>
+                  <th class="num col-opcional">Saída</th>
+                  <th class="num">Total</th>
+                  <th class="num">Custo</th>
+                </tr>
+              </thead>
               <tbody id="tbody-limites-ranking-modelos"></tbody>
-</table>
-</div>
-</div>
-</section>
+            </table>
+          </div>
+        </section>
+      </section>
 
       <!-- 6. TELEMETRIA -->
       <section class="page-view" id="view-telemetria">
         <div class="page-header">
           <div class="page-title">
-            <h2>Telemetria e Tráfego em Tempo Real</h2>
-            <p>Monitoramento ativo de requisições, GPU, motor ComfyUI (Imagens & Vídeos) e gateway LiteLLM.</p>
-</div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn btn-outline btn-sm" id="btn-toggle-stream-telemetria">⏸ Pausar Stream (3s)</button>
-            <button class="btn btn-outline btn-sm" id="btn-recarregar-telemetria">↻ Atualizar Agora</button>
-</div>
+            <h2>Atividade</h2>
+            <p>Pedidos ao gateway e gerações do Estúdio, atualizados a cada 3 segundos.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" id="btn-toggle-stream-telemetria"><i data-icone="pause"></i><span>Pausar</span></button>
+            <button class="btn btn-outline btn-sm" id="btn-recarregar-telemetria"><i data-icone="refreshCw"></i><span>Atualizar</span></button>
+          </div>
 </div>
 
         <!-- Subtabs da Telemetria -->
         <div class="subtabs" id="subtabs-telemetria" style="margin-bottom: 20px;">
-          <button class="subtab-btn active" id="tab-telemetria-texto"> Texto & Agentes (LiteLLM & Ollama)</button>
-          <button class="subtab-btn" id="tab-telemetria-visual"> Estúdio Visual (ComfyUI & GPU)</button>
+          <button class="subtab-btn active" id="tab-telemetria-texto">Texto e agentes</button>
+          <button class="subtab-btn" id="tab-telemetria-visual">Imagens, vídeos e músicas</button>
 </div>
 
         <!-- Conteúdo Aba 1: Texto & Agentes -->
         <div id="conteudo-telemetria-texto">
           <div class="telemetria-stats">
             <div class="telemetria-stat-card">
-              <span class="telemetria-stat-label">Requisições (24 h)</span>
+              <span class="telemetria-stat-label">Pedidos em 24 h</span>
               <span class="telemetria-stat-value" id="stat-total-req">-</span>
               <span class="telemetria-stat-sub">Gateway LiteLLM</span>
 </div>
             <div class="telemetria-stat-card">
-              <span class="telemetria-stat-label">Tokens Processados (24 h)</span>
+              <span class="telemetria-stat-label">Tokens em 24 h</span>
               <span class="telemetria-stat-value" id="stat-total-tokens">-</span>
-              <span class="telemetria-stat-sub">Prompt + Completion</span>
+              <span class="telemetria-stat-sub">Entrada mais saída</span>
 </div>
             <div class="telemetria-stat-card">
-              <span class="telemetria-stat-label">Latência Média</span>
+              <span class="telemetria-stat-label">Tempo médio de resposta</span>
               <span class="telemetria-stat-value" id="stat-media-latencia">-</span>
               <span class="telemetria-stat-sub">Últimas 30 requisições</span>
 </div>
             <div class="telemetria-stat-card">
-              <span class="telemetria-stat-label">Custo Estimado (24 h)</span>
+              <span class="telemetria-stat-label">Custo em 24 h</span>
               <span class="telemetria-stat-value" id="stat-custo-total">$0.00</span>
               <span class="telemetria-stat-sub">Provedores Pagos</span>
 </div>
 </div>
 
           <div style="margin-bottom:20px;">
-            <h3 style="font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-              <span></span> Modelos Ativos na VRAM (Ollama GPU)
-</h3>
+            <h3 class="bloco-titulo titulo-secao">Modelos carregados na memória de vídeo</h3>
             <div class="grid-cards" id="grid-telemetria-vram"></div>
 </div>
 
           <div>
-            <h3 style="font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-              <span></span> Feed Recente de Requisições (LiteLLM)
-</h3>
+            <h3 class="bloco-titulo titulo-secao">Pedidos recentes</h3>
             <div class="stream-table-container">
               <table class="stream-table">
                 <thead>
                   <tr>
-                    <th>Horário</th>
+                    <th>Hora</th>
                     <th>Modelo</th>
                     <th>Grupo</th>
-                    <th>Tokens</th>
-                    <th>Latência</th>
-                    <th>Status</th>
-                    <th>Cliente</th>
+                    <th class="num">Tokens</th>
+                    <th class="num">Tempo</th>
+                    <th>Resultado</th>
+                    <th class="col-opcional">Cliente</th>
 </tr>
 </thead>
                 <tbody id="tbody-telemetria-feed">
@@ -739,18 +719,18 @@
       <section class="page-view" id="view-chat">
         <div class="page-header">
           <div class="page-title">
-            <h2>Chat Playground Multi-Modelo</h2>
-            <p>Converse diretamente com tudoia-auto, grupos do LiteLLM ou modelos locais Ollama acelerados na GPU.</p>
+            <h2>Chat</h2>
+            <p>Converse com o roteador tudoia-auto, um grupo do LiteLLM ou um modelo local.</p>
 </div>
           <div style="display:flex; gap:10px; align-items:center;">
             <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Modelo / Rota:</span>
+              <label for="chat-select-modelo" style="font-size:12px; color:var(--text-muted); white-space:nowrap;">Modelo</label>
               <select id="chat-select-modelo" style="min-width:260px; font-family:var(--font-mono); font-size:12px;">
                 <option value="tudoia-auto">tudoia-auto (Decisão Automática)</option>
                 <option value="tudoia-local">tudoia-local (Ollama GPU)</option>
 </select>
 </div>
-            <button class="btn btn-outline btn-sm" id="btn-limpar-chat" title="Limpar histórico da sessão">Limpar Conversa</button>
+            <button class="btn btn-outline btn-sm" id="btn-limpar-chat" title="Apaga as mensagens desta conversa"><i data-icone="trash2"></i><span>Nova conversa</span></button>
 </div>
 </div>
 
@@ -795,8 +775,8 @@
       <section class="page-view" id="view-imagens">
         <div class="page-header">
           <div class="page-title">
-            <h2>Gerador de Imagens de Alta Fidelidade</h2>
-            <p>Criação multimodal via ComfyUI Portable (modelos FLUX e SDXL na GPU) e nuvem.</p>
+            <h2>Imagens</h2>
+            <p>Gere imagens no ComfyUI local, com checkpoints SDXL. Pinte uma área do resultado para refazê-la.</p>
 </div>
           <div style="display:flex; gap:8px; align-items:center;">
             <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge" id="badge-status-comfyui" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)" style="text-decoration:none; cursor:pointer;">ComfyUI :8188 verificando...</a>
@@ -808,43 +788,43 @@
           <div class="estudio-controles-card">
             <div class="form-group">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <label for="img-prompt" style="margin-bottom:0;">Prompt Positivo</label>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-otimizar-prompt-manual" title="Traduzir e enriquecer prompt com IA para o SDXL/FLUX agora" style="font-size:10px; padding:2px 8px; border-color:var(--brand-primary); color:var(--brand-primary);"> Melhorar com IA</button>
+                <label for="img-prompt" style="margin-bottom:0;">Descrição da imagem</label>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-otimizar-prompt-manual" title="Traduzir e enriquecer prompt com IA para o SDXL/FLUX agora" style="font-size:11px; padding:2px 8px; border-color:var(--brand-primary); color:var(--brand-primary);"> Melhorar com IA</button>
 </div>
               <textarea id="img-prompt" rows="4" placeholder="Ex: Cyberpunk detective standing in neon-lit rainy street, cinematic lighting, 8k resolution, highly detailed..."></textarea>
-              <div id="img-prompt-dica-pt" style="display:none; font-size:10px; color:var(--brand-primary); margin-top:4px; padding:3px 8px; background:rgba(99,102,241,0.06); border-radius:3px; border-left:2px solid var(--brand-primary);"> Prompt em Português detectado: o TudoIA traduzirá e enriquecerá os detalhes visuais automaticamente na geração.</div>
+              <div id="img-prompt-dica-pt" style="display:none; font-size:11px; color:var(--brand-primary); margin-top:4px; padding:3px 8px; background:rgba(99,102,241,0.06); border-radius:3px; border-left:2px solid var(--brand-primary);"> Prompt em Português detectado: o TudoIA traduzirá e enriquecerá os detalhes visuais automaticamente na geração.</div>
               <div id="img-prompt-aviso-traducao" style="display:none; margin-top:6px; font-size:11px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); border-radius:var(--radius-sm); padding:6px 10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
                   <span style="font-weight:600; color:var(--brand-primary); display:flex; align-items:center; gap:4px;"><span id="img-prompt-aviso-titulo">Traduzido e Enriquecido com IA</span></span>
-                  <span style="font-size:10px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao">✕ Fechar</span>
+                  <span style="font-size:11px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao">Fechar</span>
 </div>
                 <div id="img-prompt-aviso-texto" style="color:var(--text-secondary); font-style:italic; line-height:1.4; max-height:60px; overflow-y:auto;"></div>
                 <div style="display:flex; gap:6px; margin-top:6px;">
-                  <button type="button" class="btn btn-outline btn-sm" id="btn-aplicar-prompt-traduzido" style="font-size:10px; padding:2px 8px;"> Aplicar no Campo</button>
-                  <button type="button" class="btn btn-outline btn-sm" id="btn-copiar-prompt-traduzido" style="font-size:10px; padding:2px 8px;"> Copiar</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-aplicar-prompt-traduzido" style="font-size:11px; padding:2px 8px;"> Aplicar no Campo</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-copiar-prompt-traduzido" style="font-size:11px; padding:2px 8px;"> Copiar</button>
 </div>
 </div>
 
               <!-- Presets Rápidos de Estilo Fotográfico & Arquitetura -->
               <div style="margin-top:8px;">
-                <span style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Adicionar Estilos Rápidos:</span>
+                <span style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Estilos rápidos</span>
                 <div id="img-presets-estilos" style="display:flex; flex-wrap:wrap; gap:6px;">
-                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="ultra-realistic wide-angle aerial photography, high-altitude drone perspective" style="font-size:10px; padding:3px 8px;"> Drone Aéreo</button>
-                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="warm golden hour sunlight, dramatic long sunset shadows, glowing atmospheric lighting" style="font-size:10px; padding:3px 8px;"> Golden Hour</button>
-                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="brutalist architecture by Lina Bo Bardi, raw exposed concrete, suspended monumental structure" style="font-size:10px; padding:3px 8px;"> Brutalista</button>
-                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="night metropolis with busy car traffic, glowing vehicle headlights, wet asphalt reflections" style="font-size:10px; padding:3px 8px;"> Noturno Urbano</button>
-                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="8k resolution, documentary architectural photography, crisp raw concrete textures, highly detailed" style="font-size:10px; padding:3px 8px;"> 8K Realismo</button>
+                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="ultra-realistic wide-angle aerial photography, high-altitude drone perspective" style="font-size:11px; padding:3px 8px;"> Drone Aéreo</button>
+                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="warm golden hour sunlight, dramatic long sunset shadows, glowing atmospheric lighting" style="font-size:11px; padding:3px 8px;"> Golden Hour</button>
+                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="brutalist architecture by Lina Bo Bardi, raw exposed concrete, suspended monumental structure" style="font-size:11px; padding:3px 8px;"> Brutalista</button>
+                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="night metropolis with busy car traffic, glowing vehicle headlights, wet asphalt reflections" style="font-size:11px; padding:3px 8px;"> Noturno Urbano</button>
+                  <button type="button" class="btn btn-outline btn-sm btn-preset-estilo" data-estilo="8k resolution, documentary architectural photography, crisp raw concrete textures, highly detailed" style="font-size:11px; padding:3px 8px;"> 8K Realismo</button>
 </div>
 </div>
 </div>
 
             <div class="form-group">
-              <label for="img-prompt-negativo">Prompt Negativo (Opcional)</label>
+              <label for="img-prompt-negativo">O que evitar (opcional)</label>
               <textarea id="img-prompt-negativo" rows="2" placeholder="Ex: blurry, bad anatomy, deformed, watermark, low quality, noisy"></textarea>
 </div>
 
             <div class="form-group">
-              <label>Proporção (Aspect Ratio)</label>
+              <label>Proporção</label>
               <div class="aspect-ratio-selector" id="img-aspect-selector">
                 <button type="button" class="btn-aspect active" data-ratio="1:1">1:1 (Quadrado)</button>
                 <button type="button" class="btn-aspect" data-ratio="16:9">16:9 (Cinema)</button>
@@ -854,23 +834,15 @@
 </div>
 
             <div class="form-group">
-              <label for="img-select-modelo">Modelo de IA (Local)</label>
-              <select id="img-select-modelo" style="font-size:12px;">
-                <optgroup label="Modelos Locais (ComfyUI GPU · Sem Watermark)" id="img-optgroup-locais">
-                  <option value="local:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors" selected>Juggernaut-XL v9 (SDXL Fotorrealista · 7.1 GB)</option>
-                  <option value="local:flux1-schnell-Q4_K_S.gguf">FLUX.1 Schnell GGUF (6.8 GB)</option>
-                  <option value="local:z_image_turbo_int8_convrot.safetensors">Z-Image Turbo INT8 (6.2 GB)</option>
-</optgroup>
-</select>
+              <label for="img-select-modelo">Modelo</label>
+              <select id="img-select-modelo" style="font-size:12px;"><option value="" disabled selected>Carregando modelos…</option></select>
 </div>
 
-            <div class="form-group">
-              <label for="img-select-motor">Motor de Renderização</label>
+            <div class="form-group" hidden>
+              <label for="img-select-motor">Onde gerar</label>
               <select id="img-select-motor" style="font-size:12px;">
-                <option value="auto">Automático (ComfyUI Local se ativo / Nuvem)</option>
-                <option value="comfyui">ComfyUI Local (:8188 · GPU)</option>
-                <option value="nuvem">Nuvem Direta (SDXL / FLUX)</option>
-</select>
+                <option value="comfyui" selected>ComfyUI</option>
+                                </select>
 </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -879,7 +851,7 @@
                 <input type="range" id="img-steps" min="10" max="50" step="5" value="25" style="cursor:pointer;">
 </div>
               <div class="form-group">
-                <label for="img-seed">Seed (Opcional)</label>
+                <label for="img-seed">Semente (opcional)</label>
                 <input type="text" id="img-seed" placeholder="Aleatória" style="font-family:var(--font-mono); font-size:12px;">
 </div>
 </div>
@@ -887,22 +859,22 @@
             <!-- Painel de Controles do Modo Inpainting -->
             <div id="inpaint-painel-controles" style="display:none; background:rgba(99,102,241,0.08); border:1px solid var(--brand-primary); border-radius:var(--radius-sm); padding:10px; margin-bottom:10px;">
               <div style="font-weight:600; font-size:12px; color:var(--brand-primary); display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span> Modo Inpainting Ativo</span>
-                <span class="badge badge-free" style="font-size:10px;">COMFYUI</span>
+                <span>Editando uma área da imagem</span>
+                <span class="badge badge-neutro">ComfyUI</span>
 </div>
               <div style="font-size:11px; font-weight:600; color:var(--text-main); margin-bottom:6px; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,0.08);">
                 Modelo: <span style="color:var(--brand-primary);"> Inpaint Tudoia</span>
 </div>
               <p style="font-size:11px; color:var(--text-secondary); margin:0 0 8px 0; line-height:1.4;">
-                Pinte na imagem a região que deseja corrigir (ex: o MASP) e descreva no prompt o que deve ser colocado no lugar.
+                Pinte a área que quer refazer e descreva o que deve ficar no lugar. Intensidade até 0,6 retoca o que existe; de 0,9 a 1 troca o conteúdo.
 </p>
               <div class="form-group" style="margin-bottom:0;">
                 <label style="font-size:11px; display:flex; justify-content:space-between;">
-                  <span>Intensidade de Redesenho (Denoise):</span>
+                  <span>Quanto mudar (denoise)</span>
                   <span id="inpaint-denoise-val" style="color:var(--brand-primary); font-family:var(--font-mono); font-weight:600;">0.75</span>
 </label>
                 <input type="range" id="inpaint-slider-denoise" min="0.2" max="1.0" step="0.05" value="0.75" style="width:100%; cursor:pointer;">
-                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--text-dim); margin-top:2px;">
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-top:2px;">
                   <span>Preservar (0.2)</span>
                   <span>Equilibrado (0.75)</span>
                   <span>Recriar (1.0)</span>
@@ -910,8 +882,9 @@
 </div>
 </div>
 
-            <button class="btn btn-primary" id="btn-gerar-imagem" style="width:100%; padding:11px; margin-top:8px;">
-              <span>Gerar Imagem</span>
+            <label class="opcao opcao-otimizar" title="Um modelo de linguagem reescreve e traduz a descrição antes de gerar. Se houver chave do Groq, o texto vai para a nuvem."><input type="checkbox" id="img-otimizar-auto"> Melhorar a descrição com IA antes de gerar</label>
+            <button class="vid-btn-hero" id="btn-gerar-imagem">
+              <span>Gerar imagem</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/></svg>
 </button>
 </div>
@@ -919,12 +892,12 @@
           <!-- Coluna Visualizador & Galeria -->
           <div class="estudio-preview-card">
             <div class="estudio-preview-header">
-              <span class="card-title">Preview Canvas</span>
+              <span class="card-title">Resultado</span>
               <div style="display:flex; gap:8px;">
                 <button class="btn btn-outline btn-sm" id="btn-comparar-original" style="display:none; border-color:var(--brand-primary); color:var(--brand-primary);" title="Pressione e segure para ver a imagem original antes do inpaint"> Antes/Depois</button>
-                <button class="btn btn-outline btn-sm" id="btn-modo-inpaint" disabled title="Pintar área para corrigir com IA" style="border-color:var(--brand-primary); color:var(--brand-primary);"> Inpainting</button>
-                <button class="btn btn-outline btn-sm" id="btn-baixar-imagem" disabled title="Baixar imagem atual">Baixar PNG</button>
-                <button class="btn btn-outline btn-sm" id="btn-copiar-link-imagem" disabled title="Copiar URL da imagem">Copiar Link</button>
+                <button class="btn btn-outline btn-sm" id="btn-modo-inpaint" disabled title="Pintar área para corrigir com IA" style="border-color:var(--brand-primary); color:var(--brand-primary);">Editar área</button>
+                <button class="btn btn-outline btn-sm" id="btn-baixar-imagem" disabled title="Baixar imagem atual">Baixar</button>
+                <button class="btn btn-outline btn-sm" id="btn-copiar-link-imagem" disabled title="Copiar URL da imagem">Copiar link</button>
                 <button class="btn btn-outline btn-sm" id="btn-excluir-imagem" disabled title="Excluir imagem atual" style="color:var(--danger,#f87171); border-color:rgba(239,68,68,0.3);">Excluir</button>
 </div>
 </div>
@@ -944,7 +917,7 @@
                 <div id="img-progresso-detalhe" style="font-size:11px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                   Aguardando resposta do motor de inferência...
 </div>
-                <button type="button" class="btn btn-outline btn-sm" id="btn-cancelar-geracao" style="font-size:10px; padding:2px 8px; color:var(--danger,#f87171); border-color:rgba(239,68,68,0.3); flex-shrink:0;"> Cancelar</button>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-cancelar-geracao" style="font-size:11px; padding:2px 8px; color:var(--danger,#f87171); border-color:rgba(239,68,68,0.3); flex-shrink:0;"> Cancelar</button>
 </div>
 </div>
 
@@ -954,19 +927,19 @@
                 <button type="button" class="btn btn-sm btn-primary" id="btn-ferramenta-pincel" title="Pincel"> Pincel</button>
                 <button type="button" class="btn btn-sm btn-outline" id="btn-ferramenta-borracha" title="Borracha"> Borracha</button>
                 <div style="display:flex; align-items:center; gap:6px; margin:0 4px;">
-                  <span style="font-size:10px; color:var(--text-muted);">Tamanho:</span>
+                  <span style="font-size:11px; color:var(--text-muted);">Tamanho:</span>
                   <input type="range" id="inpaint-tamanho-pincel" min="10" max="100" value="35" style="width:70px; cursor:pointer;">
-                  <span id="inpaint-tamanho-pincel-val" style="font-size:10px; font-family:var(--font-mono); color:var(--text-main);">35px</span>
+                  <span id="inpaint-tamanho-pincel-val" style="font-size:11px; font-family:var(--font-mono); color:var(--text-main);">35px</span>
 </div>
-                <button type="button" class="btn btn-sm btn-outline" id="btn-desfazer-mascara" title="Desfazer último traço (Ctrl+Z)">↶ Desfazer</button>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-desfazer-mascara" title="Desfazer último traço (Ctrl+Z)"><i data-icone="rotateCcw"></i><span>Desfazer</span></button>
                 <button type="button" class="btn btn-sm btn-outline" id="btn-limpar-mascara" title="Limpar pintura"> Limpar</button>
-                <button type="button" class="btn btn-sm btn-outline" id="btn-cancelar-inpaint" title="Cancelar Inpainting" style="color:var(--danger); border-color:rgba(239,68,68,0.3);">✕ Fechar</button>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-cancelar-inpaint" title="Sair da edição de área" >Sair da edição</button>
 </div>
 
               <div class="canvas-placeholder" id="img-canvas-placeholder">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--text-dim); margin-bottom:10px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                 <div style="color:var(--text-secondary); font-size:13px; font-weight:500;">Nenhuma imagem gerada ainda</div>
-                <div style="color:var(--text-dim); font-size:11px; margin-top:4px;">Configure o prompt e clique em Gerar Imagem</div>
+                <div style="color:var(--text-dim); font-size:11px; margin-top:4px;">Descreva a imagem e clique em Gerar imagem</div>
 </div>
 
               <!-- Container da Imagem e Overlay do Canvas de Pintura -->
@@ -980,11 +953,11 @@
             <div class="estudio-meta-strip" id="img-meta-strip" style="display:none;">
               <span id="img-meta-dim" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">-</span>
               <span id="img-meta-latencia" style="font-family:var(--font-mono); font-size:11px; color:var(--brand-primary);">-</span>
-              <span id="img-meta-motor" class="badge badge-free" style="font-size:10px;">-</span>
+              <span id="img-meta-motor" class="badge badge-free" style="font-size:11px;">-</span>
 </div>
 
             <div class="galeria-strip">
-              <div class="galeria-strip-title">Galeria da Sessão</div>
+              <div class="galeria-strip-title">Geradas nesta sessão</div>
               <div class="galeria-thumbnails" id="img-galeria-thumbs">
                 <span style="font-size:11px; color:var(--text-dim); font-style:italic;">As imagens geradas aparecerão aqui.</span>
 </div>
@@ -995,15 +968,13 @@
 
       <!-- 9. GERADOR DE VÍDEOS CINEMATOGRÁFICOS -->
       <section class="page-view" id="view-videos">
-        <div class="page-header" style="margin-bottom: 20px;">
+        <div class="page-header">
           <div class="page-title">
-            <h2 style="display:flex; align-items:center; gap:8px;">
-              <span>Gerador de Vídeos Cinematográficos & Áudio Estéreo</span>
-</h2>
-            <p>Renderização neural acelerada via ComfyUI (Wan 2.2 Turbo e MiniMax H3 Omni com síntese de áudio nativo).</p>
+            <h2>Vídeos</h2>
+            <p>Texto, imagem ou o primeiro quadro de um vídeo viram vídeo de até 60 s: clipes curtos no ComfyUI local (Wan 2.2, MiniMax H3, LTX-2.3) ou na nuvem paga pelo LiteLLM, emendados num MP4 só.</p>
 </div>
           <div style="display:flex; gap:10px; align-items:center;">
-            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-video" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 ↗</a>
+            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-video" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 <i data-icone="externalLink" data-tamanho="12"></i></a>
 </div>
 </div>
 
@@ -1026,7 +997,7 @@
               <div id="vid-prompt-aviso-traducao" style="display:none; margin-top:8px; font-size:11px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.3); border-radius:var(--radius-sm); padding:10px 12px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                   <span style="font-weight:600; color:var(--brand-primary); display:flex; align-items:center; gap:5px;"><span id="vid-prompt-aviso-titulo">Traduzido e Enriquecido com IA</span></span>
-                  <span style="font-size:11px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao-video">✕ Fechar</span>
+                  <span style="font-size:11px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao-video">Fechar</span>
 </div>
                 <div id="vid-prompt-aviso-texto" style="color:var(--text-secondary); font-style:italic; line-height:1.45; max-height:75px; overflow-y:auto; margin:4px 0 8px;"></div>
                 <div style="display:flex; gap:8px;">
@@ -1041,7 +1012,7 @@
                 <div id="vid-presets-estilos" class="vid-camera-chips">
                   <button type="button" class="vid-camera-chip btn-preset-vid" data-estilo="slow fluid cinematic push-in, shallow depth of field, 24fps motion"> Push-In Lento</button>
                   <button type="button" class="vid-camera-chip btn-preset-vid" data-estilo="dynamic drone sweeping shot flying forward, dramatic cinematic lighting"> Drone Aéreo</button>
-                  <button type="button" class="vid-camera-chip btn-preset-vid" data-estilo="lateral tracking camera shot following the action, smooth motion blur">↔ Tracking Lateral</button>
+                  <button type="button" class="vid-camera-chip btn-preset-vid" data-estilo="lateral tracking camera shot following the action, smooth motion blur">Tracking lateral</button>
                   <button type="button" class="vid-camera-chip btn-preset-vid" data-estilo="warm golden hour backlight, cinematic volumetric lens flare, photorealistic"> Golden Hour</button>
 </div>
 </div>
@@ -1055,14 +1026,7 @@
                   Modelo Generativo
 </span>
 </div>
-              <select id="vid-select-modelo" style="font-size:12px; width:100%; padding:9px 12px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                <optgroup label="Modelos Locais Turbo (ComfyUI · GPU)" id="vid-optgroup-locais">
-                  <option value="video-minimax-h3" selected> MiniMax H3 Omni (Vídeo + Áudio Estéreo · Turbo 8 steps)</option>
-                  <option value="video-wan14b-t2v"> Wan 2.2 Text-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
-                  <option value="video-wan14b-i2v"> Wan 2.2 Image-to-Video 14B (Turbo LoRA 4 steps · FP8)</option>
-                  <option value="video-wan5b"> Wan 2.2 5B Multimodal (10 GB)</option>
-</optgroup>
-</select>
+              <select id="vid-select-modelo" style="font-size:12px; width:100%; padding:9px 12px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);"><option value="" disabled selected>Carregando modelos…</option></select>
 </div>
 
             <!-- Bloco: Mídia de Entrada / Referência (T2V / I2V / V2V) -->
@@ -1072,14 +1036,14 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   Mídia de Entrada
 </span>
-                <span class="badge" id="vid-badge-modo" style="font-size:10px; background:rgba(99,102,241,0.12); color:var(--brand-primary); border:1px solid rgba(99,102,241,0.25);">T2V · Texto Puro</span>
+                <span class="badge" id="vid-badge-modo" style="font-size:11px; background:rgba(99,102,241,0.12); color:var(--brand-primary); border:1px solid rgba(99,102,241,0.25);">T2V · Texto Puro</span>
 </div>
 
               <!-- Segmented Control para Modos -->
               <div class="vid-mode-tabs" id="vid-tabs-modo">
                 <button type="button" class="vid-mode-tab vid-modo-btn active" data-modo="t2v"> Texto (T2V)</button>
                 <button type="button" class="vid-mode-tab vid-modo-btn" data-modo="i2v"> Imagem (I2V)</button>
-                <button type="button" class="vid-mode-tab vid-modo-btn" data-modo="v2v"> Vídeo (V2V)</button>
+                <button type="button" class="vid-mode-tab vid-modo-btn" data-modo="v2v">Vídeo (1º quadro)</button>
 </div>
 
               <!-- Painel de Seleção de Arquivo (para I2V e V2V) -->
@@ -1087,13 +1051,13 @@
                 <div id="vid-dropzone" class="vid-dropzone-box">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--brand-primary); margin-bottom:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   <div style="font-size:12px; font-weight:500; color:var(--text-main);">Arraste uma imagem/vídeo aqui</div>
-                  <div style="font-size:10px; color:var(--text-dim); margin-top:2px;">ou clique para selecionar arquivo</div>
+                  <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">ou clique para selecionar arquivo</div>
                   <input type="file" id="vid-file-input" accept="image/*,video/mp4,video/webm" style="display:none;">
 </div>
 
                 <div style="margin-top:8px;">
-                  <span style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:3px;">Ou informe o caminho absoluto / URL:</span>
-                  <input type="text" id="vid-input-caminho" placeholder="Ex: D:\fotos\cena.png ou C:\Users\...\video.mp4" style="font-size:11px; padding:7px 10px; width:100%; box-sizing:border-box; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
+                  <span style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Ou o nome de um arquivo já enviado nesta tela:</span>
+                  <input type="text" id="vid-input-caminho" placeholder="ref_1793341000_cena.png" style="font-size:11px; padding:7px 10px; width:100%; box-sizing:border-box; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
 </div>
 
                 <!-- Preview da Mídia Selecionada -->
@@ -1102,9 +1066,9 @@
                   <video id="vid-preview-vid" src="" style="display:none; width:44px; height:44px; object-fit:cover; border-radius:4px; border:1px solid var(--border-color);"></video>
                   <div style="flex:1; min-width:0;">
                     <div id="vid-preview-nome" style="font-size:11px; font-weight:600; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-</div>
-                    <div id="vid-preview-status" style="font-size:10px; color:var(--success);">✓ Arquivo pronto</div>
+                    <div id="vid-preview-status" style="font-size:11px; color:var(--success);">Arquivo pronto</div>
 </div>
-                  <button type="button" class="btn btn-outline btn-sm" id="btn-remover-midia-vid" style="padding:2px 8px; font-size:10px; color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Remover mídia">✕</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-remover-midia-vid" style="padding:2px 8px; font-size:11px; color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Remover mídia" aria-label="Remover mídia"><i data-icone="x"></i></button>
 </div>
 </div>
 </div>
@@ -1114,28 +1078,30 @@
               <div>
                 <span class="vid-section-title" style="margin-bottom:4px;">Duração</span>
                 <select id="vid-select-duracao" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                  <option value="3">3s (Rápido)</option>
-                  <option value="5" selected>5s (Padrão)</option>
-                  <option value="8">8s (Estendido)</option>
-                  <option value="10">10s (Cinemático)</option>
-</select>
+                  <option value="3">3 s</option>
+                  <option value="5" selected>5 s</option>
+                  <option value="10">10 s</option>
+                  <option value="15">15 s</option>
+                  <option value="20">20 s</option>
+                  <option value="30">30 s</option>
+                  <option value="45">45 s</option>
+                  <option value="60">60 s</option>
+                </select>
 </div>
               <div>
                 <span class="vid-section-title" style="margin-bottom:4px;">Resolução</span>
                 <select id="vid-select-resolucao" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                  <option value="480p">480p (Rápido)</option>
-                  <option value="720p" selected>720p (HD Padrão)</option>
-                  <option value="1080p">1080p (Full HD)</option>
-</select>
+                  <option value="480p">480p (mais rápido)</option>
+                  <option value="720p" selected>720p</option>
+                  </select>
 </div>
-              <div>
+              <div hidden>
                 <span class="vid-section-title" style="margin-bottom:4px;">Taxa de Quadros</span>
                 <select id="vid-select-fps" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                  <option value="16">16 fps (Clássico)</option>
-                  <option value="24" selected>24 fps (Cinema)</option>
+                                    <option value="24" selected>24 fps (Cinema)</option>
 </select>
 </div>
-              <div>
+              <div hidden>
                 <span class="vid-section-title" style="margin-bottom:4px;">Motor Backend</span>
                 <select id="vid-select-motor" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
                   <option value="comfyui" selected>ComfyUI (:8188)</option>
@@ -1143,9 +1109,34 @@
 </div>
 </div>
 
+            <!-- Bloco: Vídeo longo (aparece quando a duração passa do clipe máximo do modelo ou o modelo é de nuvem) -->
+            <div id="vid-bloco-longo" hidden style="background:rgba(255,255,255,0.02); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+              <span class="vid-section-title" style="margin:0;">Vídeo longo</span>
+              <div id="vid-plano-info" style="font-size:11px; color:var(--text-secondary);" aria-live="polite">-</div>
+              <label style="font-size:11px; color:var(--text-muted);">Continuidade
+                <select id="vid-select-modo-longo" style="font-size:12px; width:100%; padding:8px 10px; margin-top:3px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
+                  <option value="continuo" selected>Plano contínuo (o último quadro de um clipe abre o próximo)</option>
+                  <option value="cenas">Várias cenas com cortes (roteiro)</option>
+                </select>
+              </label>
+              <label id="vid-grupo-cenas" hidden style="font-size:11px; color:var(--text-muted);">Roteiro: uma cena por linha (opcional; vazio = o Ollama local divide a descrição)
+                <textarea id="vid-cenas" rows="4" maxlength="24000" style="font-size:12px; width:100%; box-sizing:border-box; margin-top:3px; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);"></textarea>
+              </label>
+              <label style="font-size:11px; color:var(--text-muted);">Áudio
+                <select id="vid-select-trilha" style="font-size:12px; width:100%; padding:8px 10px; margin-top:3px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
+                  <option value="" selected>Som dos próprios clipes (quando todos têm)</option>
+                </select>
+              </label>
+              <div id="vid-nuvem-box" hidden style="font-size:11px; padding:8px 10px; border-radius:var(--radius-sm); border:1px solid rgba(245,158,11,0.35); background:rgba(245,158,11,0.07); color:var(--text-secondary);">
+                <div id="vid-nuvem-custo" style="font-weight:600; color:var(--warning,#f59e0b); margin-bottom:4px;">-</div>
+                <label style="display:flex; gap:6px; align-items:flex-start;"><input type="checkbox" id="vid-confirmar-nuvem"> <span>Autorizo enviar a descrição e as imagens de referência ao provedor e a cobrança estimada. Clipe já enviado é cobrado mesmo se eu cancelar.</span></label>
+              </div>
+            </div>
+
             <!-- Botão Hero de Renderização -->
+            <label class="opcao opcao-otimizar" title="Um modelo de linguagem reescreve e traduz a descrição antes de gerar. Se houver chave do Groq, o texto vai para a nuvem."><input type="checkbox" id="vid-otimizar-auto"> Melhorar a descrição com IA antes de gerar</label>
             <button class="vid-btn-hero" id="btn-gerar-video">
-              <span>Renderizar Vídeo Cinematográfico</span>
+              <span>Gerar vídeo</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
 </button>
 </div>
@@ -1157,9 +1148,9 @@
               <div class="vid-cinema-title-group">
                 <span style="font-size:13px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect width="14" height="14" x="1" y="5" rx="2" ry="2"/></svg>
-                  Cinema Canvas & Player
+                  Resultado
 </span>
-                <span class="badge" style="font-size:10px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-subtle);">16:9 · 24 FPS · Estéreo</span>
+                <span class="badge" id="vid-badge-specs" style="font-size:11px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-subtle);">24 fps</span>
 </div>
               <div class="vid-cinema-actions">
                 <button class="btn btn-outline btn-sm" id="btn-baixar-video" disabled title="Baixar clipe MP4" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px;">
@@ -1200,6 +1191,10 @@
 </div>
                 <button type="button" class="btn btn-outline btn-sm" id="btn-cancelar-video" style="font-size:11px; padding:4px 12px; color:var(--danger,#f87171); border-color:rgba(239,68,68,0.4); border-radius:20px;"> Cancelar Renderização</button>
 </div>
+              <div id="vid-retomar-box" hidden style="margin:8px 0; font-size:11px; color:var(--text-secondary); display:flex; gap:8px; align-items:center;">
+                <span id="vid-retomar-texto">O vídeo longo parou antes do fim.</span>
+                <button type="button" class="btn btn-outline btn-sm" id="btn-retomar-video" style="font-size:11px; padding:3px 10px;">Retomar</button>
+              </div>
 
               <!-- Placeholder Minimalista de Cinema -->
               <div class="canvas-placeholder" id="vid-canvas-placeholder" style="padding:40px 20px;">
@@ -1218,7 +1213,7 @@
             <div class="vid-meta-strip-modern" id="vid-meta-strip" style="display:none;">
               <span id="vid-meta-job" style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">-</span>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span id="vid-meta-status" class="badge badge-paid" style="font-size:10px;">Disco local</span>
+                <span id="vid-meta-status" class="badge badge-paid" style="font-size:11px;">Disco local</span>
                 <span id="vid-meta-latencia" style="font-family:var(--font-mono); font-size:11px; color:var(--brand-primary);">Pronto</span>
 </div>
 </div>
@@ -1241,15 +1236,13 @@
     
       <!-- 10. GERADOR DE MÚSICAS & TRILHAS SONORAS (YuE 2) -->
       <section class="page-view" id="view-musicas">
-        <div class="page-header" style="margin-bottom: 20px;">
+        <div class="page-header">
           <div class="page-title">
-            <h2 style="display:flex; align-items:center; gap:8px;">
-              <span>Gerador de Músicas & Trilhas Sonoras (YuE 2)</span>
-</h2>
-            <p>Composição musical neural com arranjo instrumental, letra e partitura ABC acelerada via ComfyUI (GPU).</p>
+            <h2>Músicas</h2>
+            <p>YuE 2 no ComfyUI local: estilo e letra viram uma faixa estéreo em 48 kHz.</p>
 </div>
           <div style="display:flex; gap:10px; align-items:center;">
-            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-musica" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 · YuE 2 3B ↗</a>
+            <a href="http://127.0.0.1:8188" target="_blank" rel="noopener noreferrer" class="badge badge-free" id="badge-status-comfy-musica" style="padding:6px 12px; font-weight:600; text-decoration:none; cursor:pointer;" title="Abrir interface web do ComfyUI em nova aba (http://127.0.0.1:8188)">ComfyUI :8188 · YuE 2 3B <i data-icone="externalLink" data-tamanho="12"></i></a>
 </div>
 </div>
 
@@ -1272,7 +1265,7 @@
               <div id="mus-style-aviso-traducao" style="display:none; margin-top:8px; font-size:11px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.3); border-radius:var(--radius-sm); padding:10px 12px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                   <span style="font-weight:600; color:var(--brand-primary); display:flex; align-items:center; gap:5px;"><span id="mus-style-aviso-titulo">Estilo Musical Enriquecido</span></span>
-                  <span style="font-size:11px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao-musica">✕ Fechar</span>
+                  <span style="font-size:11px; color:var(--text-dim); cursor:pointer;" id="btn-fechar-aviso-traducao-musica">Fechar</span>
 </div>
                 <div id="mus-style-aviso-texto" style="color:var(--text-secondary); font-style:italic; line-height:1.45; max-height:75px; overflow-y:auto; margin:4px 0 8px;"></div>
                 <div style="display:flex; gap:8px;">
@@ -1313,20 +1306,20 @@
               <div>
                 <span class="vid-section-title" style="margin-bottom:4px;">Duração</span>
                 <select id="mus-select-duracao" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                  <option value="15">15s (Vinheta Rápida)</option>
-                  <option value="30" selected>30s (Tema Padrão)</option>
-                  <option value="60">60s (Canção Média)</option>
-                  <option value="120">120s (Faixa Completa)</option>
+                  <option value="15">até 15 s</option>
+                  <option value="30" selected>até 30 s</option>
+                  <option value="60">até 60 s</option>
+                  <option value="120">até 120 s</option>
 </select>
 </div>
               <div>
                 <span class="vid-section-title" style="margin-bottom:4px;">Modo de Arranjo</span>
                 <select id="mus-select-modo" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
-                  <option value="full" selected>Full (Melodia + Harmonia)</option>
-                  <option value="melody">Melody (Apenas Melodia)</option>
+                  <option value="full" selected>Completo (melodia e acompanhamento)</option>
+                  <option value="melody">Só melodia</option>
 </select>
 </div>
-              <div style="grid-column: 1 / -1;">
+              <div hidden>
                 <span class="vid-section-title" style="margin-bottom:4px;">Motor Generativo</span>
                 <select id="mus-select-modelo" style="font-size:12px; width:100%; padding:8px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
                   <option value="musica-yue2" selected> YuE 2 3B Music Studio (ComfyUI · GPU · Int8)</option>
@@ -1335,8 +1328,9 @@
 </div>
 
             <!-- Botão Hero de Composição -->
-            <button class="vid-btn-hero" id="btn-gerar-musica" style="background:linear-gradient(135deg, #059669 0%, #10b981 100%); box-shadow:0 4px 16px rgba(16, 185, 129, 0.35);">
-              <span>Compor & Sintetizar Música</span>
+            <label class="opcao opcao-otimizar" title="Um modelo de linguagem reescreve e traduz a descrição antes de gerar. Se houver chave do Groq, o texto vai para a nuvem."><input type="checkbox" id="mus-otimizar-auto"> Melhorar a descrição com IA antes de gerar</label>
+            <button class="vid-btn-hero" id="btn-gerar-musica">
+              <span>Gerar música</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
 </button>
 </div>
@@ -1347,10 +1341,10 @@
             <div class="vid-cinema-header">
               <div class="vid-cinema-title-group">
                 <span style="font-size:13px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                  Music Stage & Master Player
+                  <i data-icone="music" data-tamanho="16"></i>
+                  Resultado
 </span>
-                <span class="badge" style="font-size:10px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-subtle);">YuE 2 · 44.1kHz Estéreo · FLAC</span>
+                <span class="badge" style="font-size:11px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border-subtle);">YuE 2 · 48 kHz estéreo · FLAC</span>
 </div>
               <div class="vid-cinema-actions">
                 <button class="btn btn-outline btn-sm" id="btn-baixar-musica" disabled title="Baixar áudio de alta fidelidade" style="font-size:11px; padding:4px 10px; display:inline-flex; align-items:center; gap:5px;">
@@ -1398,7 +1392,7 @@
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color:#10b981;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
 </div>
                 <div style="color:var(--text-primary); font-size:14px; font-weight:600;">Music Studio Pronto</div>
-                <div style="color:var(--text-dim); font-size:12px; margin-top:4px; max-width:340px;">Defina o estilo musical e clique em Compor & Sintetizar Música para criar faixas estéreo completas.</div>
+                <div style="color:var(--text-dim); font-size:12px; margin-top:4px; max-width:340px;">Descreva o estilo e clique em Gerar música.</div>
 </div>
 
               <!-- Player de Áudio Ativo com Waveform Estilizado -->
@@ -1416,7 +1410,7 @@
             <div class="vid-meta-strip-modern" id="mus-meta-strip" style="display:none;">
               <span id="mus-meta-job" style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">-</span>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span id="mus-meta-status" class="badge badge-paid" style="font-size:10px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">FLAC estéreo</span>
+                <span id="mus-meta-status" class="badge badge-paid" style="font-size:11px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">FLAC estéreo</span>
                 <span id="mus-meta-latencia" style="font-family:var(--font-mono); font-size:11px; color:var(--brand-primary);">Pronto</span>
 </div>
 </div>
@@ -1445,7 +1439,7 @@
     <div class="modal-dialog">
       <div class="modal-header">
         <h3>Incluir Nova Regra Canônica</h3>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <div class="form-group">
@@ -1469,7 +1463,7 @@
     <div class="modal-dialog" style="max-width: 650px;">
       <div class="modal-header">
         <h3>Incluir Nova Skill Procedural</h3>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <div class="subtabs" style="margin-bottom: 16px;">
@@ -1525,7 +1519,7 @@
     <div class="modal-dialog">
       <div class="modal-header">
         <h3>Cadastrar Novo Servidor MCP</h3>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <div class="form-group">
@@ -1546,7 +1540,7 @@
             <option value="oauth"> OAuth 2.0 (Autenticação no Navegador pelo Cliente de IA)</option>
             <option value="none"> Nenhuma / Pública (Localhost ou sem credenciais)</option>
 </select>
-          <span class="form-hint" id="hint-mcp-auth">O token será salvo no arquivo .env e protegido no Cofre de Segredos.</span>
+          <span class="form-hint" id="hint-mcp-auth">O token será salvo no arquivo .env e protegido no Chaves e segredos.</span>
 </div>
         <div class="form-group" id="grupo-mcp-cmd">
           <label for="mcp-cmd">Comando e Argumentos (JSON ou linha de comando)</label>
@@ -1563,7 +1557,7 @@
         <div class="form-group" id="grupo-mcp-env">
           <label for="mcp-env-key">Chaves de API / Variáveis de Ambiente Necessárias (opcional)</label>
           <input type="text" id="mcp-env-key" placeholder="ex: SUPABASE_URL, SUPABASE_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE_KEY">
-          <span class="form-hint">Informe uma ou mais variáveis (separadas por vírgula ou espaço). Todas aparecerão automaticamente no Cofre de Segredos para mascaramento e teste.</span>
+          <span class="form-hint">Informe uma ou mais variáveis (separadas por vírgula ou espaço). Todas aparecerão automaticamente no Chaves e segredos para mascaramento e teste.</span>
 </div>
 </div>
       <div class="modal-footer">
@@ -1578,7 +1572,7 @@
     <div class="modal-dialog">
       <div class="modal-header">
         <h3 id="modal-instancia-titulo">Adicionar Instância de Cliente</h3>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <input type="hidden" id="instancia-modo" value="novo">
@@ -1637,7 +1631,7 @@
 </div>
           <p id="modal-ver-codigo-sub" style="font-size: 12px; color: var(--text-dim); margin-top: 3px; font-family: var(--font-mono);"></p>
 </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body" style="padding: 12px 20px;">
         <pre id="modal-ver-codigo-pre" style="background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 14px; border-radius: 8px; font-family: var(--font-mono); font-size: 12px; line-height: 1.5; color: var(--text); max-height: 60vh; overflow-y: auto; white-space: pre-wrap; margin: 0;"><code id="modal-ver-codigo-conteudo"></code></pre>
@@ -1658,114 +1652,108 @@
 
   <!-- MODAL: NOVO PROVEDOR DE IA -->
   <div class="modal-backdrop" id="modal-provedor">
-    <div class="modal-dialog" style="max-width: 650px;">
+    <div class="modal-dialog" style="max-width: 680px;" role="dialog" aria-modal="true" aria-labelledby="modal-provedor-titulo">
       <div class="modal-header">
         <div>
-          <h3>Cadastrar Novo Provedor de IA</h3>
-          <p style="font-size: 12px; color: var(--text-dim); margin-top: 2px;">Integre qualquer provedor de IA compatível com OpenAI/LiteLLM ao ecossistema.</p>
-</div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
-</div>
+          <h3 id="modal-provedor-titulo">Novo provedor</h3>
+          <p class="modal-sub" id="modal-provedor-sub">Qualquer serviço compatível com a API da OpenAI ou suportado pelo LiteLLM.</p>
+        </div>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
+      </div>
       <div class="modal-body">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-grade">
           <div class="form-group">
-            <label for="prov-id">ID Único (kebab-case) *</label>
-            <input type="text" id="prov-id" placeholder="ex: together, mistral, fireworks">
-</div>
+            <label for="prov-id">Identificador</label>
+            <input type="text" id="prov-id" placeholder="together" autocomplete="off" spellcheck="false">
+            <span class="form-hint">Minúsculas, números e hífens.</span>
+          </div>
           <div class="form-group">
-            <label for="prov-nome">Nome de Exibição *</label>
-            <input type="text" id="prov-nome" placeholder="ex: Together AI, Mistral">
-</div>
-</div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <label for="prov-nome">Nome</label>
+            <input type="text" id="prov-nome" placeholder="Together AI">
+          </div>
           <div class="form-group">
-            <label for="prov-tier">Plano / Categoria *</label>
-            <select id="prov-tier" style="width: 100%; padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text); border-radius: var(--radius-sm);">
-              <option value="FREE">Planos Free (Roteamento Automático)</option>
-              <option value="PAID" selected>Planos Pagos (Pay-as-you-go)</option>
-</select>
-</div>
+            <label for="prov-tier">Plano</label>
+            <select id="prov-tier">
+              <option value="FREE">Gratuito (entra no roteamento automático)</option>
+              <option value="PAID" selected>Pago (cobrança por uso)</option>
+            </select>
+          </div>
           <div class="form-group">
-            <label for="prov-chave">Nome da Variável no .env *</label>
-            <input type="text" id="prov-chave" placeholder="ex: TOGETHER_API_KEY">
-</div>
-</div>
-
+            <label for="prov-chave">Variável da chave no .env</label>
+            <input type="text" id="prov-chave" placeholder="TOGETHER_API_KEY" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="form-group" id="grupo-prov-valor-chave">
+          <label for="prov-valor-chave">Valor da chave (opcional)</label>
+          <input type="password" id="prov-valor-chave" placeholder="Cole a chave para já deixar o provedor funcionando" autocomplete="off">
+          <span class="form-hint">Vai para o .env, com cópia de segurança. Depois, troque em Chaves e segredos.</span>
+        </div>
+        <div class="form-grade">
+          <div class="form-group">
+            <label for="prov-site-chave">Página para obter a chave</label>
+            <input type="url" id="prov-site-chave" placeholder="https://…/keys">
+          </div>
+          <div class="form-group">
+            <label for="prov-site-limites">Página de limites e preços</label>
+            <input type="url" id="prov-site-limites" placeholder="https://…/pricing">
+          </div>
+          <div class="form-group">
+            <label for="prov-api-base">Endereço da API (api_base)</label>
+            <input type="text" id="prov-api-base" placeholder="https://api.together.xyz/v1">
+          </div>
+          <div class="form-group">
+            <label for="prov-url-modelos">Endereço da lista de modelos</label>
+            <input type="url" id="prov-url-modelos" placeholder="https://api.together.xyz/v1/models">
+          </div>
+        </div>
+        <fieldset class="form-grade form-grade-4">
+          <legend>Limites (deixe em branco o que não se aplica)</legend>
+          <div class="form-group"><label for="prov-rpm">Pedidos por minuto</label><input type="number" min="0" id="prov-rpm"></div>
+          <div class="form-group"><label for="prov-rpd">Pedidos por dia</label><input type="number" min="0" id="prov-rpd"></div>
+          <div class="form-group"><label for="prov-tpd">Tokens por dia</label><input type="number" min="0" id="prov-tpd"></div>
+          <div class="form-group"><label for="prov-usd-dia">US$ por dia</label><input type="number" min="0" step="0.01" id="prov-usd-dia"></div>
+        </fieldset>
         <div class="form-group">
-          <label for="prov-valor-chave">Valor da Chave de API (Opcional - salva no .env seguro)</label>
-          <input type="password" id="prov-valor-chave" placeholder="ex: tog_... ou sk-...">
-          <span class="form-hint">Se preenchido, a chave será salva com backup automático no cofre local.</span>
-</div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-          <div class="form-group">
-            <label for="prov-api-base">URL Base da API (api_base)</label>
-            <input type="text" id="prov-api-base" placeholder="ex: https://api.together.xyz/v1">
-</div>
-          <div class="form-group">
-            <label for="prov-url-modelos">URL de Descoberta de Modelos (url_modelos)</label>
-            <input type="text" id="prov-url-modelos" placeholder="ex: https://api.together.xyz/v1/models">
-</div>
-</div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-          <div class="form-group">
-            <label for="prov-site-chave">Site para Obter Chave</label>
-            <input type="text" id="prov-site-chave" placeholder="https://...">
-</div>
-          <div class="form-group">
-            <label for="prov-rpm">Limite RPM</label>
-            <input type="number" id="prov-rpm" placeholder="ex: 60">
-</div>
-          <div class="form-group">
-            <label for="prov-rpd">Limite RPD (Cota Diária)</label>
-            <input type="number" id="prov-rpd" placeholder="ex: 1000">
-</div>
-</div>
-
-        <div class="form-group">
-          <label for="prov-fonte-limites">Fonte de Limites ou Documentação</label>
-          <input type="text" id="prov-fonte-limites" placeholder="ex: Documentação oficial de preços e rate limits">
-</div>
-</div>
+          <label for="prov-fonte-limites">De onde vieram os limites</label>
+          <input type="text" id="prov-fonte-limites" placeholder="Documentação oficial, consultada em …">
+        </div>
+      </div>
       <div class="modal-footer">
         <button class="btn btn-outline btn-sm" data-close-modal>Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-salvar-provedor">Salvar e Ativar Provedor</button>
-</div>
-</div>
-</div>
-
+        <button class="btn btn-primary btn-sm" id="btn-salvar-provedor">Cadastrar provedor</button>
+      </div>
+    </div>
+  </div>
   <!-- MODAL: ESCOLHER MODELOS NOVOS DE TODOS OS PROVEDORES -->
   <div class="modal-backdrop" id="modal-escolher-novos">
     <div class="modal-dialog" style="max-width: 900px;">
       <div class="modal-header">
         <div>
           <h3 id="escolher-novos-titulo">Escolher Modelos Novos</h3>
-          <p style="font-size: 12px; color: var(--text-dim); margin-top: 2px;">Modelos que as APIs oferecem e o catálogo ainda não tem. Os escolhidos entram ativos.</p>
+          <p style="font-size: 12px; color: var(--text-dim); margin-top: 2px;">Modelos que as APIs oferecem e o catálogo ainda não tem. Cada escolhido recebe uma mensagem de teste; só os que responderem entram, já ligados.</p>
         </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         <div id="escolher-novos-loading" style="text-align:center; padding:30px;">
           <p style="color:var(--text-muted); font-size:13px;">Consultando as APIs dos provedores em tempo real...</p>
         </div>
         <div id="escolher-novos-erros" class="info-callout" style="display:none; border-color:var(--danger); margin-bottom:14px;">
-          <div class="info-callout-title" style="color:var(--danger);"><span>⚠</span> Provedores que não responderam</div>
+          <div class="info-callout-title" style="color:var(--danger);"><i data-icone="triangleAlert"></i> Provedores que não responderam</div>
           <p class="info-callout-text" id="escolher-novos-erros-msg" style="white-space: pre-line;"></p>
         </div>
         <div id="escolher-novos-conteudo" style="display:none;">
           <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
             <div style="position:relative; flex:1;">
-              <input type="text" id="input-filtro-escolher-novos" placeholder="🔍 Filtrar modelos por provedor, ID ou papéis (ex: coder, vision)..." style="width:100%; padding:8px 32px 8px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:4px; color:var(--text); outline:none;">
-              <button id="btn-limpar-filtro-escolha" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; display:none;" title="Limpar filtro">✕</button>
+              <input type="text" id="input-filtro-escolher-novos" placeholder="Filtrar modelos por provedor, ID ou papéis (ex: coder, vision)..." style="width:100%; padding:8px 32px 8px 12px; font-size:12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:4px; color:var(--text); outline:none;">
+              <button id="btn-limpar-filtro-escolha" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; display:none;" title="Limpar filtro" aria-label="Limpar filtro"><i data-icone="x"></i></button>
             </div>
             <button class="btn btn-outline btn-sm active" id="btn-escolher-novos-so-free" title="Mostra só provedores de tier FREE">Só FREE</button>
             <button class="btn btn-outline btn-sm" id="btn-escolher-novos-marcar-visiveis">Marcar visíveis</button>
           </div>
           <table style="width:100%; font-size:12px;">
             <thead>
-              <tr><th style="width:36px;"></th><th style="text-align:left;">Provedor</th><th style="text-align:left;">ID do modelo</th><th style="text-align:left;">Papéis</th><th style="text-align:left;">Tier</th></tr>
+              <tr><th style="width:36px;"></th><th style="text-align:left;">Provedor</th><th style="text-align:left;">ID do modelo</th><th style="text-align:left;">Papéis</th><th style="text-align:left;">Teste</th></tr>
             </thead>
             <tbody id="tbody-escolher-novos"></tbody>
           </table>
@@ -1774,7 +1762,7 @@
       <div style="display:flex; justify-content:flex-end; gap:10px; padding:14px 18px;">
         <span id="escolher-novos-contagem" style="font-size:12px; color:var(--text-muted); align-self:center;"></span>
         <button class="btn btn-outline btn-sm" data-close-modal>Cancelar</button>
-        <button class="btn btn-primary btn-sm" id="btn-confirmar-escolha-novos">Adicionar selecionados</button>
+        <button class="btn btn-primary btn-sm" id="btn-confirmar-escolha-novos">Testar e incluir os aprovados</button>
       </div>
     </div>
   </div>
@@ -1790,7 +1778,7 @@
 </div>
           <p id="modal-descobrir-sub" style="font-size: 12px; color: var(--text-dim); margin-top: 2px;">Consulta em tempo real ao endpoint do provedor para detecção de novos modelos e descontinuados.</p>
 </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         <div id="modal-descobrir-loading" style="text-align:center; padding:30px; display:none;">
@@ -1799,7 +1787,7 @@
 </div>
 
         <div id="modal-descobrir-erro" class="info-callout" style="display:none; border-color:var(--danger); margin-bottom:14px;">
-          <div class="info-callout-title" style="color:var(--danger);"><span>⚠</span> Erro na Conexão</div>
+          <div class="info-callout-title" style="color:var(--danger);"><i data-icone="triangleAlert"></i> Erro na conexão</div>
           <p class="info-callout-text" id="modal-descobrir-erro-msg"></p>
 </div>
 
@@ -1875,13 +1863,13 @@
       <div class="modal-header">
         <div>
           <h3 style="display:flex; align-items:center; gap:8px;">
-            <span>⬇</span> Baixar Modelo Local (Ollama)
+            <i data-icone="download"></i> Baixar modelo do Ollama
 </h3>
           <p style="font-size:12px; color:var(--text-dim); margin-top:2px;">
             Download de modelos open-weight para inferência local acelerada por Tensor Cores da GPU.
 </p>
 </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <div class="form-group">
@@ -1893,8 +1881,8 @@
 </div>
 
         <div style="margin-top:14px;">
-          <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:6px;">
-            Sugestões Otimizadas para a sua GPU
+          <label style="font-size:11px; letter-spacing:0.5px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:6px;">
+            Sugestões para a sua GPU
 </label>
           <div style="display:flex; flex-wrap:wrap; gap:6px;">
             <button type="button" class="btn btn-outline btn-sm btn-tag-sugestao" data-tag="qwen2.5-coder:7b">qwen2.5-coder:7b (Código)</button>
@@ -1927,12 +1915,12 @@
     <div class="modal-dialog" style="max-width: 550px;">
       <div class="modal-header">
         <div>
-          <h3>+ Novo Grupo de Roteamento</h3>
+          <h3>Novo grupo</h3>
           <p style="font-size:12px; color:var(--text-dim); margin-top:2px;">
             Crie um grupo de fallback LiteLLM para receber requisições de agentes ou usuários.
 </p>
 </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <div class="form-group">
@@ -1951,12 +1939,45 @@
           <input type="text" id="input-novo-grupo-desc" placeholder="Ex: Grupo especializado em queries de síntese e busca">
 </div>
         <div class="form-group">
-          <label for="select-novo-grupo-tier">Nível de Custo (Tier)</label>
+          <label for="select-novo-grupo-tier">Origem / Nível de Custo (Tier)</label>
           <select id="select-novo-grupo-tier">
-            <option value="FREE">FREE (Nuvem Gratuita e Local)</option>
+            <option value="FREE">FREE (Nuvem Gratuita)</option>
+            <option value="LOCAL">LOCAL (Ollama Local na GPU)</option>
             <option value="PAID">PAID (Nuvem Paga / Prioridade)</option>
-</select>
-</div>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipos de Modelos / Papéis Aceitos (Auto-Vinculação)</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; padding:10px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm);" id="container-papeis-novo-grupo">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="chat" class="chk-papel-novo" checked>
+              <span>Chat / Geral</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="codigo" class="chk-papel-novo" checked>
+              <span>Código</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="visao" class="chk-papel-novo">
+              <span>Visão / Imagem</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="raciocinio" class="chk-papel-novo">
+              <span>Raciocínio (R1)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="agente" class="chk-papel-novo">
+              <span>Agente / Tools</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="rapido" class="chk-papel-novo">
+              <span>Rápido</span>
+            </label>
+          </div>
+          <span style="font-size:11px; color:var(--text-dim); margin-top:4px; display:block;">
+            O botão <strong>Vincular modelos por papel</strong> usará estas opções para filtrar quais modelos entram neste grupo.
+          </span>
+        </div>
 </div>
       <div class="modal-footer">
         <button class="btn btn-outline btn-sm" data-close-modal>Cancelar</button>
@@ -1975,7 +1996,7 @@
             Modifique as informações ou alterne o status operacional do grupo no roteador.
 </p>
 </div>
-        <button class="btn btn-outline btn-sm" data-close-modal>✕</button>
+        <button class="btn btn-outline btn-sm btn-icone" data-close-modal aria-label="Fechar" title="Fechar"><i data-icone="x"></i></button>
 </div>
       <div class="modal-body">
         <input type="hidden" id="input-editar-grupo-id">
@@ -1987,6 +2008,46 @@
           <label for="input-editar-grupo-desc">Descrição do Propósito</label>
           <input type="text" id="input-editar-grupo-desc">
 </div>
+        <div class="form-group">
+          <label for="select-editar-grupo-tier">Origem / Nível de Custo (Tier)</label>
+          <select id="select-editar-grupo-tier">
+            <option value="FREE">FREE (Nuvem Gratuita)</option>
+            <option value="LOCAL">LOCAL (Ollama Local na GPU)</option>
+            <option value="PAID">PAID (Nuvem Paga / Prioridade)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipos de Modelos / Papéis Aceitos (Auto-Vinculação)</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; padding:10px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm);" id="container-papeis-editar-grupo">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="chat" class="chk-papel-editar">
+              <span>Chat / Geral</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="codigo" class="chk-papel-editar">
+              <span>Código</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="visao" class="chk-papel-editar">
+              <span>Visão / Imagem</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="raciocinio" class="chk-papel-editar">
+              <span>Raciocínio (R1)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="agente" class="chk-papel-editar">
+              <span>Agente / Tools</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" value="rapido" class="chk-papel-editar">
+              <span>Rápido</span>
+            </label>
+          </div>
+          <span style="font-size:11px; color:var(--text-dim); margin-top:4px; display:block;">
+            Ao clicar em <strong>Vincular modelos por papel</strong>, os modelos compatíveis serão associados a este grupo.
+          </span>
+        </div>
         <div style="margin-top:16px; padding:12px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:space-between;">
           <div>
             <div style="font-weight:600; font-size:13px; color:var(--text);">Status Operacional</div>
@@ -2010,7 +2071,7 @@
   <!-- Container de Toasts -->
   <div id="toast-container"></div>
 
-  <script src="/app/painel.js?v=11" defer></script>
-  <script src="/app/squadti.js" defer></script>
+  <script src="/app/painel.js?v=12" defer></script>
+  <script src="/app/squadti.js?v=1" defer></script>
 </body>
 </html>

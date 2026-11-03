@@ -30,6 +30,7 @@ class Provedor:
     modelos: tuple[Modelo, ...]
     descartar_params: tuple[str, ...] = ()   # params que o provedor recusa com 400 e drop_params não remove
     repeticoes: int | None = None            # num_retries do deployment
+    site_limites: str = ""                   # página oficial de limites/preços do provedor (link no painel)
 
     def todas_as_chaves(self) -> tuple[str, ...]:
         return (self.chave, *self.chaves_extras)
@@ -77,6 +78,7 @@ def carregar_catalogo(path: Path) -> Catalogo:
                 modelos=modelos,
                 descartar_params=tuple(p.get("descartar_params") or ()),
                 repeticoes=p.get("repeticoes"),
+                site_limites=p.get("site_limites") or "",
             )
         )
     return Catalogo(tuple(provedores))

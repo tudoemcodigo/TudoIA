@@ -47,6 +47,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - XAI_API_KEY=${XAI_API_KEY:-}
+      - FAL_AI_API_KEY=${FAL_AI_API_KEY:-}   # vídeo na nuvem (config/video-nuvem.yaml)
       - HF_TOKEN=${HF_TOKEN:-}
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro   # GERADO pelo painel (POST /api/roteador/gerar)

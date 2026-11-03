@@ -1,146 +1,238 @@
-# Componentes de terceiros e licenças
+---
+titulo: Componentes de terceiros e licenças
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-Este documento lista o que o TudoIA usa de terceiros e a licença de cada item, conforme verificado nos arquivos do repositório e da máquina de referência. Onde a licença não pôde ser verificada nos arquivos disponíveis, está escrito **a confirmar**. Nenhuma licença foi inferida de memória.
+[🏠 TudoIA](../README.md) › [📚 Documentação](README.md) › 📜 Terceiros
 
-O projeto é licenciado sob a Apache License 2.0 (`LICENSE`, com o aviso em `NOTICE`). Os itens abaixo mantêm as licenças próprias.
+# 📜 Componentes de terceiros e licenças
 
-## 1. Skills de governança (`governanca/skills/`)
+> Para quem usa, redistribui ou audita o TudoIA: o que vem de terceiros, de onde, em que versão e sob qual licença, e quais dados saem da máquina para serviços externos. Onde a licença não pôde ser conferida nos arquivos disponíveis, está escrito **a confirmar**; nenhuma licença foi inferida de memória.
 
-A origem está em `governanca/ORIGEM.md`, que descreve as 22 skills desta pasta (14 originais e 8 adicionadas em 27/10/2026). O próprio arquivo é inconsistente: o título diz "As 10 skills desta pasta são cópias sem alteração de addyosmani/agent-skills", sem dizer quais são, e a tabela lista 14. Por isso a atribuição por skill abaixo é a que a tabela sugere, e precisa ser confirmada.
+## 📑 Sumário
 
-A tabela atribui três skills a um "protocolo canônico TudoHaS", uma à Anthropic (`frontend-design`) e marca `humanize-text` como criação própria do autor (não é cópia). As outras nove aparecem sem origem própria, dentro das "cópias" do título. A licença MIT só vale para as cópias de addyosmani, e o arquivo `LICENSE-agent-skills` é o texto dessa licença.
+- [🎯 Visão geral](#-visão-geral)
+- [🧠 Skills de governança](#-skills-de-governança)
+- [🔌 Servidores MCP do catálogo](#-servidores-mcp-do-catálogo)
+- [🐍 Dependências Python](#-dependências-python)
+- [🐳 Imagens Docker](#-imagens-docker)
+- [🖥️ Processos do host e ferramentas locais](#️-processos-do-host-e-ferramentas-locais)
+- [🧬 Pesos de modelos de IA](#-pesos-de-modelos-de-ia)
+- [🌐 Serviços externos chamados pelo código](#-serviços-externos-chamados-pelo-código)
+- [🎨 Ícones do painel](#-ícones-do-painel)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
 
-| Componente | Versão | Licença | Onde está no repositório |
-|---|---|---|---|
-| `code-review-and-quality` | commit `aeac41d4` de `addyosmani/agent-skills` (se for cópia; a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/code-review-and-quality/` |
-| `debugging-and-error-recovery` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/debugging-and-error-recovery/` |
-| `git-workflow-and-versioning` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/git-workflow-and-versioning/` |
-| `incremental-implementation` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/incremental-implementation/` |
-| `microsoft-docs` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/microsoft-docs/` |
-| `planning-and-task-breakdown` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/planning-and-task-breakdown/` |
-| `security-and-hardening` (com `references/hardening-patterns.md`) | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/security-and-hardening/` |
-| `spec-driven-development` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/spec-driven-development/` |
-| `using-agent-skills` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/using-agent-skills/` |
-| `disciplined-tdd` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/disciplined-tdd/` |
-| `grill-me` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/grill-me/` |
-| `improve-codebase-architecture` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/improve-codebase-architecture/` |
-| `frontend-design` | a confirmar (`ORIGEM.md`: Anthropic) | Apache License 2.0 (`LICENSE.txt` na própria pasta; o `SKILL.md` diz "Complete terms in LICENSE.txt") | `governanca/skills/frontend-design/` |
-| `humanize-text` | Criação própria do autor (não é cópia) | Apache License 2.0, licença do projeto (`LICENSE`) | `governanca/skills/humanize-text/` |
-| `lgpd-compliance` | Criação própria (27/10/2026), com referências listadas em `ORIGEM.md` | Apache License 2.0, licença do projeto (`LICENSE`) | `governanca/skills/lgpd-compliance/` |
-| `observability-and-instrumentation` | `addyosmani/agent-skills` commit `fe6f0811` | MIT (`governanca/LICENSE-agent-skills`) | `governanca/skills/observability-and-instrumentation/` |
-| `documentation-and-adrs` | `addyosmani/agent-skills` commit `30f88627` | MIT (`governanca/LICENSE-agent-skills`) | `governanca/skills/documentation-and-adrs/` |
-| `mcp-builder` | `anthropics/skills` commit `ef740771` | Apache License 2.0 (`LICENSE.txt` na pasta) | `governanca/skills/mcp-builder/` |
-| `dotnet-aot-compat` | `dotnet/skills` commit `05aeb657` | MIT (`LICENSE.txt` na pasta) | `governanca/skills/dotnet-aot-compat/` |
-| `security-threat-model` | `openai/skills` commit `5c8f1e26` | Apache License 2.0 (`LICENSE.txt` na pasta) | `governanca/skills/security-threat-model/` |
-| `advanced-evaluation` | `muratcankoylan/Agent-Skills-for-Context-Engineering` commit `8fc51c7c` | MIT (`LICENSE.txt` na pasta) | `governanca/skills/advanced-evaluation/` |
-| `n8n-expression-syntax` | `czlonkowski/n8n-skills` commit `2fb619a8` | MIT (`LICENSE.txt` na pasta) | `governanca/skills/n8n-expression-syntax/` |
+---
 
-As sete skills de outras origens foram baixadas da fonte original no commit indicado e lidas por inteiro em 27/10/2026. As adaptadas trazem um aviso no topo de cada arquivo alterado; as mudanças estão em `governanca/ORIGEM.md`.
+## 🎯 Visão geral
 
-Notas:
+O TudoIA é licenciado sob a **Apache License 2.0** (`LICENSE`, com o aviso em `NOTICE`). Os itens abaixo mantêm as licenças próprias. O repositório não redistribui imagens Docker, pesos de modelos, Ollama nem ComfyUI: cada máquina os baixa.
 
-- A licença MIT das cópias de addyosmani está em `governanca/LICENSE-agent-skills` (Copyright (c) 2025 Addy Osmani). Os `SKILL.md` não trazem o aviso de copyright; a atribuição vale pelo `ORIGEM.md` e pelo arquivo de licença.
-- As cópias não têm alteração, segundo o `ORIGEM.md`. O conteúdo é texto de terceiros e deve ser lido antes de cada atualização, como o próprio `ORIGEM.md` pede.
+Como esta página foi conferida em 2026-11-03:
 
-## 2. Open WebUI (imagem, `env.py` e ícones)
-
-| Componente | Versão | Licença | Onde está no repositório |
-|---|---|---|---|
-| Open WebUI | `0.12.3`, lido de `/app/package.json` da imagem `ghcr.io/open-webui/open-webui:main@sha256:4860ba005ae8f19f08d1e12b0868855b7b339ea0dad9927f196820fc0de04575` | **a confirmar.** A imagem traz `/app/build/BRANDING.md`, que diz que o branding do Open WebUI não pode ser alterado nem removido "exceto como permitido pela LICENSE", e manda consultar `docs.openwebui.com/license`. O arquivo `LICENSE` em si não está na imagem, e o link não foi consultado nesta documentação. | compose (`open-webui`), `runtime/open-webui/env.py`, `runtime/open-webui/static/` |
-
-**Ponto de atenção.** O TudoIA substitui o branding do Open WebUI: troca o nome padrão, o favicon e as nove imagens de `/app/build/static/` (ver [componentes/servicos-docker.md](componentes/servicos-docker.md)). O cabeçalho do `env.py` upstream diz que o branding "não pode ser alterado exceto como a LICENSE permite". Se a licença do Open WebUI não permite essa substituição, o uso precisa de revisão antes de qualquer distribuição. Isso é uma questão de licença a confirmar pelo dono do projeto, não uma conclusão.
-
-Os nove arquivos de `runtime/open-webui/static/` não são os originais da imagem (hash diferente). Não há como verificar pelos arquivos do repositório quem os produziu. Origem **a confirmar**; a semelhança com o painel sugere que foram gerados para o TudoIA.
-
-## 3. SearXNG
-
-| Componente | Versão | Licença | Onde está no repositório |
-|---|---|---|---|
-| SearXNG (imagem `searxng/searxng:2026.10.19-81371861f`) | tag `2026.10.19`, com digest fixado | **a confirmar.** O cabeçalho de `runtime/searxng/settings.yml` não declara licença e não há arquivo de licença na imagem na profundidade verificada. | compose (`searxng`), `runtime/searxng/settings.yml` |
-
-## 4. Imagens Docker usadas
-
-Lista de nomes, sem licenças. Os digests completos estão em `runtime/docker-compose.yml`.
-
-| Serviço | Imagem |
+| Seção | Fonte da conferência |
 |---|---|
-| `litellm-db` | `postgres:17.6-alpine` |
-| `litellm` | `ghcr.io/berriai/litellm:main-latest` |
-| `searxng` | `searxng/searxng:2026.10.19-81371861f` |
-| `cerebro` (construída localmente) | base `python:3.12-slim` e `ghcr.io/astral-sh/uv:0.13.0` (ambas por tag, sem digest) |
-| `kokoro` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` |
-| `open-webui` | `ghcr.io/open-webui/open-webui:main` |
-| `n8n` | `docker.n8n.io/n8nio/n8n:latest` |
+| Skills | `governanca/ORIGEM.md`, `governanca/governanca.json`, arquivos `LICENSE*` das pastas |
+| Servidores MCP | `governanca/mcp.json` e `governanca/ORIGEM.md` |
+| Dependências Python | versões: `uv.lock` de cada projeto; licenças: `METADATA` das distribuições instaladas nos `.venv` desta máquina |
+| Imagens Docker | `runtime/docker-compose.yml` e os `Dockerfile` |
+| ComfyUI e nós | cópia local em `modelos\ComfyUI\` (fora do git) |
+| Pesos | `config/modelos.yaml` |
 
-## 5. Dependências Python
+## 🧠 Skills de governança
 
-Versões e licenças lidas do `METADATA` das distribuições instaladas em `.venv\Lib\site-packages\` (projeto raiz) e em `runtime\cerebro\.venv\Lib\site-packages\` (Cérebro). Só as dependências diretas declaradas em `pyproject.toml`.
+As 23 skills de `governanca/skills/` estão listadas em `governanca/governanca.json`. A origem de cada uma é registrada em `governanca/ORIGEM.md`, que também descreve as adaptações. A licença MIT das cópias de `addyosmani/agent-skills` está em `governanca/LICENSE-agent-skills` (Copyright (c) 2025 Addy Osmani); os `SKILL.md` não repetem o aviso, a atribuição vale pelo `ORIGEM.md` e pelo arquivo de licença.
 
-Quando o campo `License` do `METADATA` está vazio, a licença veio do classificador `License :: OSI Approved :: BSD License`, e aparece assim na tabela.
+| Skill | Origem (commit) | Licença | Adaptada |
+|---|---|---|---|
+| `using-agent-skills`, `spec-driven-development`, `planning-and-task-breakdown`, `incremental-implementation`, `debugging-and-error-recovery`, `code-review-and-quality`, `security-and-hardening`, `git-workflow-and-versioning` | `addyosmani/agent-skills`, commit `aeac41d4`, copiadas em 22/10/2026 | MIT (`LICENSE-agent-skills`) | Sim, notas de precedência da Doutrina (2026-11-01) |
+| `observability-and-instrumentation` | `addyosmani/agent-skills`, `fe6f0811` | MIT (`LICENSE-agent-skills`) | Sim |
+| `documentation-and-adrs` | `addyosmani/agent-skills`, `30f88627` | MIT (`LICENSE-agent-skills`) | Não |
+| `mcp-builder` | `anthropics/skills`, `ef740771` | Apache-2.0 (`LICENSE.txt` na pasta) | Sim |
+| `frontend-design` | Anthropic (commit não registrado no `ORIGEM.md`) | Apache-2.0 (`LICENSE.txt` na pasta) | Não registrado |
+| `dotnet-aot-compat` | `dotnet/skills`, `05aeb657` | MIT (`LICENSE.txt` na pasta) | Sim |
+| `security-threat-model` | `openai/skills`, `5c8f1e26` | Apache-2.0 (`LICENSE.txt` na pasta) | Sim |
+| `advanced-evaluation` | `muratcankoylan/Agent-Skills-for-Context-Engineering`, `8fc51c7c` | MIT (`LICENSE.txt` na pasta) | Sim |
+| `n8n-expression-syntax` | `czlonkowski/n8n-skills`, `2fb619a8` | MIT (`LICENSE.txt` na pasta) | Sim |
+| `humanize-text`, `lgpd-compliance` | Criação própria do autor do TudoIA (a segunda cita referências no `ORIGEM.md`) | Apache-2.0, licença do projeto | Não se aplica |
+| `doutrina-tec` | Criação própria do ecossistema TEC (repositório Doutrina), copiada em 01/11/2026 e atualizada em 02/11/2026 | Apache-2.0 (licença do repositório Doutrina, segundo o `ORIGEM.md`) | Sim |
+| `disciplined-tdd`, `grill-me`, `improve-codebase-architecture` | Conteúdo próprio ("canônico TudoIA") | O `ORIGEM.md` não declara; presume-se a do projeto. **A confirmar** | Sim (as duas últimas) |
+| `microsoft-docs` | O `ORIGEM.md` diz que a origem e a licença **ainda não foram registradas** | **A confirmar** antes da próxima atualização | Sim |
+
+O conteúdo das skills é texto de terceiros e deve ser lido por inteiro antes de cada atualização, como o `ORIGEM.md` exige (IA-FER-01).
+
+## 🔌 Servidores MCP do catálogo
+
+`governanca/mcp.json` lista os servidores; só os ids de `mcp[]` em `governanca.json` ficam ativos. Os pacotes `npx` estão fixados em versão. A triagem estática (sem executar nada) de 2026-11-02 está em `governanca/ORIGEM.md` e **não equivale à leitura integral** (IA-FER-01 segue pendente).
+
+| Servidor | Pacote ou endpoint fixado | Ativo | Observação do `ORIGEM.md` |
+|---|---|---|---|
+| `context7` | `@upstash/context7-mcp@4.4.4` | sim | MIT; envia a consulta de biblioteca a `context7.com`: não coloque código proprietário nem segredo nela. Sem proveniência npm. |
+| `playwright` | `@playwright/mcp@0.0.84` | sim | Apache-2.0; nenhum host externo embutido. |
+| `sequential-thinking` | `@modelcontextprotocol/server-sequential-thinking@2.0.0` | sim | Licença declarada "SEE LICENSE IN LICENSE" e o tarball não traz o arquivo; o repositório de origem declara a transição de MIT para Apache-2.0. Conferir antes de atualizar. |
+| `fetch` | `@tokenizin/mcp-npx-fetch@1.0.0` | sim | MIT; busca a URL pedida pelo modelo: trate o conteúdo como dado não confiável. Sem proveniência npm. |
+| `microsoft-learn` | `mcp-remote@0.16.0` apontando para `learn.microsoft.com/api/mcp` | sim | O único `child_process` é o abridor de navegador do fluxo OAuth. |
+| `vercel` | `https://mcp.vercel.com` (HTTP, OAuth) | sim | Serviço remoto; termos não verificados. |
+| `serena` | Executável `serena` do host (`serena-agent`, instalado por `uv tool`) | sim | Aplicação GNU GPL v3 ou posterior, biblioteca SolidLSP em MIT (segundo o repositório `oraios/serena`, conferido em 27/10/2026). Versão `2.1.0` herdada do documento anterior, não reconferida. Não redistribuído. |
+| `cerebro` | `http://127.0.0.1:8765/mcp` | sim | Próprio (ver [Cérebro](componentes/cerebro.md)). |
+| `doutrina-tec` | `${DOUTRINA_TEC}/tools/mcp_doutrina.py` | sim | Doutrina TEC (Apache-2.0); ver [Doutrina](componentes/doutrina.md). |
+| `github` | `https://api.githubcopilot.com/mcp/` (servidor remoto oficial) | não | Substitui o `@modelcontextprotocol/server-github`, depreciado no npm. |
+| `supabase` | `@supabase/mcp-server-supabase@0.15.0` com `--read-only` | não | Traz uma ferramenta de feedback que envia texto à Supabase; com `--read-only` ela recusa. Não retire a opção sem desligar o grupo `feedback`. |
+
+O `@wonderwhy-er/desktop-commander` foi **removido** do catálogo por enviar telemetria de instalação sem respeitar o opt-out (decisão do dono em 2026-11-02).
+
+## 🐍 Dependências Python
+
+Só as dependências diretas declaradas em cada `pyproject.toml`. Versões do `uv.lock`; licenças lidas do `METADATA` instalado. Quando o campo de licença está vazio, vale o classificador `License :: OSI Approved`. As transitivas não estão listadas: para auditar o conjunto completo, leia os `METADATA` de cada ambiente.
 
 ### Projeto raiz (`pyproject.toml`)
 
-| Componente | Versão | Licença | Onde está no repositório |
-|---|---|---|---|
-| fastapi | 0.162.0 | MIT | `.venv/Lib/site-packages/fastapi-0.162.0.dist-info` |
-| uvicorn | 0.54.0 | BSD-3-Clause | `.venv/Lib/site-packages/uvicorn-0.54.0.dist-info` |
-| jinja2 | 3.1.6 | BSD (classificador) | `.venv/Lib/site-packages/jinja2-3.1.6.dist-info` |
-| pyyaml | 6.0.3 | MIT | `.venv/Lib/site-packages/pyyaml-6.0.3.dist-info` |
-| httpx | 0.28.1 | BSD-3-Clause | `.venv/Lib/site-packages/httpx-0.28.1.dist-info` |
-| psutil | 7.2.2 | BSD-3-Clause | `.venv/Lib/site-packages/psutil-7.2.2.dist-info` |
-| authlib | 1.9.1 | BSD-3-Clause | `.venv/Lib/site-packages/authlib-1.9.1.dist-info` |
-| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause | `.venv/Lib/site-packages/cryptography-50.0.2.dist-info` |
-| itsdangerous | 2.2.0 | BSD (classificador) | `.venv/Lib/site-packages/itsdangerous-2.2.0.dist-info` |
-| pytest (grupo `dev`) | 9.1.1 | MIT | `.venv/Lib/site-packages/pytest-9.1.1.dist-info` |
+| Componente | Versão | Licença |
+|---|---|---|
+| fastapi | 0.162.0 | MIT |
+| uvicorn | 0.54.0 | BSD-3-Clause |
+| jinja2 | 3.1.6 | BSD (classificador) |
+| pyyaml | 6.0.3 | MIT |
+| httpx | 0.28.1 | BSD-3-Clause |
+| psutil | 7.2.2 | BSD-3-Clause |
+| authlib | 1.9.1 | BSD-3-Clause |
+| joserfc | 1.7.7 | BSD-3-Clause |
+| itsdangerous | 2.2.0 | BSD (classificador) |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
+| pytest (grupo `dev`) | 9.1.1 | MIT |
+| ruff (grupo `dev`) | 0.17.3 | MIT |
+| playwright (grupo `capturas`) | 1.64.1 | **A confirmar** (grupo não instalado nesta máquina) |
 
 ### Cérebro (`runtime/cerebro/pyproject.toml`)
 
-| Componente | Versão | Licença | Onde está no repositório |
+| Componente | Versão | Licença |
+|---|---|---|
+| mcp | 2.3.0 | MIT |
+| httpx | 0.28.1 | BSD-3-Clause |
+| numpy | 2.5.4 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 |
+| trafilatura | 2.3.1 | Apache-2.0 |
+| pypdf | 6.21.2 | BSD-3-Clause |
+| python-docx | 1.2.0 | MIT |
+| pyyaml | 6.0.3 | MIT |
+| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
+| joserfc | 1.7.7 | BSD-3-Clause |
+| pytest (grupo `dev`) | 9.1.1 | MIT |
+| pytest-asyncio (grupo `dev`) | 1.4.0 | Apache-2.0 |
+
+### SquadTI (`runtime/squadti/pyproject.toml`)
+
+| Componente | Versão | Licença |
+|---|---|---|
+| langgraph | 1.2.19 | MIT |
+| langgraph-checkpoint-sqlite | 3.1.3 | MIT |
+| langchain-core | 1.7.4 | MIT |
+| langchain-openai | 1.7.3 | MIT |
+| pytest (grupo `dev`) | 9.2.0 | MIT |
+
+### Ferramentas de build
+
+| Componente | Versão | Licença | Onde |
 |---|---|---|---|
-| mcp | 2.3.0 | MIT | `runtime/cerebro/.venv/Lib/site-packages/mcp-2.3.0.dist-info` |
-| httpx | 0.28.1 | BSD-3-Clause | `runtime/cerebro/.venv/Lib/site-packages/httpx-0.28.1.dist-info` |
-| numpy | 2.5.4 | `BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0` | `runtime/cerebro/.venv/Lib/site-packages/numpy-2.5.4.dist-info` |
-| trafilatura | 2.3.1 | Apache-2.0 | `runtime/cerebro/.venv/Lib/site-packages/trafilatura-2.3.1.dist-info` |
-| pypdf | 6.21.2 | BSD-3-Clause | `runtime/cerebro/.venv/Lib/site-packages/pypdf-6.21.2.dist-info` |
-| python-docx | 1.2.0 | MIT | `runtime/cerebro/.venv/Lib/site-packages/python_docx-1.2.0.dist-info` |
-| pyyaml | 6.0.3 | MIT | `runtime/cerebro/.venv/Lib/site-packages/pyyaml-6.0.3.dist-info` |
-| pytest (grupo `dev`) | 9.1.1 | MIT | `runtime/cerebro/.venv/Lib/site-packages/pytest-9.1.1.dist-info` |
-| pytest-asyncio (grupo `dev`) | 1.4.0 | Apache-2.0 | `runtime/cerebro/.venv/Lib/site-packages/pytest_asyncio-1.4.0.dist-info` |
+| uv | 0.13.0 | **A confirmar** | `ci.yml`, `release.yml`, `Dockerfile` do Cérebro e da SquadTI |
+| PyInstaller | 6.22.3 | **A confirmar** | `scripts/empacotar/construir.py` (baixado pelo `uv run --with`) |
+| Actions `checkout@v4`, `setup-python@v5`, `setup-node@v4`, `attest-build-provenance@v2` | tags | **A confirmar** | `.github/workflows/` |
 
-As dependências transitivas não estão listadas. Para auditar o conjunto completo, leia todos os `METADATA` dos dois ambientes.
+## 🐳 Imagens Docker
 
-## 6. Processos do host e ferramentas locais
+Os digests completos estão em `runtime/docker-compose.yml` e nos `Dockerfile`. As licenças das imagens **não foram verificadas** nesta página, exceto onde indicado na tabela seguinte.
 
-| Componente | Versão | Licença | Onde está no repositório |
+| Serviço | Imagem (tag) |
+|---|---|
+| `postgres` | `postgres:17.6-alpine` |
+| `litellm` | `ghcr.io/berriai/litellm:main-latest` |
+| `searxng` | `searxng/searxng:2026.10.19-81371861f` |
+| `cerebro` (construída aqui) | Base `python:3.12-slim` (sem digest) e `ghcr.io/astral-sh/uv:0.13.0` (sem digest) |
+| `kokoro` | `ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0` |
+| `open-webui` | `ghcr.io/open-webui/open-webui:main` |
+| `n8n` | `docker.n8n.io/n8nio/n8n:latest` |
+| `keycloak` | `quay.io/keycloak/keycloak:26.3` |
+| `squadti` (construída aqui) | Bases `alpine/git:2.49.1`, `node:24-slim`, `ghcr.io/astral-sh/uv:0.13.0` e `mcr.microsoft.com/dotnet/sdk:10.0` (todas por digest); clona a Doutrina de `github.com/tudoemcodigo/Doutrina` no commit fixado |
+
+### Open WebUI
+
+| Componente | Versão | Licença |
+|---|---|---|
+| Open WebUI | `0.12.3`, lida de `/app/package.json` da imagem com o digest `4860ba00…` fixado no compose (leitura do documento anterior, mesmo digest; não repetida) | **A confirmar.** A imagem traz `/app/build/BRANDING.md`, que diz que o branding não pode ser alterado nem removido "exceto como permitido pela LICENSE", e manda consultar `docs.openwebui.com/license`. O arquivo `LICENSE` não está na imagem e o link não foi consultado. |
+
+> [!WARNING]
+> O TudoIA substitui o branding do Open WebUI: troca o nome (`WEBUI_NAME=TudoIA`), o favicon e as nove imagens de `/app/build/static/` (ver [serviços Docker](componentes/servicos-docker.md)). O cabeçalho do `env.py` upstream diz que o branding "não pode ser alterado exceto como a LICENSE permite". Se a licença do Open WebUI não permite a troca, o uso precisa de revisão antes de qualquer distribuição. É uma questão de licença a confirmar pelo dono do projeto, não uma conclusão.
+
+Os nove arquivos de `runtime/open-webui/static/` não são os originais da imagem (hash diferente). Não há como verificar pelo repositório quem os produziu: origem **a confirmar**; a semelhança com o painel sugere que foram gerados para o TudoIA. O `runtime/open-webui/env.py` é cópia do upstream; `tudoia verificar-openwebui` confere o diff aprovado (`env.py.aprovado.diff`).
+
+### SearXNG
+
+| Componente | Versão | Licença |
+|---|---|---|
+| SearXNG | tag `2026.10.19`, com digest fixado | **A confirmar.** O cabeçalho de `runtime/searxng/settings.yml` não declara licença e não há arquivo de licença na imagem na profundidade verificada. |
+
+## 🖥️ Processos do host e ferramentas locais
+
+| Componente | Versão | Licença | Onde |
 |---|---|---|---|
-| ComfyUI | `0.39.0` (`pyproject.toml` e tag `v0.39.0` do git da cópia local) | GNU GPL v3 (texto em `LICENSE` da pasta) | `modelos/comfyui/ComfyUI_windows_portable/ComfyUI/` (fora do git) |
-| ComfyUI-GGUF (custom node) | `2.0.0` (`pyproject.toml`) | Apache License 2.0 (`LICENSE` da pasta) | `modelos/comfyui/.../ComfyUI/custom_nodes/ComfyUI-GGUF/` (fora do git) |
-| Nós YuE 2, MiniMax H3 e TextGen | a confirmar | a confirmar (estão em `comfy_extras/`, dentro da árvore do ComfyUI) | `modelos/comfyui/.../ComfyUI/comfy_extras/` |
-| Ollama | a confirmar | a confirmar | host (não redistribuído) |
-| Serena (servidor MCP de código) | `2.1.0` (`uv tool install -p 3.13 "serena-agent==2.1.0"`) | Aplicação: GNU GPL v3 ou posterior; biblioteca SolidLSP: MIT (arquivo `LICENSE` do repositório `oraios/serena`, conferido em 27/10/2026) | host, `~\.local\bin` (não redistribuído); entrada `serena` em `governanca/mcp.json` |
+| ComfyUI | `0.43.0` (`pyproject.toml` da cópia local) | GNU GPL v3 (texto em `LICENSE` da pasta) | `modelos\ComfyUI\ComfyUI\`, fora do git |
+| ComfyUI-GGUF (nó) | `2.0.0` | Apache License 2.0 (`LICENSE` da pasta) | `custom_nodes\ComfyUI-GGUF\` |
+| ComfyUI-KJNodes (nó) | `1.5.3` | GNU GPL v3 (`LICENSE` da pasta) | `custom_nodes\ComfyUI-KJNodes\` |
+| Nós YuE 2, MiniMax H3 e TextGen | A confirmar | **A confirmar** (estão em `comfy_extras\`, dentro da árvore do ComfyUI; não reverificados) | `modelos\ComfyUI\ComfyUI\comfy_extras\` |
+| Ollama | `0.40.13` (`ollama --version`) | **A confirmar** | Host; não redistribuído |
+| Docker (CLI e engine) | `29.9.2` (`docker --version`) | **A confirmar** | Host; o instalador instala o Docker Desktop quando falta |
 
-## 7. Pesos de modelos de IA
+O caminho do ComfyUI nesta máquina é `modelos\ComfyUI\`, diferente do padrão de código (`modelos\comfyui\ComfyUI_windows_portable`, ver [configuração](configuracao.md#-caminhos)); a variável `TUDOIA_COMFYUI_PORTABLE` resolve a diferença.
 
-Os pesos não estão no repositório. Cada máquina baixa os seus, com [componentes/modelos.md](componentes/modelos.md).
+## 🧬 Pesos de modelos de IA
 
-Em `config/modelos.yaml`, todos os 39 modelos estão com o campo `licenca: {nome: null}`, o que quer dizer **licença não confirmada**. O campo `url` de cada entrada, quando existe, aponta a página do modelo, onde a licença deve ser conferida. Antes de usar um modelo fora de uso pessoal, confirme a licença. A seção 8 de [componentes/modelos.md](componentes/modelos.md) trata do tema.
+Os pesos não estão no repositório; cada máquina baixa os seus com [modelos](componentes/modelos.md). Em `config/modelos.yaml` há **41 modelos**; o campo `licenca.nome` está preenchido em 24 e **nulo (licença não confirmada)** em 17:
 
-## 8. Serviços externos chamados pelo código
+| `licenca.nome` | Modelos |
+|---|---|
+| `Apache-2.0` | 18 |
+| `LTX-2 Community License` | 4 |
+| `CreativeML Open RAIL++-M` | 1 |
+| `Gemma Terms of Use` | 1 |
+| nulo (não confirmada) | 17 |
 
-Não são redistribuídos. Listados porque recebem dados do TudoIA. Os termos de uso de cada um não foram verificados nesta documentação.
+O campo `url` de cada entrada aponta a página do modelo, onde a licença deve ser conferida. Antes de usar um modelo fora de uso pessoal, confirme a licença na fonte; os nomes acima são a anotação do manifesto, não uma verificação feita nesta página.
+
+## 🌐 Serviços externos chamados pelo código
+
+Não são redistribuídos. Listados porque recebem dados do TudoIA. Os termos de uso de cada um não foram verificados nesta página.
 
 | Serviço | Para que é usado | Dados enviados | Onde está no código |
 |---|---|---|---|
-| Groq | otimização de prompt (imagem, vídeo e música), quando `GROQ_API_KEY` existe | texto do prompt | `painel/tudoia_painel/estudio_servico.py` |
-| Cloudflare Workers AI | geração de imagem, quando as chaves `CLOUDFLARE_*` existem | texto do prompt | `painel/tudoia_painel/rotas/estudio_imagem.py` |
-| Pollinations | geração de imagem sem chave (fallback), só com `TUDOIA_ESTUDIO_POLLINATIONS=1` (desligado por padrão) | texto do prompt, na URL | `painel/tudoia_painel/rotas/estudio_imagem.py` |
-| Feed RSS do G1 (tecnologia) | digest de notícias (n8n) | nenhum dado do usuário, só a requisição de leitura | `automacao/n8n/03-digest-noticias.json` |
+| Groq | Otimização de prompt (imagem, vídeo e música), quando `GROQ_API_KEY` existe | Texto do prompt | `painel/tudoia_painel/estudio_servico.py` |
+| Cloudflare Workers AI | Geração de imagem, quando as chaves `CLOUDFLARE_*` existem | Texto do prompt | `painel/tudoia_painel/rotas/estudio_imagem.py` |
+| Pollinations | Geração de imagem sem chave (reserva), só com `TUDOIA_ESTUDIO_POLLINATIONS=1` (desligado por padrão) | Texto do prompt, na URL | `painel/tudoia_painel/rotas/estudio_imagem.py` |
+| fal.ai (pelo LiteLLM) | Vídeo longo na nuvem, só com `FAL_AI_API_KEY` e confirmação a cada pedido; pago por segundo | Descrição de cada clipe e quadros de referência, em data URI | `painel/tudoia_painel/video_nuvem.py`, `video_longo.py` |
+| Provedores de modelo de texto | Chat pelo gateway e teste de conexão da aba Segredos | O conteúdo do pedido, conforme o grupo escolhido pelo roteador | Configurados no LiteLLM; ver [roteador](componentes/roteador.md) |
+| GitHub | Importação de skill por URL (lista branca `REPO_GITHUB`); clone da Doutrina no build da SquadTI; MCP remoto `github` (inativo) | URL do repositório; sem dado do usuário | `painel/tudoia_painel/skills_servico.py`, `runtime/squadti/Dockerfile` |
+| Hugging Face e registro do Ollama | Download de pesos de modelos (baixador e `ollama pull` pelo painel) | Nome do arquivo ou modelo; `HF_TOKEN` nos downloads do Hugging Face quando existe | `scripts/modelos/baixar.py`, `painel/tudoia_painel/modelos_service.py` |
+| Feed RSS do G1 (tecnologia) | Digest de notícias (n8n) | Nenhum dado do usuário, só a requisição de leitura | `automacao/n8n/03-digest-noticias.json` |
+| npm (`npx`) | Execução dos servidores MCP fixados | Nome e versão do pacote | `governanca/mcp.json` |
 
-Os provedores de modelo de texto (OpenAI, Anthropic, NVIDIA NIM, OpenRouter, Gemini, DeepSeek e outros) são configurados no LiteLLM. Os nomes das chaves estão em `.env.example`. A lista de provedores e os seus termos ficam fora do escopo desta página; consulte [componentes/roteador.md](componentes/roteador.md) para o roteamento.
+Os provedores de modelo de texto (OpenAI, Anthropic, NVIDIA NIM, OpenRouter, Gemini, DeepSeek, xAI e outros) são configurados no LiteLLM; os nomes das chaves estão em `.env.example` e em [configuração](configuracao.md).
 
-## Veja também
+## 🎨 Ícones do painel
 
-- [componentes/servicos-docker.md](componentes/servicos-docker.md): stack Docker e as imagens em uso.
-- [componentes/estudio.md](componentes/estudio.md): ComfyUI, fluxos e nós.
-- [componentes/modelos.md](componentes/modelos.md): pesos e licenças dos modelos.
-- [desenvolvimento.md](desenvolvimento.md): como adicionar um componente e registrar a licença dele aqui.
+| Componente | Versão | Licença | Onde |
+|---|---|---|---|
+| Lucide (só o desenho dos ícones, sem o pacote) | `lucide-static` 1.64.0, baixado de unpkg em 30/10/2026 (dado herdado do documento anterior) | ISC (Copyright (c) 2026 Lucide Icons and Contributors) | Mapa `ICONES` em `painel/tudoia_painel/static/painel.js` |
+
+Só os elementos de desenho (`path`, `circle`, `rect` etc.) foram copiados para o mapa, depois de conferidos: nenhum script, nenhuma URL. Para incluir um ícone, baixe o SVG da mesma versão numa pasta temporária, confira que só há elementos de desenho e acrescente a entrada no mapa.
+
+## ❓ Perguntas frequentes
+
+**Posso redistribuir o TudoIA?** O código do repositório é Apache-2.0. Antes de redistribuir uma instalação inteira, resolva os itens marcados **A confirmar** (branding do Open WebUI, licença de modelos e de imagens), porque eles não são do repositório.
+
+**Como registro um componente novo?** Acrescente a linha na tabela da seção certa, com versão e licença lidas da fonte (arquivo `LICENSE`, `METADATA` ou página do projeto), e escreva **a confirmar** quando não conseguir ler. Ver [desenvolvimento](desenvolvimento.md#-adicionar-um-componente).
+
+---
+
+[🏠 README](../README.md) · ⬅️ [Desenvolvimento](desenvolvimento.md) · [Instalação](instalacao.md) ➡️

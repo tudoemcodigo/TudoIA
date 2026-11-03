@@ -367,3 +367,190 @@ def test_callback_recusado_para_api_devolve_401(app_auth, monkeypatch):
         assert r.status_code == 401
         assert r.json()["erro"]["codigo"] == "login_recusado"
 
+
+
+# ---------------------------------------------------------------- login sem laço, com várias abas e sessão antiga
+# O estado do OAuth ficava no cookie de sessão: abas abertas quando a sessão vencia iam ao login juntas, uma
+# sobrescrevia o cookie da outra e, com o SSO do Keycloak, giravam até ERR_TOO_MANY_REDIRECTS.
+
+from urllib.parse import parse_qs, quote, urlparse  # noqa: E402
+
+from starlette.responses import RedirectResponse  # noqa: E402
+
+from tudoia_painel.autenticacao import (  # noqa: E402
+    MAX_TENTATIVAS_LOGIN,
+    PREFIXO_COOKIE_LOGIN,
+    MemoriaComValidade,
+    _integracao_no_servidor,
+)
+
+HTML = {"accept": "text/html,application/xhtml+xml"}
+
+
+@pytest.fixture
+def idp_falso(monkeypatch):
+    """Troca a ida ao Keycloak: o redirect guarda o estado como o authlib faria; o token sai de `respostas`."""
+    respostas = {"token": None}
+
+    async def _redirect(self, request, redirect_uri=None, **kwargs):
+        await self.framework.set_state_data(request.session, kwargs["state"], {"redirect_uri": redirect_uri})
+        return RedirectResponse(f"https://idp.teste/auth?state={kwargs['state']}", status_code=302)
+
+    async def _token(self, request, **kwargs):
+        from authlib.integrations.base_client.errors import OAuthError
+        state = request.query_params.get("state")
+        if not await self.framework.get_state_data(request.session, state):
+            raise OAuthError("mismatching_state")
+        await self.framework.clear_state_data(request.session, state)
+        return respostas["token"] or {"userinfo": {"sub": "u1", "email": "x@teste", "groups": ["/tudoia-admin"]},
+                                      "access_token": "a" * 1200, "id_token": "i" * 900}
+
+    monkeypatch.setattr("authlib.integrations.starlette_client.StarletteOAuth2App.authorize_redirect", _redirect)
+    monkeypatch.setattr("authlib.integrations.starlette_client.StarletteOAuth2App.authorize_access_token", _token)
+    return respostas
+
+
+def _iniciar_login_por(c, alvo):
+    r = c.get(alvo)
+    assert r.status_code == 302, r.text
+    return parse_qs(urlparse(r.headers["location"]).query)["state"][0], r
+
+
+def _iniciar_login(c, retorno="/app/"):
+    return _iniciar_login_por(c, f"/auth/login?retorno={quote(retorno, safe='/')}")
+
+
+def test_login_nao_grava_o_cookie_de_sessao_e_amarra_o_state_ao_navegador(app_auth, idp_falso):
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        state, r = _iniciar_login(c)
+    assert state.startswith("1")
+    cookies = r.headers.get_list("set-cookie")
+    assert not any(k.startswith("tudoia_sessao=") for k in cookies)
+    (do_login,) = [k for k in cookies if k.startswith(f"{PREFIXO_COOKIE_LOGIN}{state}=")]
+    assert "Path=/auth/callback" in do_login and "HttpOnly" in do_login and "SameSite=lax" in do_login
+
+
+def test_varias_abas_logando_juntas_todas_entram(app_auth, idp_falso):
+    """A reprodução real: 3 a 5 abas recarregadas juntas com o SSO do Keycloak vivo."""
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        estados = [_iniciar_login(c, f"/app/#aba{i}")[0] for i in range(5)]
+        for i, state in enumerate(estados):
+            r = c.get("/auth/callback", params={"state": state, "code": "x"}, headers=HTML)
+            assert r.status_code == 303 and r.headers["location"] == f"/app/#aba{i}", (i, r.text)
+        assert c.get("/api/sessao").json()["autenticado"] is True
+
+
+def test_callback_com_state_de_outro_navegador_e_recusado(app_auth, idp_falso):
+    """Sem o cookie do login, um state válido não basta (CSRF de login): nova tentativa limpa, não entra."""
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as atacante:
+        state, _ = _iniciar_login(atacante)
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as vitima:
+        r = vitima.get("/auth/callback", params={"state": state, "code": "x"}, headers=HTML)
+        assert r.status_code == 303 and "tentativa=2" in r.headers["location"]
+        assert vitima.get("/api/sessao").json()["autenticado"] is False
+
+
+def test_segunda_falha_mostra_pagina_e_nao_redireciona(app_auth, idp_falso):
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        primeira = c.get("/auth/callback", params={"state": "x" * 30, "code": "x"}, headers=HTML)
+        assert primeira.status_code == 303
+        alvo = primeira.headers["location"]
+        assert alvo.startswith("/auth/login?") and "tentativa=2" in alvo
+        state, _ = _iniciar_login_por(c, alvo)
+        assert state.startswith(str(MAX_TENTATIVAS_LOGIN))
+        c.cookies.delete(f"{PREFIXO_COOKIE_LOGIN}{state}", path="/auth/callback")  # o cookie não chegou de novo
+        segunda = c.get("/auth/callback", params={"state": state, "code": "x"}, headers=HTML)
+        assert segunda.status_code == 400 and "location" not in segunda.headers
+        assert "Entrar de novo" in segunda.text
+
+
+@pytest.mark.parametrize("tentativa, esperado", [(0, "1"), (-5, "1"), (99, str(MAX_TENTATIVAS_LOGIN))])
+def test_tentativa_do_login_fica_na_faixa(app_auth, idp_falso, tentativa, esperado):
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        state, _ = _iniciar_login_por(c, f"/auth/login?tentativa={tentativa}")
+    assert state[0] == esperado
+
+
+def test_sessao_vencida_e_grande_nao_atrapalha_o_novo_login(app_auth, idp_falso):
+    antiga = _cookie_cru({"papeis": [PAPEL_ADMIN], "expira_em": time.time() - 60, "verificado_em": 0,
+                          "access_token": "a" * 1800, "id_token": "i" * 1400})
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        c.cookies.set("tudoia_sessao", antiga)
+        state, _ = _iniciar_login(c, "/app/#modelos")
+        r = c.get("/auth/callback", params={"state": state, "code": "x"}, headers=HTML)
+        assert r.status_code == 303 and r.headers["location"] == "/app/#modelos"
+        assert c.get("/api/sessao").json()["autenticado"] is True
+
+
+def test_login_com_sessao_valida_volta_direto_sem_ir_ao_keycloak(app_auth, idp_falso):
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        c.cookies.set("tudoia_sessao", cookie([PAPEL_ADMIN]))
+        r = c.get("/auth/login?retorno=/app/%23custos")
+        assert r.status_code == 303 and r.headers["location"] == "/app/#custos"
+        r = c.get("/auth/login?retorno=https://site.mau/")
+        assert r.headers["location"] == "/app/"
+
+
+def test_callback_atrasado_de_outra_aba_com_sessao_ja_valida_entra(app_auth, idp_falso):
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        primeiro, _ = _iniciar_login(c, "/app/#a")
+        segundo, _ = _iniciar_login(c, "/app/#b")
+        assert c.get("/auth/callback", params={"state": segundo, "code": "x"}, headers=HTML).status_code == 303
+        r = c.get("/auth/callback", params={"state": primeiro, "code": "velho"}, headers=HTML)
+        assert r.status_code == 303 and r.headers["location"] == "/app/#a"
+
+
+def _metadados_falsos(monkeypatch):
+    async def _meta(self):
+        return {"end_session_endpoint": "https://idp.teste/logout"}
+
+    monkeypatch.setattr("authlib.integrations.starlette_client.StarletteOAuth2App.load_server_metadata", _meta)
+
+
+def test_id_token_fica_no_servidor_e_o_logout_o_envia_ao_keycloak(app_auth, idp_falso, monkeypatch):
+    """Com os dois tokens reais no cookie ele passava de 4 KB (o navegador descartava). O id_token agora fica no
+    servidor e o logout continua mandando o id_token_hint, sem a tela de confirmação do Keycloak."""
+    _metadados_falsos(monkeypatch)
+    idp_falso["token"] = {"userinfo": {"sub": "u1", "groups": ["/tudoia-admin"]},
+                          "access_token": "a" * 2200, "id_token": "id-token-de-teste" + "i" * 1800}
+    with TestClient(app_auth, base_url=BASE, follow_redirects=False) as c:
+        state, _ = _iniciar_login(c)
+        r = c.get("/auth/callback", params={"state": state, "code": "x"}, headers=HTML)
+        assert r.status_code == 303 and len(r.cookies["tudoia_sessao"]) < 4096
+        sessao = json.loads(base64.b64decode(r.cookies["tudoia_sessao"].split(".")[0]))
+        assert "id_token" not in sessao and sessao["access_token"] and sessao["sid"]
+        saida = c.post("/auth/logout", json={}, headers={"origin": BASE}).json()["url"]
+        assert "id_token_hint=id-token-de-teste" in saida
+        # o id_token sai da memória junto com a sessão: um segundo logout não o reaproveita
+        c.cookies.set("tudoia_sessao", r.cookies["tudoia_sessao"])
+        assert "id_token_hint" not in c.post("/auth/logout", json={}, headers={"origin": BASE}).json()["url"]
+
+
+def test_logout_com_sid_estranho_nao_quebra(app_auth, monkeypatch):
+    _metadados_falsos(monkeypatch)
+    with TestClient(app_auth, base_url=BASE) as c:
+        c.cookies.set("tudoia_sessao", _cookie_cru({"sid": ["x"], "papeis": [PAPEL_ADMIN], "expira_em": time.time() + 60}))
+        r = c.post("/auth/logout", json={}, headers={"origin": BASE})
+        assert r.status_code == 200 and "id_token_hint" not in r.json()["url"]
+
+
+def test_logins_pendentes_vencem_e_tem_teto():
+    pend = MemoriaComValidade(ttl_s=60, maximo=3)
+    for i in range(5):
+        pend.guardar(f"s{i}", {"i": i})
+        time.sleep(0.001)
+    assert pend.ler("s0") is None and pend.ler("s1") is None and pend.ler("s4") == {"i": 4}
+    vencido = MemoriaComValidade(ttl_s=-1)
+    vencido.guardar("s", {"i": 1})
+    assert vencido.ler("s") is None and vencido.ler(None) is None
+
+
+def test_integracao_guarda_o_estado_no_servidor_sem_tocar_na_sessao():
+    import asyncio
+    pend = MemoriaComValidade()
+    integ = _integracao_no_servidor(pend).framework_integration_cls("tudoia")
+    sessao = {}
+    asyncio.run(integ.set_state_data(sessao, "s1", {"nonce": "n"}))
+    assert sessao == {} and asyncio.run(integ.get_state_data(sessao, "s1")) == {"nonce": "n"}
+    asyncio.run(integ.clear_state_data(sessao, "s1"))
+    assert asyncio.run(integ.get_state_data(sessao, "s1")) is None

@@ -10,7 +10,7 @@ from .. import comfyui
 from .. import servicos as infra
 from ..ambiente import Contexto
 from ..erros import ErroApi
-from ..schemas import GerarVideoReq, OtimizarPromptReq
+from ..schemas import CancelarEstudioReq, GerarVideoReq, OtimizarPromptReq
 from ..estudio_servico import MAX_JOBS_VIDEO, _arbitrar_vram_para_estudio, _executar_comfyui_video, _jobs_video, _otimizar_prompt_video, _registrar_historico_visual, _submeter_comfyui_video
 from .. import upstreams
 
@@ -108,7 +108,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
                             return {
                                 "ok": True,
                                 "status": "executando",
-                                "fase": "Renderizando quadros e áudio nativo na GPU...",
+                                "fase": "Renderizando na GPU…",
                                 "tempo_decorrido_s": elapsed
                             }
                     for item in q_data.get("queue_pending", []):
@@ -133,9 +133,16 @@ def criar_router(ctx: Contexto) -> APIRouter:
         return {"ok": False, "status": "desconhecido", "erro": "Job não encontrado ou finalizado sem saída de mídia."}
 
     @router.post("/api/estudio/cancelar")
-    def cancelar_estudio():
+    def cancelar_estudio(corpo: CancelarEstudioReq | None = None):
+        prompt_id = corpo.prompt_id if corpo else None
         try:
             with httpx.Client(timeout=4.0) as cli:
+                if prompt_id:
+                    # Cancela só este trabalho, esteja rodando ou na fila (ComfyUI: POST /api/jobs/{id}/cancel).
+                    r = cli.post(f"{upstreams.COMFYUI}/api/jobs/{prompt_id}/cancel")
+                    if r.status_code == 404:   # ComfyUI antigo, sem a rota: interrompe só se for o que está rodando
+                        cli.post(f"{upstreams.COMFYUI}/interrupt", json={"prompt_id": prompt_id})
+                    return {"ok": True, "mensagem": "Trabalho cancelado no ComfyUI."}
                 cli.post(f"{upstreams.COMFYUI}/interrupt")
             return {"ok": True, "mensagem": "Inferência interrompida no ComfyUI."}
         except Exception as e:
@@ -143,7 +150,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
 
     @router.post("/api/estudio/otimizar-prompt-video")
     def otimizar_prompt_video_endpoint(corpo: OtimizarPromptReq):
-        prompt_efetivo, foi_otimizado, msg_otimizado = _otimizar_prompt_video(corpo.prompt, raiz, eh_minimax=True)
+        prompt_efetivo, foi_otimizado, msg_otimizado = _otimizar_prompt_video(corpo.prompt, raiz, eh_minimax=False)
         return {
             "ok": True,
             "prompt_original": corpo.prompt,
@@ -193,10 +200,13 @@ def criar_router(ctx: Contexto) -> APIRouter:
         if not comfy_online:
             raise ErroApi(503, "servico_offline", "O serviço ComfyUI (:8188) está offline no host. Inicie-o para carregar o modelo de vídeo na GPU.", extras={"servico_offline": "comfyui", "modelo_solicitado": corpo.modelo, "porta": 8188})
 
-        seed_final = corpo.seed or int(time.time() * 1000) % 1_000_000_000
+        seed_final = corpo.seed if corpo.seed is not None else int(time.time() * 1000) % 1_000_000_000
 
         # Tradução e enriquecimento cinematográfico automático
-        prompt_efetivo, foi_otimizado, msg_otimizado = _otimizar_prompt_video(corpo.prompt, raiz, eh_minimax=eh_minimax)
+        prompt_efetivo, foi_otimizado, msg_otimizado = (
+            _otimizar_prompt_video(corpo.prompt, raiz, eh_minimax=eh_minimax) if corpo.otimizar_prompt
+            else (corpo.prompt, False, "")
+        )
 
         # Modo assíncrono (Job-Based Polling desacoplado)
         if corpo.modo_execucao == "async":

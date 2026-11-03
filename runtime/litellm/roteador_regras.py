@@ -3,6 +3,7 @@
 Função pura, só com a biblioteca padrão: é usada pelo hook roteador.py (dentro do container do LiteLLM)
 e pelo painel (aba Roteador e testes). As regras vêm de config/roteamento.yaml.
 """
+import json
 import math
 import re
 import unicodedata
@@ -25,6 +26,12 @@ class Decisao:
     pontos: int = 0
     motivos: list[str] = field(default_factory=list)
     marcador: str | None = None
+    # perfis (tudoia-local-estrito, tudoia-hibrido...): quem decidiu, para onde, e se o pedido não pode ter fallback
+    perfil: str | None = None
+    categoria: str | None = None
+    destino: str | None = None     # "local", "nuvem", "pago" ou "misto": tirado do config.yaml gerado, não do nome do grupo
+    fechado: bool = False          # True = sem fallback do router (disable_fallbacks), nada sai da máquina por troca silenciosa
+    recusa: tuple[int, str] | None = None   # (status HTTP, mensagem): o hook devolve erro em vez de rotear
 
 
 def _norm(texto: str) -> str:
@@ -52,6 +59,62 @@ def validar_regras(regras: dict) -> None:
     ordem = regras["ordem"]
     if not isinstance(ordem, dict) or not all(isinstance(l, list) and all(isinstance(n, str) for n in l) for l in ordem.values()):
         raise ValueError("roteamento.yaml: 'ordem' deve ter, por grupo, uma lista de nomes entre colchetes")
+    validar_perfis(regras)
+
+
+# Papéis do catálogo (config/catalogo-modelos.yaml) que valem como categoria da tarefa
+CATEGORIAS = ("chat", "codigo", "agente", "raciocinio", "rapido", "visao")
+_RESERVADOS = {LOCAL, NUVEM, CODIGO, LOCAL_AGENTE, VISAO, MAXIMO, "tudoia-auto", "tudoia-codigo-reserva"}
+
+
+def validar_perfis(regras: dict) -> None:
+    """Valida `perfis` do roteamento.yaml (ausente = sem perfis, tudo como antes). Levanta ValueError.
+
+    Um perfil é um nome de modelo que o cliente escolhe; `categorias` diz, por categoria, qual grupo do LiteLLM atende.
+    `nuvem: false` = nunca sai da máquina. `marcadores` lista os #marcadores aceitos no perfil: `max` nunca (pago só
+    pelo nome). O que o YAML não prova (grupo local de verdade, sem fallback) é conferido contra o config.yaml gerado
+    em `decidir_perfil` e nos testes do gerador.
+    """
+    perfis = regras.get("perfis")
+    if perfis is None:
+        return
+    if not isinstance(perfis, dict):
+        raise ValueError("roteamento.yaml: 'perfis' deve ser um mapa de perfis")
+    modelos: set[str] = set()
+    for nome, p in perfis.items():
+        onde = f"roteamento.yaml: perfis.{nome}"
+        if not isinstance(nome, str) or not nome or not isinstance(p, dict):
+            raise ValueError(f"{onde}: o perfil deve ser um mapa")
+        modelo = p.get("modelo")
+        if not isinstance(modelo, str) or not modelo.strip():
+            raise ValueError(f"{onde}: falta 'modelo' (o nome que o cliente escolhe)")
+        if modelo in _RESERVADOS or modelo in modelos:
+            raise ValueError(f"{onde}: 'modelo' {modelo!r} já é usado por outro grupo ou perfil")
+        modelos.add(modelo)
+        if not isinstance(p.get("nuvem"), bool):
+            raise ValueError(f"{onde}: 'nuvem' deve ser true ou false")
+        mapas = {"categorias": p.get("categorias")}
+        if "nuvem_categorias" in p:
+            if not p["nuvem"]:
+                raise ValueError(f"{onde}: perfil com nuvem: false não pode ter 'nuvem_categorias'")
+            mapas["nuvem_categorias"] = p["nuvem_categorias"]
+        for campo, mapa in mapas.items():
+            if not isinstance(mapa, dict) or not mapa:
+                raise ValueError(f"{onde}: '{campo}' deve mapear categoria para grupo")
+            for cat, grupo in mapa.items():
+                if cat not in CATEGORIAS:
+                    raise ValueError(f"{onde}: categoria desconhecida {cat!r} (use {', '.join(CATEGORIAS)})")
+                if not isinstance(grupo, str) or not grupo.strip():
+                    raise ValueError(f"{onde}: '{campo}.{cat}' deve ser o nome de um grupo")
+                if grupo == MAXIMO:
+                    raise ValueError(f"{onde}: {MAXIMO} (pago) nunca entra em perfil; só pelo nome do modelo")
+        if "chat" not in p["categorias"]:
+            raise ValueError(f"{onde}: 'categorias' precisa de 'chat' (destino padrão)")
+        marcadores = p.get("marcadores", [])
+        if not isinstance(marcadores, list) or not all(m in ("local", "nuvem") for m in marcadores):
+            raise ValueError(f"{onde}: 'marcadores' aceita só local e nuvem (max nunca)")
+        if "nuvem" in marcadores and "nuvem_categorias" not in p:
+            raise ValueError(f"{onde}: marcador nuvem exige 'nuvem_categorias'")
 
 
 def limites_validos(dados: dict, agora, validade_s: int = 120) -> tuple[set, dict | None]:
@@ -471,4 +534,205 @@ def decidir(dados: dict, regras: dict, esgotados=frozenset(), membros: dict | No
         if lista and all(m in esgotados for m in lista):
             d.grupo = LOCAL if d.grupo == NUVEM else LOCAL_AGENTE
             d.motivos.append("provedores esgotados")
+    return d
+
+
+# ── perfis de destino (tudoia-local-estrito, tudoia-hibrido...) ───────────────────────────────────────────────────
+def perfil_do_modelo(regras: dict, modelo) -> str | None:
+    """Nome do perfil cujo `modelo` é o pedido, ou None (grupo comum, tudoia-auto...)."""
+    perfis = (regras or {}).get("perfis")
+    if not isinstance(perfis, dict) or not isinstance(modelo, str):
+        return None
+    return next((n for n, p in perfis.items() if isinstance(p, dict) and p.get("modelo") == modelo), None)
+
+
+def info_grupos(cfg) -> dict[str, dict] | None:
+    """{grupo: {"destino": local|nuvem|pago|misto, "saida": bool, "contexto": int|None}} do config.yaml gerado.
+
+    `destino` vem de model_info.plano dos membros (LOCAL, FREE, PAID), nunca do nome. `saida` = o router tem
+    fallback (fallbacks, context_window_fallbacks, content_policy_fallbacks ou default_fallbacks) que pode tirar o
+    pedido do grupo. `contexto` = menor max_input_tokens dos membros. None = config ilegível (quem chama falha fechado).
+    """
+    if not isinstance(cfg, dict):
+        return None
+    planos: dict[str, set] = {}
+    contextos: dict[str, list] = {}
+    for m in cfg.get("model_list") or []:
+        if not isinstance(m, dict) or not isinstance(m.get("model_name"), str):
+            continue
+        info = m.get("model_info") if isinstance(m.get("model_info"), dict) else {}
+        planos.setdefault(m["model_name"], set()).add(info.get("plano"))
+        c = info.get("max_input_tokens")
+        contextos.setdefault(m["model_name"], []).append(c if isinstance(c, int) and not isinstance(c, bool) else None)
+    rs = cfg.get("router_settings") if isinstance(cfg.get("router_settings"), dict) else {}
+    ls = cfg.get("litellm_settings") if isinstance(cfg.get("litellm_settings"), dict) else {}
+    com_saida: set[str] = set()
+    todos = bool(rs.get("default_fallbacks") or ls.get("default_fallbacks"))
+    for fonte in (rs, ls):
+        for chave in ("fallbacks", "context_window_fallbacks", "content_policy_fallbacks"):
+            for regra in fonte.get(chave) or []:
+                if isinstance(regra, dict):
+                    for origem, alvos in regra.items():
+                        if alvos:
+                            todos = todos or origem == "*"
+                            com_saida.add(origem)
+    saida = {}
+    for nome, ps in planos.items():
+        if ps == {"LOCAL"}:
+            destino = "local"
+        elif ps == {"FREE"}:
+            destino = "nuvem"
+        elif ps == {"PAID"}:
+            destino = "pago"
+        else:
+            destino = "misto"
+        cs = contextos[nome]
+        saida[nome] = {"destino": destino, "saida": todos or nome in com_saida,
+                       "contexto": None if None in cs else min(cs)}
+    return saida
+
+
+def estimar_tokens(dados: dict) -> int:
+    """Estimativa grosseira (4 caracteres por token) de texto + definições de ferramentas. Só para o desvio do híbrido."""
+    try:
+        ferramentas = len(json.dumps(dados.get("tools") or [], default=str))
+    except Exception:
+        ferramentas = 0
+    return (_tamanho_total(dados) + ferramentas) // 4
+
+
+def _padrao_marcadores(nomes) -> "re.Pattern | None":
+    nomes = [n for n in nomes if isinstance(n, str) and re.fullmatch(r"[a-z]+", n)]
+    return re.compile(rf"(?<!\S)#({'|'.join(nomes)})\b", re.IGNORECASE) if nomes else None
+
+
+def _tirar_marcadores(dados: dict, padrao) -> list[str]:
+    """Remove TODAS as ocorrências de `padrao` da última mensagem do usuário e devolve os nomes, em ordem.
+    Só o que o padrão cobre sai do texto: marcador que o perfil não aceita fica onde está."""
+    msgs = _usuario(dados)
+    if padrao is None or not msgs:
+        return []
+    achados: list[str] = []
+
+    def limpar(texto: str) -> str:
+        achados.extend(m.group(1).lower() for m in padrao.finditer(texto))
+        return padrao.sub("", texto).strip()
+
+    ultima = msgs[-1]
+    conteudo = ultima.get("content")
+    if isinstance(conteudo, str):
+        ultima["content"] = limpar(conteudo)
+    elif isinstance(conteudo, list):
+        for bloco in conteudo:
+            if isinstance(bloco, dict) and bloco.get("type") == "text" and isinstance(bloco.get("text"), str):
+                bloco["text"] = limpar(bloco["text"])
+    return achados
+
+
+def categoria_do_pedido(dados: dict, marcadas: list[str]) -> tuple[str, list[str]]:
+    """(categoria, motivos). Marcador de categoria vence; sem ele: ferramentas = agente, imagem = visao, bloco de
+    código = codigo, o resto = chat. Marcadores diferentes no mesmo pedido: vale o primeiro e o motivo avisa."""
+    if marcadas:
+        motivos = [f"categoria #{marcadas[0]}"]
+        if len(set(marcadas)) > 1:
+            motivos.append("categorias em conflito: valeu a primeira")
+        return marcadas[0], motivos
+    if dados.get("tools"):
+        return "agente", ["categoria agente: ferramentas"]
+    if tem_imagem(dados):
+        return "visao", ["categoria visao: imagem"]
+    if _CODIGO.search(ultima_do_usuario(dados)):
+        return "codigo", ["categoria codigo: bloco de código"]
+    return "chat", ["categoria chat"]
+
+
+def decidir_perfil(dados: dict, nome: str, perfil: dict, grupos: dict[str, dict] | None,
+                   ollama_ok: bool = True, gpu_ocupada: bool = False) -> Decisao:
+    """Decide o grupo de um pedido feito a um perfil. Remove do texto os #marcadores que o perfil aceita (altera `dados`).
+
+    Falha fechado: devolve Decisao.recusa (status, mensagem) em vez de rotear quando o perfil não pode cumprir a
+    garantia: config.yaml ilegível, grupo ausente, perfil sem nuvem apontando para grupo que não é só local ou que tem
+    fallback, grupo pago, Ollama fora sem direito a nuvem, categoria sem destino, #nuvem sem provedor ativo.
+    `grupos` é info_grupos(config.yaml). Nunca consulta rede: ollama_ok e gpu_ocupada chegam prontos do hook.
+    """
+    d = Decisao(LOCAL, perfil=nome)
+
+    def recusar(status: int, msg: str) -> Decisao:
+        d.recusa = (status, f"TudoIA ({nome}): {msg}")
+        d.fechado = True
+        return d
+
+    achados = _tirar_marcadores(dados, _padrao_marcadores(perfil.get("marcadores") or []))
+    cat_marcadas = _tirar_marcadores(dados, _padrao_marcadores(CATEGORIAS))
+    d.categoria, d.motivos = categoria_do_pedido(dados, cat_marcadas)
+    # marcador conflitante: o restritivo vence (#local sobre #nuvem). Nunca o contrário.
+    d.marcador = "local" if "local" in achados else ("nuvem" if "nuvem" in achados else None)
+    if d.marcador:
+        d.motivos.append(f"marcador #{d.marcador}")
+    if "nuvem" in achados and "local" in achados:
+        d.motivos.append("marcadores em conflito: valeu #local")
+
+    permite_nuvem = bool(perfil.get("nuvem"))
+    locais = perfil.get("categorias") or {}
+    nuvens = perfil.get("nuvem_categorias") or {}
+    if grupos is None:
+        return recusar(503, "não consegui ler o config.yaml do LiteLLM, então não posso garantir o destino. "
+                            "Nada foi enviado.")
+    alvos = set(locais.values()) | set(nuvens.values())
+    ausentes = sorted(g for g in alvos if g not in grupos)
+    if ausentes and not permite_nuvem:
+        return recusar(503, f"grupo(s) {', '.join(ausentes)} não existem no config.yaml gerado. "
+                            "Gere o config no painel e reinicie o LiteLLM. Nada foi enviado.")
+    # grupo de nuvem sem membro (ex.: tudoia-visao sem provedor) não existe no config: o híbrido degrada, o resto recusa
+    existentes = alvos & set(grupos)
+    if any(grupos[g]["destino"] in ("pago", "misto") for g in existentes):
+        return recusar(500, "um grupo do perfil tem membro pago; modelo pago só pelo nome (tudoia-max). Nada foi enviado.")
+    if not permite_nuvem:
+        ruins = sorted(g for g in alvos if grupos[g]["destino"] != "local" or grupos[g]["saida"])
+        if ruins:
+            return recusar(500, f"perfil sem nuvem, mas o grupo {', '.join(ruins)} não é só local ou tem fallback no "
+                                "config.yaml. Nada foi enviado.")
+
+    cat = d.categoria
+
+    def nuvem_de(c: str) -> str | None:
+        g = nuvens.get(c)
+        return g if g in grupos and grupos[g]["destino"] == "nuvem" else None
+
+    if d.marcador == "nuvem":
+        destino = nuvem_de(cat)
+        if destino is None:
+            return recusar(503, "#nuvem pedido, mas não há provedor de nuvem ativo para esta categoria. Nada foi enviado.")
+    else:
+        destino = locais.get(cat)
+        if destino is None:
+            return recusar(400, f"este perfil não tem destino para a categoria {cat}. Escolha outro perfil ou categoria. "
+                                "Nada foi enviado.")
+        if destino not in grupos:   # só chega aqui no híbrido (ver `ausentes`)
+            d.motivos.append(f"sem grupo {destino}: usei chat")
+            destino = locais["chat"]
+            if destino not in grupos:
+                return recusar(503, f"grupo {destino} não existe no config.yaml gerado. Nada foi enviado.")
+        # só o híbrido, e nunca com #local, pode trocar o local pela nuvem
+        if permite_nuvem and d.marcador != "local" and grupos[destino]["destino"] == "local":
+            motivo = None
+            limite = grupos[destino]["contexto"]
+            if not ollama_ok:
+                motivo = "ollama fora"
+            elif gpu_ocupada:
+                motivo = "gpu ocupada"
+            elif limite and estimar_tokens(dados) > limite:
+                motivo = "excede contexto local"
+            if motivo:
+                alvo = nuvem_de(cat)
+                if alvo is not None:
+                    destino = alvo
+                    d.motivos.append(motivo)
+                elif motivo != "gpu ocupada":   # GPU ocupada sem nuvem: segue no local, só mais lento
+                    return recusar(503, f"{motivo} e não há provedor de nuvem ativo para esta categoria. Nada foi enviado.")
+    d.grupo, d.destino = destino, grupos[destino]["destino"]
+    if d.destino == "local" and not ollama_ok:
+        return recusar(503, "o Ollama local não responde e este pedido não pode ir à nuvem. Nada foi enviado.")
+    # fechado = o router não pode trocar o grupo sozinho: perfil sem nuvem, ou #local explícito
+    d.fechado = (not permite_nuvem) or d.marcador == "local"
     return d

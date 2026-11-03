@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from tudoia_painel.app import criar_app
@@ -47,6 +48,23 @@ class ServicosFalso:
         self.chamadas.append(("todos", acao))
 
 
+def _partir_do_estado_minimo(pasta_config: Path) -> None:
+    """Os testes cadastram os próprios modelos e grupos, e contam com o OpenRouter vazio e só `tudoia-local` no
+    roteamento. O config real ganha centenas de modelos a cada 'Sincronizar catálogo' e grupos de nuvem preenchidos
+    (ids como openrouter/openrouter/free colidem): normaliza só a cópia temporária, nunca o config real."""
+    caminho_catalogo = pasta_config / "catalogo-modelos.yaml"
+    catalogo = yaml.safe_load(caminho_catalogo.read_text(encoding="utf-8"))
+    catalogo["provedores"]["openrouter"]["modelos"] = []
+    for m in catalogo["provedores"]["groq"]["modelos"]:   # o auto-bind liga ao grupo todo modelo ativo do papel
+        m["ativo"] = False
+    caminho_catalogo.write_text(yaml.safe_dump(catalogo, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+    caminho_rot = pasta_config / "roteamento.yaml"
+    rot = yaml.safe_load(caminho_rot.read_text(encoding="utf-8"))
+    rot["ordem"] = {g: m for g, m in (rot.get("ordem") or {}).items() if g == "tudoia-local"}
+    caminho_rot.write_text(yaml.safe_dump(rot, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
 @pytest.fixture
 def cenario(tmp_path, monkeypatch):
     monkeypatch.setenv("TUDOIA_PAINEL_PORTA", "3100")
@@ -58,6 +76,7 @@ def cenario(tmp_path, monkeypatch):
     raiz, home = tmp_path / "raiz", tmp_path / "home"
     shutil.copytree(REPO / "governanca", raiz / "governanca")
     shutil.copytree(REPO / "config", raiz / "config")
+    _partir_do_estado_minimo(raiz / "config")
     home.mkdir()
     ws = tmp_path / "ws"
     ws.mkdir()
@@ -131,8 +150,8 @@ def test_segredos_sao_mascarados_e_categorizados(cenario):
     assert r.status_code == 200
     assert "sk-super-secreto-1234567890" not in r.text
     chaves = r.json()
-    assert any(s["chave"] == "OPENAI_API_KEY" and s["categoria"] == "PAID" for s in chaves)
-    assert any(s["chave"] == "GROQ_API_KEY" and s["categoria"] == "FREE" for s in chaves)
+    assert any(s["chave"] == "OPENAI_API_KEY" and s["categoria"] == "PAID" and s.get("link") == "https://platform.openai.com/api-keys" for s in chaves)
+    assert any(s["chave"] == "GROQ_API_KEY" and s["categoria"] == "FREE" and s.get("link") == "https://console.groq.com/keys" for s in chaves)
 
 
 def test_gravar_segredo_com_backup(cenario):
@@ -142,6 +161,16 @@ def test_gravar_segredo_com_backup(cenario):
     assert "OPENAI_API_KEY=sk-super" in (cenario.raiz / ".env").read_text(encoding="utf-8")
     assert list((cenario.raiz / "dados" / "backups" / "env").glob(".env.*"))
     assert "gsk_novo_valor_123456" not in r.text
+
+
+def test_chave_nova_fora_de_qualquer_catalogo_entra_no_env_e_aparece_na_lista(cenario):
+    """Botão "Nova chave": nome livre que o painel não conhecia."""
+    assert not any(s["chave"] == "MISTRAL_API_KEY" for s in cenario.get("/api/segredos").json())
+    assert cenario.put("/api/segredos/MISTRAL_API_KEY", json={"valor": "mk_valor_novo_123456"}).status_code == 200
+    item = next(s for s in cenario.get("/api/segredos").json() if s["chave"] == "MISTRAL_API_KEY")
+    assert item["definido"] is True
+    assert "mk_valor_novo_123456" not in str(item)   # a lista só devolve o mascarado
+    assert "OPENAI_API_KEY=sk-super" in (cenario.raiz / ".env").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("chave", ["minuscula", "A-B", "1ABC", "A" * 100])
@@ -738,33 +767,44 @@ def test_auto_bind_modelos_por_papeis(cenario):
 
 
 def test_gerenciamento_grupos_roteador_lifecycle(cenario):
-    # 1. Criar novo grupo customizado
+    # 1. Criar novo grupo customizado com tier e papeis
     r_novo = cenario.post("/api/roteador/grupos/novo", json={
         "id": "tudoia-pesquisa",
         "titulo": "TudoIA Pesquisa e Análise",
         "descricao": "Grupo para síntese e buscas profundas",
+        "tier": "FREE",
+        "papeis": ["raciocinio", "chat"],
         "modelos": ["groq/gpt-oss-120b"]
     })
     assert r_novo.status_code == 200
     assert r_novo.json()["ok"] is True
 
-    # 2. Verificar que grupo aparece nos detalhes
+    # 2. Verificar que grupo aparece nos detalhes com tier e papeis_esperados
     r_det = cenario.get("/api/roteador/detalhes")
     assert r_det.status_code == 200
     grupos = {g["id"]: g for g in r_det.json()["grupos"]}
     assert "tudoia-pesquisa" in grupos
     assert grupos["tudoia-pesquisa"]["titulo"] == "TudoIA Pesquisa e Análise"
+    assert grupos["tudoia-pesquisa"]["tier"] == "FREE"
+    assert set(grupos["tudoia-pesquisa"]["papeis_esperados"]) == {"raciocinio", "chat"}
     assert grupos["tudoia-pesquisa"]["ativo"] is True
     assert grupos["tudoia-pesquisa"]["pode_excluir"] is True
 
-    # 3. Editar grupo (desativar e alterar título)
+    # 3. Editar grupo (desativar, alterar título, tier e papeis)
     r_edit = cenario.patch("/api/roteador/grupos/tudoia-pesquisa", json={
         "titulo": "TudoIA Pesquisa Profunda",
+        "tier": "PAID",
+        "papeis": ["raciocinio"],
         "ativo": False
     })
     assert r_edit.status_code == 200
     assert r_edit.json()["ok"] is True
     assert r_edit.json()["ativo"] is False
+
+    r_det_edit = cenario.get("/api/roteador/detalhes")
+    grupos_edit = {g["id"]: g for g in r_det_edit.json()["grupos"]}
+    assert grupos_edit["tudoia-pesquisa"]["tier"] == "PAID"
+    assert grupos_edit["tudoia-pesquisa"]["papeis_esperados"] == ["raciocinio"]
 
     # 4. Excluir grupo customizado com sucesso
     r_del = cenario.delete("/api/roteador/grupos/tudoia-pesquisa")
@@ -775,6 +815,72 @@ def test_gerenciamento_grupos_roteador_lifecycle(cenario):
     r_det2 = cenario.get("/api/roteador/detalhes")
     grupos2 = {g["id"]: g for g in r_det2.json()["grupos"]}
     assert "tudoia-pesquisa" not in grupos2
+
+
+def test_auto_bind_respeita_papeis_e_tier_configurados_no_grupo(cenario, monkeypatch):
+    # Cadastrar modelo de código e modelo de visão
+    cenario.post("/api/provedores/groq/modelos", json={
+        "nome": "groq/modelo-visao",
+        "id": "groq/vision-model",
+        "papeis": ["visao"],
+        "ativo": True,
+    })
+    cenario.post("/api/provedores/groq/modelos", json={
+        "nome": "groq/modelo-codigo",
+        "id": "groq/code-model",
+        "papeis": ["codigo"],
+        "ativo": True,
+    })
+    # Criar grupo exclusivo de visão (FREE) e grupo LOCAL
+    cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-so-visao",
+        "titulo": "Só Visão",
+        "descricao": "Grupo para imagens",
+        "tier": "FREE",
+        "papeis": ["visao"],
+        "modelos": [],
+    })
+    cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-so-local-coder",
+        "titulo": "Local Coder",
+        "descricao": "Grupo local de código",
+        "tier": "LOCAL",
+        "papeis": ["codigo"],
+        "modelos": [],
+    })
+
+    # Simular resposta do Ollama com modelo local coder
+    class FakeResp:
+        status_code = 200
+        def json(self):
+            return {"models": [{"name": "qwen2.5-coder:7b"}]}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def get(self, url): return FakeResp()
+
+    import httpx
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+
+    # Executar auto-bind
+    r = cenario.post("/api/roteador/auto-bind", json={})
+    assert r.status_code == 200
+    ordem = r.json()["ordem"]
+    assert "groq/modelo-visao" in ordem["tudoia-so-visao"]
+    assert "groq/modelo-codigo" not in ordem["tudoia-so-visao"]
+    assert "local/qwen2.5-coder:7b" in ordem["tudoia-so-local-coder"]
+
+
+def test_validacao_tier_invalido_rejeita(cenario):
+    r = cenario.post("/api/roteador/grupos/novo", json={
+        "id": "tudoia-invalido",
+        "titulo": "Inválido",
+        "tier": "TIER_NAO_EXISTE",
+        "papeis": ["chat"]
+    })
+    assert r.status_code == 422
 
 
 def test_gerenciamento_modelos_locais_endpoints(cenario, monkeypatch):

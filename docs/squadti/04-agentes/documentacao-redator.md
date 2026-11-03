@@ -1,4 +1,17 @@
-# Especificação de Agente: Documentação (Redator Técnico)
+---
+titulo: Perfil de agente da SquadTI - Documentação (Redator Técnico)
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../../README.md) › [📚 Documentação](../../README.md) › [🧩 SquadTI (design)](../00-visao-geral-e-arquitetura.md) › 🤖 Documentação (Redator Técnico)
+
+# 🤖 Documentação (Redator Técnico)
+
+> Público-alvo: quem mantém ou estende a SquadTI. Responde: qual é o papel deste agente no desenho, o que o orquestrador realmente executa hoje (nó `documentacao` (usa modelo)) e onde o desenho ainda é proposta. Contexto em [catálogo de agentes](../01-catalogo-de-agentes.md) e [visão geral](../00-visao-geral-e-arquitetura.md); componente em execução: [squadti.md](../../componentes/squadti.md).
 
 ## 1. Identidade e Perfil
 - **Nome:** Documentacao_Redator
@@ -16,3 +29,7 @@
 
 ## 3. Limites
 - Não revisa a exatidão do texto contra o código; o revisor e o QA não leem a documentação.
+
+---
+
+[🏠 README](../../../README.md) · ⬅️ [DevOps e Infraestrutura](devops-infra.md) · [Release](release-notas.md) ➡️

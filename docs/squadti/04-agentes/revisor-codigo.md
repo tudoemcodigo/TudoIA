@@ -1,4 +1,17 @@
-# Especificação de Agente: Revisor de Código
+---
+titulo: Perfil de agente da SquadTI - Revisor de Código
+tipo: referencia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
+
+[🏠 TudoIA](../../../README.md) › [📚 Documentação](../../README.md) › [🧩 SquadTI (design)](../00-visao-geral-e-arquitetura.md) › 🤖 Revisor de Código
+
+# 🤖 Revisor de Código
+
+> Público-alvo: quem mantém ou estende a SquadTI. Responde: qual é o papel deste agente no desenho, o que o orquestrador realmente executa hoje (nó `revisor` (usa modelo)) e onde o desenho ainda é proposta. Contexto em [catálogo de agentes](../01-catalogo-de-agentes.md) e [visão geral](../00-visao-geral-e-arquitetura.md); componente em execução: [squadti.md](../../componentes/squadti.md).
 
 ## 1. Identidade e Perfil
 - **Nome:** Revisor_Codigo
@@ -17,3 +30,7 @@
 ## 3. Limites
 - Revisão por modelo não prova ausência de defeito; não substitui o QA nem o AppSec.
 - Arquivo truncado ou fora do limite total não foi revisto; o prompt exige que a revisão diga isso.
+
+---
+
+[🏠 README](../../../README.md) · ⬅️ [QA e Testes Automatizados](qa-testes.md) · [Segurança (AppSec)](appsec-seguranca.md) ➡️

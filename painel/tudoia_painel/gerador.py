@@ -9,6 +9,7 @@ import yaml
 
 from .catalogo import Catalogo, carregar_catalogo, carregar_roteamento, provedores_ligados
 from .envfile import ler_env
+from .video_nuvem import catalogo_video, deployments_video
 
 _log = logging.getLogger("tudoia.gerador")
 
@@ -40,7 +41,7 @@ GRATIS = {"input_cost_per_token": 0.0, "output_cost_per_token": 0.0}   # sem iss
 def _assinatura_do_codigo() -> str:
     """Hash do gerador e do catálogo como estão no disco agora."""
     h = hashlib.sha1()
-    for nome in ("gerador.py", "catalogo.py"):
+    for nome in ("gerador.py", "catalogo.py", "video_nuvem.py"):
         h.update((Path(__file__).parent / nome).read_bytes())
     return h.hexdigest()
 
@@ -103,7 +104,29 @@ def _local(nome_grupo: str, modelo_ollama: str) -> dict:
     return {"model_name": nome_grupo, "litellm_params": params, "model_info": info}
 
 
-def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
+def grupos_dos_perfis(perfis: dict | None) -> tuple[dict[str, str], list[str]]:
+    """Grupos que o `perfis` do roteamento.yaml exige no config.yaml.
+
+    Devolve ({grupo local de perfil sem nuvem: "padrao" | "codigo"}, [modelo do perfil com nuvem]). O tipo diz qual
+    modelo local atende: "codigo" para as categorias codigo e agente, "padrao" para as outras. Um grupo local que
+    serve às duas famílias é erro: o gerador não adivinha. Sem `perfis`, nada muda.
+    """
+    estritos: dict[str, str] = {}
+    virtuais: list[str] = []
+    for nome, p in (perfis or {}).items():
+        if p.get("nuvem"):
+            virtuais.append(p["modelo"])
+            continue
+        for categoria, grupo in p["categorias"].items():
+            tipo = "codigo" if categoria in ("codigo", "agente") else "padrao"
+            if estritos.setdefault(grupo, tipo) != tipo:
+                raise ValueError(f"perfis.{nome}: o grupo {grupo} serve a categorias de modelos locais diferentes")
+    return estritos, virtuais
+
+
+def gerar_config(cat: Catalogo, env: dict, rot: dict, video: list[dict] | None = None) -> dict:
+    """`video`: deployments de vídeo (video_nuvem.deployments_video). Ficam fora de grupos e fallbacks: um pedido
+    pago de vídeo nunca troca de provedor sozinho."""
     deployments: dict[str, dict] = {}   # nome do catálogo → deployment
     for prov in provedores_ligados(cat, env):
         for m in prov.modelos:
@@ -156,8 +179,17 @@ def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
     maximo = membros("tudoia-max", "PAID")
     visao = membros("tudoia-visao", "FREE")   # sem membro não existe: o hook então ignora imagem em vez de cair no local
 
+    # Perfis de destino (roteamento.yaml, `perfis`). Grupo de perfil sem nuvem: só membros LOCAL e NENHUMA entrada em
+    # fallbacks/context_window_fallbacks abaixo, então pedido grande ou Ollama fora falha em vez de ir à nuvem.
+    estritos, virtuais = grupos_dos_perfis(rot.get("perfis"))
+    de_perfis: list[dict] = []
+    for g, tipo in estritos.items():
+        so_locais = [m for m in membros(g, "FREE") if m["model_info"]["plano"] == "LOCAL"]
+        de_perfis += so_locais or [_local(g, local_codigo if tipo == "codigo" else local_padrao)]
+
     # Grupos adicionais customizados
-    grupos_padrao = {"tudoia-nuvem", "tudoia-codigo", "tudoia-codigo-reserva", "tudoia-max", "tudoia-visao"}
+    grupos_padrao = {"tudoia-nuvem", "tudoia-codigo", "tudoia-codigo-reserva", "tudoia-max", "tudoia-visao",
+                     *estritos, *virtuais}
     custom_membros = []
     for g_nome, g_membros in ordem.items():
         if g_nome not in grupos_padrao and g_nome not in grupos_desativados:
@@ -170,7 +202,12 @@ def gerar_config(cat: Catalogo, env: dict, rot: dict) -> dict:
                 if dep:
                     custom_membros.append({"model_name": g_nome, "litellm_params": dict(dep["litellm_params"]), "model_info": dict(dep["model_info"], membro=m_nome)})
 
-    model_list += nuvem + codigo + reserva + maximo + visao + custom_membros
+    model_list += nuvem + codigo + reserva + maximo + visao + custom_membros + list(video or [])
+    existentes = {m["model_name"] for m in model_list}
+    model_list += [m for m in de_perfis if m["model_name"] not in existentes]
+    existentes = {m["model_name"] for m in model_list}
+    # modelo virtual do perfil com nuvem: o hook o troca pelo grupo escolhido; sem o hook, cai no modelo local (como tudoia-auto)
+    model_list += [_local(v, local_padrao) for v in virtuais if v not in existentes]
 
     nomes_grupos_presentes = {m["model_name"] for m in model_list}
     if "tudoia-local" not in nomes_grupos_presentes and "tudoia-local" not in grupos_desativados:
@@ -251,8 +288,10 @@ def regenerar_config_litellm(raiz: Path) -> bool:
     chama deve avisar que é preciso reiniciá-lo.
     """
     try:
-        cfg = gerar_config(carregar_catalogo(raiz / "config" / "catalogo-modelos.yaml"), ler_env(raiz / ".env"),
-                           carregar_roteamento(raiz / "config" / "roteamento.yaml"))
+        env = ler_env(raiz / ".env")
+        cfg = gerar_config(carregar_catalogo(raiz / "config" / "catalogo-modelos.yaml"), env,
+                           carregar_roteamento(raiz / "config" / "roteamento.yaml"),
+                           deployments_video(catalogo_video(raiz), env))
         gravar_config(cfg, raiz / "runtime" / "litellm" / "config.yaml")
         return True
     except Exception as e:  # noqa: BLE001 — falha de geração não desfaz a gravação que o usuário pediu

@@ -12,7 +12,9 @@ log = logging.getLogger(__name__)
 
 DOCKER = ("litellm", "litellm-db", "cerebro", "searxng", "open-webui", "kokoro", "n8n", "keycloak", "keycloak-db", "squadti")
 HOST = {"ollama": 11434, "comfyui": 8188}
-ACOES = {"start": ["up", "-d"], "stop": ["stop"], "restart": ["restart"]}
+# restart recria o container: `compose restart` mantém as variáveis do .env com que ele foi criado, e uma chave
+# preenchida depois (OPENROUTER_API_KEY, GROQ_API_KEY) nunca chegava ao LiteLLM. Dados ficam em volumes.
+ACOES = {"start": ["up", "-d"], "stop": ["stop"], "restart": ["up", "-d", "--no-deps", "--force-recreate"]}
 
 METADADOS = {
     "litellm": {"titulo": "LiteLLM Gateway", "desc": "Gateway unificado OpenAI-compatible, roteador kNN e quarentena", "porta": 4000, "url": "http://127.0.0.1:4000/ui"},
@@ -128,8 +130,8 @@ class ServicosDocker:
                 self._start_comfyui()
             except Exception as e:
                 log.warning("não consegui iniciar o comfyui (%s)", type(e).__name__)
-            # 2. Reinicia os containers Docker
-            r = self._compose("restart")
+            # 2. Recria os containers Docker (relê o .env; ver ACOES)
+            r = self._compose("up", "-d", "--force-recreate")
             if r.returncode != 0:
                 raise RuntimeError((r.stderr or "falha ao reiniciar stack docker").strip().splitlines()[-1][:300])
         else:

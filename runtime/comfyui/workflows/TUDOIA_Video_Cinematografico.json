@@ -17,7 +17,7 @@
       "title": "TUDOIA · Fluxo Oficial de Vídeo Cinematográfico (Wan 2.2 TI2V 5B)",
       "properties": {},
       "widgets_values": [
-        "# 🎬 TUDOIA · Vídeo Cinematográfico (Wan 2.2 TI2V 5B)\n\nFluxo híbrido oficial **Texto-para-Vídeo (`T2V`)** e **Imagem-para-Vídeo (`I2V`)** otimizado para GPUs locais (8 GB+ VRAM com `VAEDecodeTiled`).\n\n## 📦 Modelos Configurados\n- **Diffusion Model:** `wan2.2_ti2v_5B_fp16.safetensors` (`models/diffusion_models/`)\n- **Text Encoder:** `umt5_xxl_fp8_e4m3fn_scaled.safetensors` (`models/text_encoders/`)\n- **VAE:** `wan2.2_vae.safetensors` (`models/vae/`)\n\n## 🖥️ Mapeamento com a Tela `#videos` do Painel\n- **Modo (`#estudioVidModoOrigem`):**\n  - `t2v` (Texto → Vídeo): `Wan22ImageToVideoLatent` gera os quadros do zero.\n  - `i2v` (Imagem → Vídeo): conecta a imagem de referência em `start_image` (no ComfyUI, selecione o nó `LoadImage` e tecle `Ctrl + B`).\n- **Resolução (`#estudioVidResolucao`):** `480p` (`832x480`), `720p` (`1280x704`).\n- **Duração (`#estudioVidDuracao`) & FPS (`#estudioVidFps`):** Calculam `length` em quadros (`((duracao * fps - 1) // 4) * 4 + 1`) e o `fps` do `CreateVideo`.\n- **Decodificação Tiled (`VAEDecodeTiled`):** Evita estouro de memória de vídeo decodificando em blocos temporais e espaciais."
+        "# 🎬 TUDOIA · Vídeo Cinematográfico (Wan 2.2 TI2V 5B)\n\nFluxo híbrido oficial **Texto-para-Vídeo (`T2V`)**, **Imagem-para-Vídeo (`I2V`)** e **Vídeo-para-Vídeo (`V2V`)** otimizado para GPUs locais (8 GB+ VRAM com `VAEDecodeTiled`).\n\n## 📦 Modelos Configurados\n- **Diffusion Model:** `wan2.2_ti2v_5B_fp16.safetensors` (`models/diffusion_models/`)\n- **Text Encoder:** `umt5_xxl_fp8_e4m3fn_scaled.safetensors` (`models/text_encoders/`)\n- **VAE:** `wan2.2_vae.safetensors` (`models/vae/`)\n\n## 🖥️ Mapeamento com a Tela `#videos` do Painel\n- **Modo (`#estudioVidModoOrigem`):**\n  - `t2v` (Texto → Vídeo): `Wan22ImageToVideoLatent` gera os quadros do zero.\n  - `i2v` (Imagem → Vídeo): conecta a imagem de referência em `start_image` (no ComfyUI, selecione o nó `LoadImage` e tecle `Ctrl + B`).\n  - `v2v` (Vídeo → Vídeo): o backend extrai automaticamente o quadro-chave (keyframe) do vídeo de entrada e conecta em `start_image`, guiando a transformação da cena sem estouro de VRAM.\n- **Resolução (`#estudioVidResolucao`):** `480p` (`832x480`), `720p` (`1280x704`).\n- **Duração (`#estudioVidDuracao`) & FPS (`#estudioVidFps`):** Calculam `length` em quadros (`((duracao * fps - 1) // 4) * 4 + 1`) e o `fps` do `CreateVideo`.\n- **Decodificação Tiled (`VAEDecodeTiled`):** Evita estouro de memória de vídeo decodificando em blocos temporais e espaciais."
       ],
       "color": "#222",
       "bgcolor": "#000"
@@ -107,7 +107,7 @@
         {"name": "IMAGE", "type": "IMAGE", "links": [106]},
         {"name": "MASK", "type": "MASK", "links": null}
       ],
-      "title": "Imagem Inicial (I2V · Ctrl+B para ativar)",
+      "title": "Imagem / Keyframe de Vídeo (I2V / V2V · Ctrl+B para ativar)",
       "properties": {"cnr_id": "comfy-core", "Node name for S&R": "LoadImage"},
       "widgets_values": ["example.png", "image"]
     },
