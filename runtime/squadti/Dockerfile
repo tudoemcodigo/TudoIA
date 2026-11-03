@@ -1,6 +1,7 @@
 # SquadTI: orquestrador LangGraph + SDK .NET e Node para compilar e testar o código que a própria Squad gera.
 # O código gerado por modelo é dado não confiável (MSBuild e npm executam código dele): por isso roda aqui, sem root, com
-# sistema de arquivos somente leitura (ver o serviço `squadti` no docker-compose.yml). Nunca monte o docker.sock neste container.
+# sistema de arquivos somente leitura (ver o serviço `squadti` no docker-compose.yml). O compose monta o docker.sock do host para os
+# testes de integração (decisão do dono): isso devolve ao código gerado o poder de root no host; leia o aviso no compose.
 
 # --- Doutrina TEC: clonada numa versão (SHA) fixada, sem histórico. Trocar a Doutrina = trocar o SHA aqui (e o hash no estado
 # de cada tarefa, ECO-CON-02, acusa a mudança no meio de uma tarefa).

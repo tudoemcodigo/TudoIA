@@ -116,8 +116,12 @@ services:
       start_period: 30s
 
   # SquadTI: squad de agentes (LangGraph) que gera projetos novos. Compila e testa código escrito por modelo, então roda isolada:
-  # sem root, rootfs somente leitura, sem capabilities, com teto de CPU/memória/processos e SEM docker.sock. Escreve só no volume
-  # squadti-dados (checkpoint, workspace/<tarefa>, caches NuGet/npm). A porta fica só em loopback; o painel a usa em /api/squadti.
+  # sem root, rootfs somente leitura, sem capabilities e com teto de CPU/memória/processos. Escreve só no volume squadti-dados
+  # (checkpoint, workspace/<tarefa>, caches NuGet/npm). A porta fica só em loopback; o painel a usa em /api/squadti.
+  # ATENÇÃO (decisão do dono, 2026-11-03): o docker.sock do host está montado para os testes de integração (Testcontainers). Quem controla
+  # o socket controla o Docker do host (volumes, containers, redes) e pode virar root no host: o código que o modelo gera e a Squad
+  # executa deixa de estar isolado do host. O restante do endurecimento reduz o dano de outros caminhos, não deste. Para voltar ao
+  # isolamento, remova a linha do docker.sock, o group_add e o TESTCONTAINERS_HOST_OVERRIDE (testes de integração deixam de rodar).
   squadti:
     profiles: [squadti]
     build:
@@ -137,14 +141,23 @@ services:
       # Feed privado tec-interno (GitHub Packages exige PAT read:packages): opcional, só por ambiente.
       - TUDOIA_NUGET_USER=${TUDOIA_NUGET_USER:-}
       - TUDOIA_NUGET_PAT=${TUDOIA_NUGET_PAT:-}
+      # Feed NuGet público (sem credencial) das bibliotecas TEC.*, quando existir uma URL pública (ver docs/componentes/squadti.md).
+      - TUDOIA_NUGET_FEED_URL=${TUDOIA_NUGET_FEED_URL:-}
+      # Testcontainers: os containers de teste são irmãos deste (mesmo Docker do host); o container os alcança pelo host.
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
     volumes:
       - squadti-dados:/dados
       # Template TEC (dotnet new tec-project): copie a pasta do TemplateTEC para cá enquanto ele não estiver publicado.
       - ${SQUADTI_TEMPLATE_DIR:-../dados/squadti-template}:/template:ro
+      # Docker do host, para Testcontainers. Ver o ATENÇÃO acima: isto equivale a root no host.
+      - /var/run/docker.sock:/var/run/docker.sock
     read_only: true
     tmpfs: ["/tmp:size=1g"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    # No Docker Desktop o socket é root:root 0660; o usuário 10001 só o alcança pelo grupo 0.
+    group_add: ["0"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     pids_limit: 1024
     mem_limit: ${SQUADTI_MEMORIA:-6g}
     cpus: ${SQUADTI_CPUS:-4}

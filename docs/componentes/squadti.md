@@ -14,9 +14,17 @@ navegador ──► painel (/api/squadti/*, papéis, auditoria) ──► contai
 
 A Squad compila e testa o código que o modelo escreveu: o MSBuild e o npm executam código dele. No host isso rodaria com o seu usuário. No container (perfil
 `squadti` do compose) o raio de dano é pequeno: usuário sem root (uid 10001), sistema de arquivos somente leitura, `cap_drop: ALL`, `no-new-privileges`,
-teto de CPU, memória e processos, e **nenhum `docker.sock`** (isso seria root no host). A única escrita é o volume `squadti-dados`.
+teto de CPU, memória e processos. A única escrita no disco da Squad é o volume `squadti-dados`.
 
-Consequências: testes de integração que sobem containers (Testcontainers) não rodam lá dentro, e a imagem é grande (~2 GB: .NET SDK 10 + Node 24 + Python 3.12).
+> [!WARNING]
+> **O `docker.sock` do host está montado** (decisão do dono, 2026-11-03) para os testes de integração (Testcontainers). Quem controla o socket controla o
+> Docker do host: o código que o modelo gera e a Squad executa pode criar containers privilegiados, ler volumes de outros serviços (banco do LiteLLM, Keycloak)
+> e virar root no host. O endurecimento acima não cobre esse caminho. Para voltar ao isolamento, remova do serviço `squadti` do compose a linha do `docker.sock`,
+> o `group_add` e o `TESTCONTAINERS_HOST_OVERRIDE`. Uma alternativa mais segura (não implementada): um Docker próprio em container (`docker:dind`), que isola os
+> containers de teste dos do TudoIA.
+
+Os testes de integração (Testcontainers) rodam na Squad: os containers de teste sobem no Docker do host, como irmãos do container da Squad, e ela os alcança por
+`host.docker.internal` (`TESTCONTAINERS_HOST_OVERRIDE`). A imagem é grande (~2 GB: .NET SDK 10 + Node 24 + Python 3.12).
 Por isso o componente é **opcional** no instalador (desmarcado por padrão).
 
 ## Instalação e configuração
@@ -29,6 +37,7 @@ Por isso o componente é **opcional** no instalador (desmarcado por padrão).
 |---|---|
 | `TUDOIA_SQUADTI_TOKEN` | Token da API (32+ caracteres). O painel e o container leem o mesmo valor; sem ele a API não sobe |
 | `SQUADTI_API_KEY` | Chave virtual do LiteLLM **só da Squad** (alias e tag `squadti`, 90 dias): lista os perfis locais e a nuvem gratuita, nunca `tudoia-max` |
+| `TUDOIA_NUGET_FEED_URL` | Feed NuGet **público** (`https://...`, sem credencial) das bibliotecas TEC.*; entra como fonte `tec-publico` |
 | `TUDOIA_NUGET_USER`, `TUDOIA_NUGET_PAT` | Opcional: feed privado `tec-interno` (GitHub Packages exige PAT `read:packages`). Só por ambiente; o arquivo do NuGet guarda a referência, não o segredo |
 | `SQUADTI_TEMPLATE_DIR` | Opcional: pasta do TemplateTEC (padrão `dados\squadti-template`), montada só leitura em `/template` para o `dotnet new tec-project` |
 | `SQUADTI_DOUTRINA_SHA` | Opcional: versão da Doutrina embutida na imagem (padrão fixado no `Dockerfile`); trocar exige reconstruir |
