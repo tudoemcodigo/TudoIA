@@ -48,6 +48,24 @@ class SquadState(TypedDict):
     orcamento: Optional[Dict[str, Any]]    # tetos da tarefa: tokens, tempo_s, chamadas
     auditoria: Annotated[List[Dict[str, Any]], somar_listas]   # um registro por nó: duração, chamadas, tokens, modelo, hash de prompt
     assinaturas_erro: Annotated[List[str], somar_listas]       # assinatura das falhas seguidas (detecção de estagnação)
+    achados_agentes: Annotated[List[Dict[str, Any]], somar_listas]  # achados estruturados dos agentes (alimentam o livro de lições)
+    rodadas_runtime: Optional[int]         # voltas da validação em execução (macaco, hacker, carga) com o desenvolvimento
+    rodadas_senior: Optional[int]          # voltas da revisão sênior com o desenvolvimento
+    rodadas_manutencao: Optional[int]      # voltas do teste de manutenibilidade com a documentação
+    validacao_executada: Optional[bool]    # False = o sistema NÃO foi validado em execução (Docker ausente ou desligado)
+    validacao_motivo: Optional[str]
+    hacker_passed: Optional[bool]
+    macaco_passed: Optional[bool]
+    carga_passed: Optional[bool]
+    senior_passed: Optional[bool]
+    manutencao_passed: Optional[bool]
+    hacker_report_file: Optional[str]
+    macaco_report_file: Optional[str]
+    carga_report_file: Optional[str]
+    senior_report_file: Optional[str]
+    manutencao_report_file: Optional[str]
+    docs_proprios: Annotated[List[str], unir_listas]       # arquivos que a documentação escreveu (ela pode reescrevê-los)
+    feedback_manutencao: Optional[str]     # lacunas que o teste de manutenibilidade devolveu à documentação
     escalada: Optional[str]                # motivo de uma parada que exige humano (estagnação, orçamento, saída inválida)
     stack_fixa: Optional[bool]             # True = o usuário escolheu a stack; o CHEFE não troca
     feedback_chefe: Optional[str]          # pendências que o CHEFE devolveu ao analista (critério de pronto)

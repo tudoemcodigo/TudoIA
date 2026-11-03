@@ -14,16 +14,22 @@ from typing import Optional
 from perfis import PERFIS, modelo_e_local
 
 # Papéis com modelo (o CHEFE é o canal único do usuário; os demais agentes falam com ele, não com você).
-AGENTES = ("chefe", "analista", "arquiteto", "dba", "backend", "frontend", "revisor", "documentacao")
+AGENTES = ("chefe", "analista", "arquiteto", "dba", "backend", "frontend", "revisor", "senior", "hacker", "mantenedor",
+           "documentacao")
 TEMPERATURA = (0.0, 1.5)
 MAX_TOKENS = (256, 32000)
 MODOS_REVISAO = ("simples", "dupla")
+MODOS_VALIDACAO = ("auto", "sempre", "nunca")   # validação em execução (macaco, hacker, carga): auto = roda se o Docker responder
+PERFIS_CARGA = ("escalado", "completo", "nunca")
+SLO_LIMITES = {"p95_ms": (50.0, 60_000.0), "p99_ms": (50.0, 120_000.0), "erro_max": (0.0, 1.0)}
+UI_SEGUNDOS = (10, 600)
 ORCAMENTO_LIMITES = {"tokens": (1_000, 50_000_000), "tempo_s": (60, 86_400), "chamadas": (1, 10_000)}
 
 PADRAO_AGENTE = {"perfil": None, "temperatura": 0.1, "max_tokens": None}  # perfil None = o da tarefa
 PADRAO = {
     "agentes": {a: dict(PADRAO_AGENTE) for a in AGENTES},
     "revisao": {"modo": "simples"},
+    "validacao": {"modo": "auto", "carga": "escalado", "slo": {"p95_ms": 800.0, "p99_ms": 2000.0, "erro_max": 0.01}, "ui_segundos": 60},
     "orcamento": {"tokens": 2_000_000, "tempo_s": 7200, "chamadas": 300},
 }
 
@@ -64,6 +70,26 @@ def validar(cfg: Optional[dict]) -> dict:
     if modo not in MODOS_REVISAO:
         raise ConfigInvalida(f"revisao.modo deve ser um de {list(MODOS_REVISAO)}")
     saida["revisao"] = {"modo": modo}
+    val = cfg.get("validacao") or {}
+    extra = set(val) - set(PADRAO["validacao"])
+    if extra:
+        raise ConfigInvalida(f"validacao: campo(s) desconhecido(s): {sorted(extra)}")
+    if val.get("modo", "auto") not in MODOS_VALIDACAO:
+        raise ConfigInvalida(f"validacao.modo deve ser um de {list(MODOS_VALIDACAO)}")
+    if val.get("carga", "escalado") not in PERFIS_CARGA:
+        raise ConfigInvalida(f"validacao.carga deve ser um de {list(PERFIS_CARGA)}")
+    ui = val.get("ui_segundos", 60)
+    if isinstance(ui, bool) or not isinstance(ui, int) or not UI_SEGUNDOS[0] <= ui <= UI_SEGUNDOS[1]:
+        raise ConfigInvalida(f"validacao.ui_segundos deve ser inteiro entre {UI_SEGUNDOS[0]} e {UI_SEGUNDOS[1]}")
+    slo = {**PADRAO["validacao"]["slo"]}
+    for chave, valor in (val.get("slo") or {}).items():
+        if chave not in SLO_LIMITES:
+            raise ConfigInvalida(f"validacao.slo: campo desconhecido {chave!r} (use {sorted(SLO_LIMITES)})")
+        lo, hi = SLO_LIMITES[chave]
+        if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not lo <= valor <= hi:
+            raise ConfigInvalida(f"validacao.slo.{chave} deve estar entre {lo} e {hi}")
+        slo[chave] = float(valor)
+    saida["validacao"] = {"modo": val.get("modo", "auto"), "carga": val.get("carga", "escalado"), "slo": slo, "ui_segundos": ui}
     for eixo, valor in (cfg.get("orcamento") or {}).items():
         if eixo not in ORCAMENTO_LIMITES:
             raise ConfigInvalida(f"orcamento: eixo desconhecido {eixo!r} (use {sorted(ORCAMENTO_LIMITES)})")
