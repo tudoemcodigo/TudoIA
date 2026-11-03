@@ -170,7 +170,7 @@ O painel controla dois tipos de serviço:
 
 - **Docker** (`litellm`, `litellm-db`, `cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`): ações via
   `docker compose -p tudoia -f runtime\docker-compose.yml --env-file .env`.
-- **Host** (`ollama`, `comfyui`): ações via processo. Para parar, o painel encerra o processo que escuta na porta
+- **Host** (`ollama`, `comfyui`, `squadti`): ações via processo. O `squadti` sobe só por ação explícita (fica fora do "todos") e exige a configuração do `.env` (ver [squadti.md](squadti.md)). Para parar, o painel encerra o processo que escuta na porta
   (11434 ou 8188). Para iniciar, usa `ollama serve` e `run_nvidia_gpu.bat` dentro da pasta do ComfyUI portable.
 
 Implementação: `painel/tudoia_painel/servicos.py`. Esse módulo é Windows-only em vários pontos (`cmd.exe`,
