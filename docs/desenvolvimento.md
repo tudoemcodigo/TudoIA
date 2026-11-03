@@ -1,189 +1,255 @@
-# Desenvolvimento
+---
+titulo: Desenvolvimento
+tipo: guia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-Guia para quem altera o código do TudoIA. Para usar o sistema, veja [instalacao.md](instalacao.md) e [configuracao.md](configuracao.md).
+[🏠 TudoIA](../README.md) › [📚 Documentação](README.md) › 🧑‍💻 Desenvolvimento
 
-## Layout do repositório
+# 🧑‍💻 Desenvolvimento
+
+> Para quem altera o código do TudoIA: como montar o ambiente, rodar lint e testes (os mesmos comandos do CI), onde cada coisa mora, como o repositório é empacotado e quais convenções seguir. Para usar o sistema, veja [instalação](instalacao.md) e [configuração](configuracao.md).
+
+## 📑 Sumário
+
+- [🎯 Visão geral](#-visão-geral)
+- [🚀 Uso](#-uso)
+  - [Ambiente Python](#ambiente-python)
+  - [Lint](#lint)
+  - [Testes](#testes)
+  - [Verificações de sintaxe](#verificações-de-sintaxe)
+  - [Integração contínua](#integração-contínua)
+  - [Doutrina fixada e instalador](#doutrina-fixada-e-instalador)
+- [⚙️ Opções](#️-opções)
+- [❌ Erros e diagnóstico](#-erros-e-diagnóstico)
+- [🛡️ Segurança](#️-segurança)
+- [📐 Convenções](#-convenções)
+- [➕ Adicionar um componente](#-adicionar-um-componente)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
+
+---
+
+## 🎯 Visão geral
+
+O TudoIA reúne **três projetos Python** com ambientes separados, uma cópia do `env.py` do Open WebUI, JavaScript sem build e scripts PowerShell:
+
+| Projeto | Pasta | Manifesto | Ambiente |
+|---|---|---|---|
+| Raiz (painel, roteador, governança, instalador, scripts) | `.` | `pyproject.toml`, `uv.lock` | `.venv\` |
+| Cérebro | `runtime/cerebro/` | `pyproject.toml`, `uv.lock` | `runtime\cerebro\.venv\` |
+| SquadTI | `runtime/squadti/` | `pyproject.toml`, `uv.lock` | `runtime\squadti\.venv\` |
+| `env.py` do Open WebUI | `runtime/open-webui/env.py` | Cópia do arquivo do upstream, só conferida (`tudoia verificar-openwebui`) | Não tem |
+
+Layout das pastas:
 
 | Caminho | Conteúdo |
 |---|---|
-| `automacao/n8n/` | Quatro workflows do n8n em JSON (resumo, pesquisa, digest e ingestão). Ver [componentes/automacao-n8n.md](componentes/automacao-n8n.md). |
-| `config/` | Manifesto de modelos (`modelos.yaml`), catálogo de modelos e roteamento do LiteLLM, exemplos de roteamento e preços de referência. |
-| `dados/` | Dados de execução: Cérebro, Estúdio, logs, documentos e backups do `.env`. **Não versionado** (`.gitignore`). |
-| `docs/` | Documentação. `docs/componentes/` tem uma página por componente. |
-| `governanca/` | Fonte única de regras (`regras/`), skills (`skills/`), catálogo de MCP (`mcp.json`) e o módulo Python `governanca` que distribui tudo para os clientes de IA. `ORIGEM.md` e `LICENSE-agent-skills` documentam a origem das skills. |
-| `infra/` | Template do realm do Keycloak (`keycloak/realm-tudoia.json`) e exemplos de identity provider. |
-| `modelos/` | Pesos e binários locais: pastas do Ollama e do ComfyUI portable. **Não versionado**. |
-| `painel/` | Pacote `tudoia_painel`: `app.py` (monta o app), `rotas/` (um `APIRouter` por domínio), serviços (`estudio_servico.py`, `skills_servico.py`, `mcp_teste.py`, `comfyui.py`), `upstreams.py` (endereços locais), autenticação e estáticos da interface. Ver [componentes/painel.md](componentes/painel.md). |
-| `runtime/` | Serviços executados pelo Docker e configurações deles: `cerebro/` (código-fonte), `docker-compose.yml`, `litellm/` (gateway e roteador), `ollama/modelfiles/`, `open-webui/` (`env.py` e ícones) e `searxng/`. |
-| `scripts/` | Pontos de entrada `tudoia.ps1` (e `tudoia.cmd`) e `tudoia.sh` (Linux), o provisionador do Keycloak (`scripts/keycloak/provisionar.py`), o baixador de modelos (`scripts/modelos/baixar.py`), o backup (`scripts/backup/backup.py` e `restaurar.md`), a conferência do `env.py` do Open WebUI (`scripts/openwebui/verificar_env.py`) e a credencial do n8n (`scripts/n8n/credencial_cerebro.py`). |
-| `.github/workflows/` | CI (`ci.yml`). Ver [Integração contínua](#integração-contínua). |
-| `tests/` | Suites de teste do projeto raiz. A do Cérebro fica em `runtime/cerebro/tests/`. |
-| Raiz | `pyproject.toml` e `uv.lock` (projeto raiz), `.python-version` (3.12), `.env.example` (modelo do `.env`), `.gitattributes`, `.gitignore`, `LICENSE` (Apache-2.0), `NOTICE`, `SPEC.md` (especificação do módulo `governanca`) e `AGENTS.md` (gerado pelo `governanca`, não editar à mão). |
+| `.github/workflows/` | `ci.yml` (verificação de cada push e pull request) e `release.yml` (build do instalador ao empurrar uma tag `vX.Y.Z`). |
+| `automacao/n8n/` | Quatro fluxos do n8n em JSON. Ver [automação n8n](componentes/automacao-n8n.md). |
+| `config/` | Manifesto de modelos (`modelos.yaml`), catálogo de modelos e roteamento do LiteLLM, exemplos de roteamento, preços de referência e catálogo de vídeo na nuvem. |
+| `dados/` | Dados de execução. **Não versionado.** |
+| `docs/` | Esta documentação. Índice em [README](README.md). |
+| `governanca/` | Regras, skills, catálogo MCP, `doutrina.json` e o módulo Python `governanca`. Especificação em [SPEC.md](../SPEC.md). |
+| `infra/keycloak/` | Template do realm, exemplos de provedores de identidade e tema de login. |
+| `instalador/` | Pacote `tudoia_instalador` (tela web local e etapas) e `dados/` com o `payload.zip` gerado. Ver [instalador](instalador.md). |
+| `modelos/` | Pesos e binários locais (Ollama, ComfyUI portable). **Não versionado.** |
+| `painel/` | Pacote `tudoia_painel`: `app.py` monta o app, `rotas/` tem um `APIRouter` por domínio, mais serviços, autenticação e a interface estática. Ver [painel](componentes/painel.md). |
+| `runtime/` | O que roda no Docker e as configurações: `docker-compose.yml`, `cerebro/`, `litellm/` (hook do roteador), `squadti/`, `postgres/init/`, `searxng/`, `open-webui/`, `ollama/modelfiles/` e `comfyui/workflows/`. |
+| `scripts/` | `tudoia.ps1`, `tudoia.sh`, `tudoia.cmd`, ciclo de vida (`iniciar.ps1`, `parar.ps1`, `reiniciar.ps1`, `painel.ps1`, `desinstalar.ps1`) e os módulos Python `backup`, `empacotar`, `keycloak`, `modelos`, `n8n`, `openwebui`, `squadti` e `studio`. |
+| `tests/` | Suíte do projeto raiz. As do Cérebro e da SquadTI ficam dentro de cada projeto. |
+| Raiz | `pyproject.toml`, `uv.lock`, `.python-version` (3.12), `.env.example`, `.gitattributes`, `.gitignore`, `LICENSE` (Apache-2.0), `NOTICE`, `SPEC.md` e `AGENTS.md` (gerado pela governança, não edite à mão). |
 
-`.cursor/` também aparece no disco. É gerado pelo `governanca` (`.cursor/rules/tudoia.mdc`) e está no `.gitignore`.
+`build/` e `dist/` (saída do empacotamento) e `.cursor/` (gerado pela governança) também aparecem no disco e estão no `.gitignore`.
 
-## Ambiente Python
+## 🚀 Uso
 
-O projeto usa **Python 3.12** e **uv** (versão 0.13.0 na máquina de referência, a mesma fixada na imagem do Cérebro).
+### Ambiente Python
 
-### Projeto raiz
-
-`pyproject.toml` declara as dependências (FastAPI, Uvicorn, Jinja2, PyYAML, HTTPX, psutil, Authlib, cryptography, itsdangerous) e o grupo `dev` (pytest e ruff). O grupo `capturas` (Playwright) é só para as capturas de tela do Studio (`scripts/studio`). `[tool.uv] package = false` indica que o projeto não é instalado como pacote, só serve de ambiente.
-
-```powershell
-uv sync                  # cria .venv\ com dependências e o grupo dev
-```
-
-O interpretador usado é `.venv\Scripts\python.exe`. Não é preciso ativar o venv.
-
-### Cérebro (`runtime/cerebro`)
-
-O Cérebro tem `pyproject.toml` e `uv.lock` próprios, separados do projeto raiz. Tem o próprio venv.
+Python 3.12 e **uv 0.13.0** (a versão fixada no CI, no `release.yml` e na imagem do Cérebro). Não é preciso ativar o venv.
 
 ```powershell
-cd runtime\cerebro
-uv sync                  # cria runtime\cerebro\.venv\ com o grupo dev (pytest, pytest-asyncio)
+uv sync                                   # raiz: cria .venv\ com as dependências e o grupo dev
+uv sync --frozen                          # igual ao CI: falha se o uv.lock estiver desatualizado
+cd runtime\cerebro;  uv sync --frozen     # Cérebro
+cd runtime\squadti;  uv sync --frozen     # SquadTI
 ```
 
-`asyncio_mode = "auto"` está no `pyproject.toml` do Cérebro. O build de produção é feito pelo `runtime/cerebro/Dockerfile` com `uv sync --frozen`.
+O `pyproject.toml` da raiz tem `[tool.uv] package = false`: o projeto só serve de ambiente. O grupo `dev` traz `pytest` e `ruff`; o grupo `capturas` (Playwright) é só para as capturas de tela do Estúdio (`scripts/studio`).
 
-## Lint
+### Lint
 
-O ruff está no grupo `dev`. A configuração fica em `[tool.ruff]` do `pyproject.toml`: `line-length = 120`,
-`target-version = "py312"`, regras `E9` (erro de sintaxe), `F` (pyflakes) e `B` (bugbear). Estilo fica de fora.
-`modelos`, `dados` e `runtime/open-webui/env.py` (cópia do upstream) são excluídos.
+Configuração em `[tool.ruff]` do `pyproject.toml`: `line-length = 120`, `target-version = "py312"`, regras `E9` (sintaxe), `F` (pyflakes) e `B` (bugbear); estilo fica de fora. Excluídos: `modelos`, `dados` e `runtime/open-webui/env.py` (cópia do upstream).
 
 ```powershell
-uv run ruff check .
+uv run --frozen ruff check .
 ```
 
-## Rodar os testes
+Resultado em 2026-11-03: `All checks passed!` (ruff 0.17.3).
 
-### Projeto raiz
+### Testes
+
+Comandos exatos do CI:
 
 ```powershell
-uv run pytest -q
+uv run --frozen pytest -q                                              # raiz
+cd runtime\cerebro; uv run --frozen pytest -q                          # Cérebro
+cd runtime\squadti; uv run --frozen python -W error -m pytest -q       # SquadTI (avisos viram erro)
 ```
 
-A configuração está em `[tool.pytest.ini_options]` do `pyproject.toml`: `testpaths = ["tests"]` e `pythonpath = [".", "painel", "runtime/litellm"]`. Os avisos de `httpx` e de `authlib` são filtrados ali.
+Configuração da raiz (`[tool.pytest.ini_options]`): `testpaths = ["tests"]` e `pythonpath = [".", "painel", "runtime/litellm", "instalador"]`; os avisos de `httpx` e `authlib` são filtrados ali. O Cérebro usa `asyncio_mode = "auto"`. A SquadTI usa `testpaths = ["orquestrador/tests"]`.
 
-Rede: `tests/conftest.py` bloqueia todo transporte HTTP real do `httpx` nos testes da raiz (`ConnectError`). Testes que
-precisam de resposta usam `httpx.MockTransport`, e o `TestClient` do FastAPI não passa pela rede. A exceção é o teste
-de integração do Keycloak (`TUDOIA_KEYCLOAK_IT=1`), que libera a rede.
+**Sem rede.** `tests/conftest.py` faz todo transporte HTTP real do `httpx` falhar com `ConnectError`; teste que precisa de resposta usa `httpx.MockTransport`, e o `TestClient` do FastAPI não passa pela rede. A exceção é o teste de integração do Keycloak (`TUDOIA_KEYCLOAK_IT=1`). Os testes também não usam Docker nem GPU.
 
-Verificação feita para este guia (só coleta, sem executar a suíte):
+Resultado das execuções de 2026-11-03 (Windows, uv 0.13.0):
 
-```text
-.venv/Scripts/python.exe -m pytest -q --co -p no:cacheprovider
-619 tests collected
-```
-
-| Pasta | O que cobre |
+| Suíte | Resultado |
 |---|---|
-| `tests/backup/` | Backup e rotação (`test_backup.py`). |
-| `tests/governanca/` | Sincronização de regras, skills e MCP (`test_sync.py`), MCP do Claude e segredos por destino (`test_mcp_claude.py`) e gravação concorrente, marcas e destinos (`test_robustez.py`). |
-| `tests/keycloak/` | Provisionamento do Keycloak (`test_provisionar.py`) e token do cliente `tudoia-mcp` (`test_token_mcp.py`). Tem um teste de integração opcional, descrito abaixo. |
-| `tests/modelos/` | Listagem, download e verificação de modelos (`test_baixar.py`). |
-| `tests/n8n/` | Fluxos do n8n sem `$env` e com formulário autenticado; credencial do Cérebro (`test_fluxos_n8n.py`). |
-| `tests/painel/` | API do painel (`test_painel.py`), autenticação OIDC e sessão (`test_autenticacao.py`), Bearer (`test_bearer.py`), `segredos` (`test_cli.py`) e teste de MCP stdio (`test_mcp_stdio.py`). |
-| `tests/runtime/` | Roteador do LiteLLM: catálogo, `.env`, eventos, hook semântico, quarentena de membros, regras, gerador de configuração, roteador resiliente e o compose (`test_compose.py`: toda chave do catálogo chega ao LiteLLM). Usa `conftest.py` e `fixtures/catalogo-mini.yaml`. |
-| `tests/studio/` | Capturas de tela do Studio (`test_capturar_print.py`). |
+| Raiz | `2 failed, 1360 passed, 1 skipped` em 7 min 15 s. Ver a nota abaixo. |
+| Cérebro | `149 passed` em 10,7 s |
+| SquadTI | `190 passed` em 12,9 s |
 
-### Cérebro
+As duas falhas da raiz, que o CI cobraria:
 
-```powershell
-cd runtime\cerebro
-uv run pytest -q
-```
+- `tests/test_scripts_ps1.py::test_parar_por_linha_de_comando_so_atinge_quem_casa_o_texto_literal` falhou durante a execução em paralelo com a suíte do Cérebro e **passou** ao rodar o arquivo sozinho (`16 passed`). Provável sensibilidade a carga; a causa não foi isolada.
+- `tests/test_squadti_compose.py::test_docker_sock_montado_traz_group_add_host_override_e_aviso` lê `docs/componentes/squadti.md` e exige as expressões `docker.sock` e `root no host`. O guia da SquadTI estava sendo reescrito na mesma data e não as continha. **Quem editar esse guia precisa manter as duas expressões** (o teste trata o aviso do `docker.sock` como parte do contrato).
 
-Verificação feita para este guia (só coleta):
+Cobertura da suíte da raiz:
 
-```text
-.venv/Scripts/python.exe -m pytest -q --co -p no:cacheprovider
-144 tests collected
-```
+| Pasta ou arquivo | O que cobre |
+|---|---|
+| `tests/backup/` | Backup e rotação. |
+| `tests/governanca/` | Sincronização de regras, skills e MCP; MCP do Claude, do Cursor e do Codex; instâncias locais; gravação concorrente, marcas e destinos. |
+| `tests/instalacao/` | Instalador: opções, etapas, motor, servidor, payload, desinstalação, `.env`, versão e SquadTI. |
+| `tests/keycloak/` | Provisionamento do realm e token do cliente `tudoia-mcp`; um teste de integração opcional. |
+| `tests/modelos/` | Listagem, download e verificação de modelos. |
+| `tests/n8n/` | Fluxos sem `$env` e com formulário autenticado; credencial do Cérebro. |
+| `tests/openwebui/` | Conferência do `env.py` contra o da imagem fixada. |
+| `tests/painel/` | API do painel, autenticação OIDC e Bearer, CLI de segredos, serviços, provedores, Estúdio, SquadTI e fronteiras de entrada. |
+| `tests/runtime/` | Roteador do LiteLLM (catálogo, regras, hook semântico, quarentena, resiliente, eventos), gerador de configuração e o compose (`test_compose.py`: toda chave do catálogo chega ao LiteLLM). |
+| `tests/studio/` | Capturas de tela do Estúdio. |
+| `tests/test_scripts_ps1.py` | Scripts PowerShell de ciclo de vida: ASCII, uso do módulo comum, porta, PID e linha de comando. |
+| `tests/test_squadti_chave.py`, `tests/test_squadti_compose.py` | Chave virtual da SquadTI e o serviço `squadti` do compose. |
 
-Os testes ficam em `runtime/cerebro/tests/`: `test_autenticacao.py`, `test_token_estatico.py`, `test_embeddings.py`, `test_indexador.py`, `test_memoria.py`, `test_servidor.py`, `test_vetores.py` e `test_web.py`, além de `conftest.py`. O bloqueio de rede de `tests/conftest.py` não vale aqui: é outro projeto.
-
-A execução completa não foi feita para este guia. Antes de considerar uma mudança pronta, rode o lint e as duas suítes.
-
-## Integração contínua
-
-`.github/workflows/ci.yml` roda em todo push e pull request, em `windows-latest` (o TudoIA é Windows-first), com
-Python 3.12, Node 22 e `uv==0.13.0`. Passos, na ordem:
-
-1. `uv sync --frozen`
-2. `uv run --frozen ruff check .`
-3. `uv run --frozen pytest -q` (suíte da raiz)
-4. Em `runtime/cerebro`: `uv sync --frozen` e `uv run --frozen pytest -q`
-5. `node --check painel/tudoia_painel/static/painel.js` (sintaxe do JS)
-6. Parse do `scripts/tudoia.ps1` com o parser do PowerShell (`[System.Management.Automation.Language.Parser]::ParseFile`)
-
-Os testes não usam rede, Docker, GPU nem Keycloak. O checkout usa `persist-credentials: false` e o workflow tem só
-`contents: read`.
-
-### Teste de integração do Keycloak (opcional)
-
-`tests/keycloak/test_provisionar.py` tem um teste que roda `--verificar` contra um Keycloak vivo. Ele só roda com a variável `TUDOIA_KEYCLOAK_IT=1` e exige o Keycloak no ar com as credenciais de administrador no ambiente (ver [componentes/keycloak.md](componentes/keycloak.md), seção de testes).
+Teste de integração do Keycloak (opcional): com um Keycloak no ar e as credenciais de administrador no ambiente,
 
 ```powershell
 $env:TUDOIA_KEYCLOAK_IT = "1"
-.venv\Scripts\python.exe -m pytest -q tests\keycloak
+uv run --frozen pytest -q tests\keycloak
 ```
 
 Sem a variável, o teste aparece como `skipped`.
 
-## Convenções
+### Verificações de sintaxe
 
-Padrões observados no código. Quem mudar a base deve seguir o mesmo modelo.
+O CI confere também o JavaScript (sem build) e os scripts PowerShell:
 
-- **Nomes em português.** Módulos, funções e mensagens de erro usam português: `caminhos.py`, `servicos.py`, `ErroApi`, `gravar_valor`, `acao_todos`. A interface e a documentação também são em pt-BR.
-- **Biblioteca padrão primeiro.** Antes de adicionar uma dependência, verifique se a biblioteca padrão resolve. `scripts/modelos/baixar.py`, por exemplo, usa só `http.client`, `ssl` e `hashlib`, além do PyYAML.
-- **Fail-closed.** `governanca.sincronizar` valida tudo antes de gravar e levanta `ErroGovernanca` sem escrever nada. A verificação de divergências (`verificar`) não grava.
-- **Entrada validada na borda.** Os corpos de requisição são modelos Pydantic, a maioria com `extra="forbid"` e limites (`max_length`, `pattern`, `ge`, `le`). Erros usam `ErroApi`.
-- **Caminhos vindos da API.** Antes de ler ou gravar um nome recebido, resolva a pasta e o caminho e confirme que ele continua dentro da pasta resolvida com `is_relative_to`. As rotas de arquivos do Estúdio usam `_arquivo_em` (`app.py`) para isso.
-- **Comando externo.** Não passe texto do usuário para `.cmd` no Windows (o `cmd.exe` interpreta `&`, `|`, `^`, `%`). Valide com lista branca, como `REPO_GITHUB` na importação de skill. Processo filho precisa de prazo e de encerramento da árvore inteira (`mcp_stdio.encerrar_arvore`).
+```powershell
+node --check painel/tudoia_painel/static/painel.js
+node --check instalador/tudoia_instalador/static/instalador.js
+```
+
+Resultado em 2026-11-03 (Node 24.20.0; o CI usa Node 22): os dois sem erro. A checagem dos `.ps1` usa o parser do PowerShell em **todos** os arquivos de `scripts\`:
+
+```powershell
+foreach ($f in Get-ChildItem "$PWD\scripts" -Filter *.ps1) {
+  $erros = $null
+  $null = [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$erros)
+  if ($erros) { "$($f.Name): $erros"; exit 1 }
+}
+```
+
+(Não executada nesta data; o CI a roda no PowerShell 7. Os `.ps1` do ciclo de vida precisam ser ASCII puro: o PowerShell 5.1 lê arquivo sem BOM como ANSI, e `tests/test_scripts_ps1.py` confere.)
+
+### Integração contínua
+
+`.github/workflows/ci.yml` roda em todo push e pull request, com `permissions: contents: read` e `persist-credentials: false`.
+
+| Job | Sistema | Passos |
+|---|---|---|
+| `verificar` | `windows-latest` (o TudoIA é Windows-first), Python 3.12, Node 22, `uv==0.13.0` | `uv sync --frozen`; `uv run --frozen ruff check .`; `uv run --frozen pytest -q`; no `runtime/cerebro`, `uv sync --frozen` e `uv run --frozen pytest -q`; `node --check` do `painel.js` e do `instalador.js`; parse de todos os `scripts\*.ps1` |
+| `squadti` | `ubuntu-latest` | No `runtime/squadti`, `uv sync --frozen` e `uv run --frozen python -W error -m pytest -q`; `docker compose --profile squadti -f docker-compose.yml --env-file ../.env.example config --quiet` (valida o compose); `docker build -t tudoia-squadti:ci runtime/squadti`. Não publica nada. |
+
+`.github/workflows/release.yml` roda ao empurrar uma tag `v*`: confere que a tag, o `version` do `pyproject.toml` e o `VERSAO` de `instalador/tudoia_instalador/__init__.py` são iguais, roda lint e testes, constrói o `TudoIA-Setup.exe`, confere o sha256, atesta a proveniência e anexa o `.exe` e o `.sha256` à release do GitHub. O `.exe` não é assinado digitalmente (ver [instalador](instalador.md)).
+
+### Doutrina fixada e instalador
+
+O commit da Doutrina que o TudoIA usa está em `governanca/doutrina.json` e é repetido no `ARG DOUTRINA_SHA` de `runtime/squadti/Dockerfile` e no padrão de `SQUADTI_DOUTRINA_SHA` do compose. O painel mostra, na tela da governança, se esses três divergem. Os comandos (`painel/tudoia_painel/doutrina_servico.py`):
+
+```powershell
+python -m scripts.empacotar.payload --sincronizar-pin   # busca o commit mais novo da Doutrina (usa rede), grava no JSON e propaga
+python -m scripts.empacotar.payload --derivar-pin       # só propaga o JSON para o Dockerfile e o compose (sem rede)
+.\scripts\tudoia.ps1 empacotar                          # gera o payload e o dist\TudoIA-Setup.exe
+```
+
+`empacotar` exige `DOUTRINA_TEC` apontando para um clone da Doutrina que contenha o commit fixado, e `uv` no PATH; o PyInstaller (`pyinstaller==6.22.3`) é buscado pelo `uv run --with`. O empacotador **reprova** o payload (e nada é construído) se achar segredo ou dado pessoal da máquina; a lista extra de termos vem de `PESSOAIS_EXTRA` ([configuração](configuracao.md#️-ferramentas-de-desenvolvimento)).
+
+## ⚙️ Opções
+
+| Item | Valor | Onde |
+|---|---|---|
+| Python | `>=3.12` (`.python-version`: `3.12`) | `pyproject.toml` |
+| uv | `0.13.0` | `ci.yml`, `release.yml`, `runtime/cerebro/Dockerfile` |
+| Node | 22 no CI (só para `node --check`) | `ci.yml` |
+| Largura de linha | 120 | `[tool.ruff]` |
+| Regras do ruff | `E9`, `F`, `B` | `[tool.ruff.lint]` |
+| Timeout dos jobs | 20 min (`verificar`), 30 min (`squadti`, `release`) | workflows |
+
+## ❌ Erros e diagnóstico
+
+| Sintoma | Causa | Ação |
+|---|---|---|
+| `uv sync --frozen` falha dizendo que o lock está desatualizado | `pyproject.toml` mudou sem atualizar o `uv.lock` | Rode `uv lock` no projeto certo (raiz, Cérebro ou SquadTI) e inclua o `uv.lock` na mudança. |
+| `pytest` falha com `rede bloqueada nos testes` | O teste (ou o código sob teste) abriu conexão HTTP real | Troque por `httpx.MockTransport`; não libere a rede. |
+| `test_versao_do_instalador_e_a_do_pyproject` falha | `VERSAO` do instalador diferente de `version` do `pyproject.toml` | Deixe os dois iguais (e a tag do release igual a eles). |
+| `test_docker_sock_montado_...` falha | O guia `docs/componentes/squadti.md` perdeu `docker.sock` ou `root no host` | Restaure as expressões no guia. |
+| `empacotar` aborta com `defina DOUTRINA_TEC` | Falta o clone da Doutrina | Aponte `DOUTRINA_TEC` para o clone que tem o commit fixado. |
+| `empacotar` reprova o payload | Segredo ou dado pessoal encontrado em arquivo incluído | Remova o dado do arquivo; nunca desligue a verificação. |
+
+## 🛡️ Segurança
+
+- Nunca coloque segredo em teste, fixture, documentação ou exemplo: use `<chave>`, `example.com` e valores obviamente falsos. O empacotador varre o payload e reprova padrões de segredo e dados pessoais.
+- O `.env` real fica fora do git e do payload. Para depurar com segredo, use o ambiente do processo, não um arquivo versionado.
+- Não rode código de terceiros (skills, MCP, imagens) sem ler; baixe para uma pasta vazia fora do repositório ([terceiros](terceiros.md) e `governanca/ORIGEM.md`).
+- Falha de segurança: siga [segurança](seguranca.md).
+
+## 📐 Convenções
+
+Padrões observados no código; quem mudar a base segue o mesmo modelo.
+
+- **Nomes em português.** Módulos, funções, mensagens de erro, interface e documentação: `caminhos.py`, `servicos.py`, `ErroApi`, `gravar_valor`, `acao_todos`.
+- **Biblioteca padrão primeiro.** Antes de adicionar dependência, veja se a biblioteca padrão resolve (o baixador de modelos usa só `http.client`, `ssl` e `hashlib`, além do PyYAML; a governança usa só a biblioteca padrão).
+- **Fail-closed.** `governanca.sincronizar` valida tudo antes de gravar e levanta `ErroGovernanca` sem escrever nada. `verificar` não grava.
+- **Entrada validada na borda.** Corpos de requisição são modelos Pydantic, a maioria com `extra="forbid"` e limites (`max_length`, `pattern`, `ge`, `le`). Erros usam `ErroApi`.
+- **Caminhos vindos da API.** Resolva a pasta e o caminho e confirme com `is_relative_to` que ele continua dentro. As rotas de arquivos do Estúdio usam `arquivo_em` (`painel/tudoia_painel/estudio_servico.py`).
+- **Comando externo.** Não passe texto do usuário a `.cmd` no Windows (o `cmd.exe` interpreta `&`, `|`, `^`, `%`). Valide com lista branca, como `REPO_GITHUB` na importação de skill (`skills_servico.py`). Processo filho precisa de prazo e de encerramento da árvore inteira (`mcp_stdio.encerrar_arvore`).
 - **Logs.** Sem corpo de pedido, segredo nem texto de prompt. Erro 500 leva o id do pedido (`X-Request-ID`); o traceback fica só no log.
-- **Segredos só no `.env`.** `painel/tudoia_painel/envfile.py` lê e grava o `.env` da raiz. Nomes de segredos internos ficam em `cli.py` (`SEGREDOS_INTERNOS`). Valor de segredo não vai para log, mensagem de erro ou URL.
-- **Caminhos configuráveis por variável.** `caminhos.py` aceita `TUDOIA_RAIZ`, `TUDOIA_COMFYUI_PORTABLE` e `TUDOIA_OLLAMA_MODELS`. O docstring de `caminhos.py` diz que `TUDOIA_RAIZ` é usado pelos testes, mas nenhum teste da base a define hoje.
-- **Regras de agente são geradas.** Edite `governanca/regras/` e `governanca/skills/`, não `AGENTS.md` nem `.cursor/`. Depois rode `scripts\tudoia.ps1 sync`.
+- **Segredos só no `.env`.** `painel/tudoia_painel/envfile.py` lê e grava o `.env` da raiz; nomes de segredos internos ficam em `SEGREDOS_INTERNOS` (`cli.py`).
+- **Caminhos configuráveis por variável.** `caminhos.py` aceita `TUDOIA_RAIZ`, `TUDOIA_COMFYUI_PORTABLE` e `TUDOIA_OLLAMA_MODELS`.
+- **Regras de agente são geradas.** Edite `governanca/regras/` e `governanca/skills/`, não `AGENTS.md` nem `.cursor/`; depois rode `scripts\tudoia.ps1 sync`.
+- **Scripts de ciclo de vida em ASCII.** `iniciar.ps1`, `parar.ps1`, `reiniciar.ps1`, `painel.ps1` e `_comum.ps1` não levam acento (teste confere).
+- **Fins de linha.** `.gitattributes`: texto em LF no repositório; `*.ps1`, `*.cmd` e `*.bat` com `eol=crlf`; imagens, áudio, vídeo, `*.db` e `*.safetensors` binários. Confira antes de comitar com `git ls-files --eol <arquivo>` (a máquina de referência tem `core.autocrlf=true`; os `.ps1` aparecem `w/crlf` e os `.py` `w/lf`, como esperado).
 
-## Adicionar um componente
+## ➕ Adicionar um componente
 
-1. **Escolha onde ele roda.**
-   - Container: crie `runtime/<nome>/` com o que for preciso e adicione o serviço em `runtime/docker-compose.yml`. Fixe a imagem por digest (`@sha256:`), publique a porta sempre em `127.0.0.1`, passe ao serviço só as variáveis de que ele precisa em `environment` (não use `env_file`: ele entrega o `.env` inteiro) e declare `healthcheck` se houver sinal de prontidão.
-   - Processo do host: registre-o em `painel/tudoia_painel/servicos.py` (`HOST`, `METADADOS`, `_start_*` e `_stop_host`).
-2. **Registre no painel.** Para aparecer na aba de serviços, inclua o nome em `DOCKER` ou `HOST` e em `METADADOS` (`servicos.py`).
-3. **Segredo novo.** Adicione o nome em `.env.example` com valor vazio. Se o painel deve mostrar a chave, inclua-a em `CATEGORIAS_CHAVES` (`painel/tudoia_painel/rotas/segredos.py`). Se o valor é gerado pelo próprio sistema, inclua em `SEGREDOS_INTERNOS` (`cli.py`). Chave de provedor nova também precisa entrar no `environment` do serviço `litellm` (`tests/runtime/test_compose.py` confere).
-4. **Testes.** Crie os testes em `tests/<área>/` (ou em `runtime/<nome>/tests/`, se o componente tiver o próprio pyproject). Cubra o caminho feliz e as falhas: serviço fora do ar, entrada inválida, arquivo ausente. Não dependa de rede: nos testes da raiz ela está bloqueada; use `httpx.MockTransport`.
-5. **Documentação.** Crie `docs/componentes/<nome>.md` e linke a partir do índice do projeto.
-6. **Terceiros.** Se o componente traz código, imagem ou pesos de terceiros, registre a licença em [terceiros.md](terceiros.md).
-7. **Governança.** Se o componente cria regras ou skills para os agentes, edite `governanca/` e rode `scripts\tudoia.ps1 sync`. Para checar divergências sem gravar, rode `scripts\tudoia.ps1 verificar`.
+1. **Onde roda.** Container: crie `runtime/<nome>/` e adicione o serviço em `runtime/docker-compose.yml`; fixe a imagem por digest (`@sha256:`), publique a porta sempre em `127.0.0.1`, passe só as variáveis necessárias em `environment` (nunca `env_file`, que entregaria o `.env` inteiro) e declare `healthcheck`. Processo do host: registre em `painel/tudoia_painel/servicos.py` (`HOST`, `METADADOS`, `_start_*`, `_stop_host`).
+2. **Painel.** Para aparecer na aba de serviços, inclua o nome em `DOCKER` ou `HOST` e em `METADADOS` (`servicos.py`).
+3. **Segredo novo.** Adicione o nome ao `.env.example` com valor vazio. Para a aba Segredos mostrá-lo, inclua-o em `CATEGORIAS_CHAVES` (`painel/tudoia_painel/rotas/segredos.py`). Se o sistema o gera, inclua em `SEGREDOS_INTERNOS` (`cli.py`). Chave de provedor nova também entra no `environment` do `litellm` (`tests/runtime/test_compose.py` confere).
+4. **Testes.** Em `tests/<área>/` (ou no projeto do componente, se tiver `pyproject.toml` próprio). Cubra o caminho feliz e as falhas: serviço fora do ar, entrada inválida, arquivo ausente. Sem rede.
+5. **Documentação.** Crie `docs/componentes/<nome>.md` com o front-matter padrão e liste-o em [README](README.md).
+6. **Terceiros.** Se traz código, imagem ou pesos de terceiros, registre a licença em [terceiros](terceiros.md).
+7. **Governança.** Se cria regras ou skills para agentes, edite `governanca/` e rode `scripts\tudoia.ps1 sync`; `scripts\tudoia.ps1 verificar` lista divergências sem gravar.
 
-## Fins de linha
+## ❓ Perguntas frequentes
 
-O `.gitattributes` define:
+**Preciso do Docker para rodar os testes?** Não. Docker só é necessário para o job `squadti` do CI (compose e build da imagem) e para subir a stack.
 
-- `* text=auto eol=lf`: texto é armazenado com LF no repositório.
-- `*.ps1`, `*.cmd` e `*.bat` com `eol=crlf`: o Windows exige CRLF nesses scripts.
-- Imagens, áudio, vídeo, `*.db` e `*.safetensors` como binários, sem conversão.
+**Posso rodar só uma pasta de testes?** Sim: `uv run --frozen pytest -q tests\governanca`. O CI roda a suíte inteira; faça o mesmo antes de considerar pronto.
 
-Estado atual no working tree, conferido com `git ls-files --eol`:
+**Por que o CI roda no Windows?** O TudoIA é Windows-first (caminhos, launcher `.ps1`, `ProactorEventLoop`). Só a SquadTI, cuja imagem é Linux, roda no Ubuntu.
 
-- `scripts/tudoia.ps1` e `scripts/tudoia.cmd` estão com LF, contrariando a regra `eol=crlf`.
-- Os arquivos `.py` e `runtime/docker-compose.yml` aparecem com CRLF no working tree e LF no índice. O `core.autocrlf` desta máquina está como `true`, o que conflita com `eol=lf`.
+---
 
-Use `git ls-files --eol <arquivo>` para checar antes de comitar.
-
-## Outros pontos
-
-- **Licença.** O projeto é Apache-2.0 (`LICENSE`, `NOTICE`). Componentes de terceiros mantêm as próprias licenças: ver [terceiros.md](terceiros.md).
-- **Especificação do módulo `governanca`.** Está em `SPEC.md`.
-- **Modelos de IA.** O manifesto e o download estão em [componentes/modelos.md](componentes/modelos.md).
-
-## Veja também
-
-- [instalacao.md](instalacao.md) e [configuracao.md](configuracao.md): uso do sistema.
-- [arquitetura.md](arquitetura.md): como os componentes se conectam.
-- [componentes/servicos-docker.md](componentes/servicos-docker.md): stack Docker e processos do host.
-- [terceiros.md](terceiros.md): componentes de terceiros e licenças.
+[🏠 README](../README.md) · ⬅️ [Configuração](configuracao.md) · [Terceiros](terceiros.md) ➡️

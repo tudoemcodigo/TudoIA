@@ -1,269 +1,276 @@
-# Modelos de IA: manifesto, download e verificação
+---
+titulo: Modelos de IA, manifesto e catálogo
+tipo: guia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-Este documento explica como o TudoIA obtém os pesos dos modelos de IA (Ollama e ComfyUI) sem guardá-los no projeto.
-Os arquivos de referência são:
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🧠 Modelos
 
-- `config/modelos.yaml`: o manifesto, com os modelos que o projeto usa.
-- `scripts/modelos/baixar.py`: o baixador (listar, baixar, verificar).
-- `tests/modelos/test_baixar.py`: testes do baixador.
+# 🧠 Modelos de IA, manifesto e catálogo
 
-## 1. Por que os modelos não estão no repositório
+> Para quem prepara uma máquina ou mantém a lista de modelos do TudoIA. Responde: como baixar e verificar os pesos locais
+> (Ollama e ComfyUI) a partir do manifesto, como o download se protege, e para que serve o catálogo de provedores de
+> nuvem (`catalogo-modelos.yaml`).
 
-Os pesos somam cerca de 196 GB dentro da pasta do projeto (`modelos\`), quase tudo em ComfyUI portable e nos modelos do Ollama.
-Pesos não são código-fonte: são grandes, têm licenças próprias (algumas exigem aceite em conta), mudam de versão e não
-podem ir para uma cópia ou instalação do projeto. Por isso:
+## 📑 Sumário
 
-- Cada máquina baixa os próprios modelos a partir do manifesto.
-- O projeto guarda só o manifesto (texto, poucos KB), o script e a documentação.
-- `modelos/` continua sendo a pasta padrão de destino, mas o conteúdo dela não é parte do projeto.
+- [🎯 Visão geral](#-visão-geral)
+- [🚀 Uso](#-uso)
+- [⚙️ Opções](#️-opções)
+- [📦 Formato do manifesto](#-formato-do-manifesto)
+- [⬇️ Como o download funciona](#️-como-o-download-funciona)
+- [➕ Adicionar um modelo](#-adicionar-um-modelo)
+- [☁️ Catálogo de provedores](#️-catálogo-de-provedores)
+- [❌ Erros / diagnóstico](#-erros--diagnóstico)
+- [🛡️ Segurança](#️-segurança)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
 
-## 2. Onde cada coisa fica
+---
 
-A pasta base é `<repositório>\modelos` por padrão. Para mudar, use `--base-dir DIR` ou a variável
-`TUDOIA_MODELOS_DIR`. Os `destino` do manifesto são relativos a essa pasta.
+## 🎯 Visão geral
 
-| Componente | Pasta (com base em `modelos\`) | Como o TudoIA aponta para ela |
+Os pesos dos modelos locais não vão no repositório: são grandes (a soma de `tamanho_aprox_gb` das entradas ComfyUI do
+manifesto passa de 189 GB), têm licenças próprias (algumas exigem aceite em conta) e mudam de versão. O repositório guarda
+só o manifesto, o baixador e esta documentação; cada máquina baixa os seus.
+
+```mermaid
+flowchart LR
+    MAN["config/modelos.yaml<br/>manifesto (41 entradas)"] --> BX["scripts/modelos/baixar.py<br/>listar · baixar · verificar"]
+    BX -->|"ollama pull"| OLL["Servidor Ollama<br/>OLLAMA_MODELS"]
+    BX -->|"HTTPS + .part + sha256"| CUI["Pasta de modelos do ComfyUI"]
+    CAT["config/catalogo-modelos.yaml<br/>provedores de nuvem"] --> GER["painel: gerador do LiteLLM,<br/>limites, rotas de provedores"]
+    BX -. "HF_TOKEN só para huggingface.co" .-> HF["Hugging Face"]
+```
+
+Há dois arquivos de configuração com nomes parecidos e papéis distintos:
+
+| Arquivo | O que descreve | Quem lê |
 |---|---|---|
-| Ollama | `ollama\models` | `OLLAMA_MODELS` do servidor. `scripts\tudoia.ps1 up` usa `TUDOIA_OLLAMA_MODELS` do `.env` ou, sem ela, `<raiz>\modelos\ollama\models` |
-| ComfyUI | `comfyui\ComfyUI_windows_portable\ComfyUI\models\<categoria>\` | O Estúdio referencia os modelos instalados nessa pasta |
+| `config/modelos.yaml` | pesos que a máquina baixa (Ollama e ComfyUI) | `scripts/modelos/baixar.py` |
+| `config/catalogo-modelos.yaml` | provedores e modelos de nuvem (FREE e PAID) que o roteador pode usar | painel (gerador da configuração do LiteLLM, limites, rotas de provedores) |
 
-Importante sobre o Ollama: `ollama pull` é enviado ao **servidor** Ollama, que grava no `OLLAMA_MODELS` **dele**, e não no
-do cliente. Se o servidor usar outra pasta, o baixador vai reportar o modelo como `ausente` mesmo após o pull. Mantenha
-`OLLAMA_MODELS` apontando para `<base>\ollama\models`.
+## 🚀 Uso
 
-Categorias do ComfyUI usadas pelo manifesto: `checkpoints`, `clip`, `text_encoders`, `diffusion_models`, `unet`, `vae`, `loras`.
+Na raiz do repositório, com o Python do projeto (`uv run` ou `.venv\Scripts\python.exe`). O atalho
+`.\scripts\tudoia.ps1 modelos <opções>` (e `scripts/tudoia.sh modelos`) chama o mesmo módulo, `scripts.modelos.baixar`.
 
-## 3. Formato do manifesto
+```powershell
+.venv\Scripts\python.exe scripts\modelos\baixar.py --listar
+.venv\Scripts\python.exe scripts\modelos\baixar.py --obrigatorios
+.venv\Scripts\python.exe scripts\modelos\baixar.py --modelo ollama-qwen3.5-9b comfy-ae
+.venv\Scripts\python.exe scripts\modelos\baixar.py --verificar --obrigatorios
+.venv\Scripts\python.exe scripts\modelos\baixar.py --verificar
+```
 
-Cada entrada tem estes campos (todos obrigatórios, exceto `arquivo` e `revisao`):
+- `--listar`: tabela com `STATUS` (`presente`, `ausente`, `pendente-origem`), `ID`, `TIPO`, `GB`, `OBRIG` e `DESTINO`, e uma
+  linha de resumo. Não lê nem calcula hash de arquivo.
+- `--obrigatorios` e `--modelo ID ...`: baixam. Quem já está presente é pulado (`ja-presente`); um download interrompido é
+  retomado a partir do `.part`. Os dois podem ser combinados.
+- `--verificar`: sem ids verifica todos. Com `sha256` declarado, calcula o hash (minutos em arquivos grandes); sem ele,
+  confere só a presença (`sem-sha256`). Entradas `ollama` são confiadas ao próprio Ollama, que valida os digests no pull.
+
+### Preparar uma máquina nova
+
+1. Clone o repositório. A pasta `modelos\` não vem junto (está no `.gitignore`).
+2. Instale o Ollama e confirme `ollama --version`.
+3. Defina onde ficam os pesos do Ollama (ver [Onde cada coisa fica](#onde-cada-coisa-fica)). Se quiser outro disco, defina
+   `TUDOIA_MODELOS_DIR` e `TUDOIA_OLLAMA_MODELS=<essa pasta>\ollama\models`.
+4. Suba o servidor Ollama (o `tudoia.ps1 up` faz isso) e rode `--listar` para ver o que falta.
+5. Baixe os obrigatórios com `--obrigatorios`.
+6. Crie os modelos locais do TudoIA a partir dos Modelfiles de `runtime\ollama\modelfiles\`
+   (`Modelfile.tudoia-chat`, `.tudoia-agente`, `.tudoia-codigo`, `.tudoia-raciocinio`, `.assistente`, `.programador`,
+   `.revisor`, `.tradutor`, `.opencode`, `.opencode-coder`), por exemplo
+   `ollama create tudoia-chat -f runtime\ollama\modelfiles\Modelfile.tudoia-chat`. O manifesto guarda só o modelo-base
+   (`FROM`) de cada um.
+7. Para o Estúdio, baixe os modelos ComfyUI desejados com `--modelo ID ...` (use `--listar` para os ids).
+8. Confira com `--verificar --obrigatorios`.
+
+### Onde cada coisa fica
+
+A pasta base é `<raiz-do-repositório>\modelos`; mude com `--base-dir DIR` ou `TUDOIA_MODELOS_DIR`. Os `destino` do manifesto
+são relativos a ela.
+
+| Componente | Local | Como o TudoIA aponta |
+|---|---|---|
+| Ollama | `TUDOIA_OLLAMA_MODELS` (ambiente, depois `.env`); sem ela, `<base>\ollama\models` | `tudoia.ps1 up` exporta `OLLAMA_MODELS` com esta mesma regra; o painel usa `caminhos.pesos_ollama` |
+| ComfyUI | `<base>\<destino>` do manifesto, que começa por `ComfyUI\ComfyUI\models\<categoria>\` | ver aviso abaixo |
+
+`ollama pull` é enviado ao **servidor** Ollama, que grava no `OLLAMA_MODELS` **dele**. Se o servidor usar outra pasta, o
+baixador reportará `ausente` mesmo após o pull: mantenha o servidor e o `TUDOIA_OLLAMA_MODELS` apontando para o mesmo lugar.
+
+Categorias de ComfyUI no manifesto: `checkpoints`, `clip`, `text_encoders`, `diffusion_models`, `unet`, `vae`, `loras`.
+
+> [!WARNING]
+> `TUDOIA_COMFYUI_PORTABLE` só desvia o destino de um arquivo ComfyUI quando o resultado cai **dentro** da pasta base
+> (`caminho_local`, `baixar.py`). Fora dela, o baixador ignora a variável e grava em `<base>\ComfyUI\ComfyUI\models\...`.
+> Já o painel procura o ComfyUI em `TUDOIA_COMFYUI_PORTABLE` ou, sem ela, em
+> `<raiz>\modelos\comfyui\ComfyUI_windows_portable\ComfyUI` (`painel/tudoia_painel/caminhos.py`). Os dois padrões
+> não coincidem: confira com `--listar` e com a tela do Estúdio onde os arquivos aterrissam antes de baixar dezenas de GB.
+> Esse desencontro não tem teste; é um achado de leitura de código, não de execução.
+
+## ⚙️ Opções
+
+| Variável / argumento | Padrão | Efeito |
+|---|---|---|
+| `--base-dir DIR` | `TUDOIA_MODELOS_DIR`, senão `<raiz>\modelos` | pasta base dos destinos |
+| `TUDOIA_MODELOS_DIR` | vazia | pasta base alternativa |
+| `TUDOIA_OLLAMA_MODELS` | vazia (usa `<base>\ollama\models`) | pasta de pesos do Ollama; lida do ambiente e depois do `.env` da raiz |
+| `TUDOIA_COMFYUI_PORTABLE` | vazia | pasta do ComfyUI portable; lida do ambiente e depois do `.env`; vale só dentro da base (ver aviso) |
+| `HF_TOKEN` | vazio | token do Hugging Face; lido **só do ambiente** (o baixador não lê o `.env` para ele) |
+
+Para cada chave do `.env`, o baixador lê apenas a chave pedida; nada é registrado em log.
+
+Códigos de saída: `0` ok; `1` manifesto inválido, id desconhecido, entrada PENDENTE, sha256 divergente, dependência
+ausente (`ollama`, PyYAML) ou uso sem argumentos; `2` rede, disco ou espaço insuficiente. Com `--verificar`, `divergente` e
+`ausente` dão saída 1; `sem-sha256` e `pendente-origem` não.
+
+API Python (funções públicas de `scripts/modelos/baixar.py`): `carregar_manifesto`, `status_modelos`, `status_modelo`,
+`selecionar_modelos`, `baixar_modelo`, `verificar_modelo`, `resolver_base`, `caminho_local`, `validar_destino`,
+`validar_url_https`.
+
+## 📦 Formato do manifesto
+
+`config/modelos.yaml` começa com `versao: 1` e uma lista `modelos`. Cada entrada tem todos os campos abaixo, exceto
+`arquivo` e `revisao` (opcionais):
 
 | Campo | Significado |
 |---|---|
-| `id` | Identificador único (minúsculas, dígitos, `.`, `_`, `-`; até 80 caracteres). |
-| `tipo` | `ollama`, `url`, `huggingface` ou `comfyui-node-asset` (arquivo baixado para uma pasta do ComfyUI). |
-| `destino` | Caminho relativo à pasta base. Sem `..`, sem caminho absoluto, sem `:`. |
-| `origem` | `ollama`: `nome:tag`. `url` e `comfyui-node-asset`: URL `https://...`. `huggingface`: `dono/repositorio`. `null` = PENDENTE. |
-| `arquivo` | Só `huggingface`: caminho do arquivo dentro do repositório. |
-| `revisao` | Só `huggingface`: branch, tag ou commit (padrão `main`; prefira fixar um commit). |
-| `tamanho_aprox_gb` | Estimativa usada para checar espaço livre antes do download. `null` = desconhecido. |
-| `licenca` | `{nome, url}`. `null` quando não foi confirmado. |
-| `obrigatorio` | `true` entra em `--obrigatorios`. |
-| `usado_por` | Onde o TudoIA usa o modelo. |
-| `sha256` | 64 caracteres hexadecimais minúsculos, quando conhecido. `null` = só presença e tamanho são verificados. |
-| `notas` | Texto livre. Origem `null` exige `PENDENTE: informar origem` nas notas. |
+| `id` | identificador único (`[a-z0-9][a-z0-9._-]*`, até 80 caracteres) |
+| `tipo` | `ollama`, `url`, `huggingface` ou `comfyui-node-asset` (arquivo por URL para uma pasta do ComfyUI) |
+| `destino` | caminho relativo à base; sem `..`, sem caminho absoluto, sem unidade e sem `: * ? " < > \|` |
+| `origem` | `ollama`: `nome:tag`; `url` e `comfyui-node-asset`: URL `https://...`; `huggingface`: `dono/repositorio`; `null` = PENDENTE |
+| `arquivo` | só `huggingface`: caminho do arquivo dentro do repositório (obrigatório nesse tipo) |
+| `revisao` | só `huggingface`: branch, tag ou commit (padrão `main`; prefira fixar um commit) |
+| `tamanho_aprox_gb` | estimativa para checar espaço livre; `null` = desconhecido |
+| `licenca` | mapa com `nome` e/ou `url` (https); `nome: null` quando não confirmada |
+| `obrigatorio` | `true` entra em `--obrigatorios` |
+| `usado_por` | onde o TudoIA usa o modelo (texto obrigatório) |
+| `sha256` | 64 hexadecimais minúsculos; `null` = só presença e tamanho; não se aplica ao tipo `ollama` |
+| `notas` | texto livre; `origem: null` exige `PENDENTE` nas notas |
 
-Exemplo (modelo Ollama, já no manifesto):
+Estado atual do manifesto (conferido em 2026-11-03): 41 entradas, 7 `ollama` e 34 `comfyui-node-asset`; nenhuma com
+`origem: null`; nenhuma com `sha256` declarado; obrigatórios: `ollama-qwen3.5-9b`, `ollama-qwen3.5-4b` e `ollama-bge-m3`
+(soma de ~11,1 GB; o `bge-m3` serve ao Cérebro e ao classificador semântico do roteador).
 
-```yaml
-  - id: "ollama-qwen3.5-9b"
-    tipo: "ollama"
-    destino: "ollama/models"
-    origem: "qwen3.5:9b"
-    tamanho_aprox_gb: 6.6
-    licenca: {nome: null, url: "https://ollama.com/library/qwen3.5"}
-    obrigatorio: true
-    usado_por: "Ollama: base de tudoia-chat, tudoia-agente, assistente, programador, revisor, tradutor"
-    sha256: null
-    notas: "Modelo do dia a dia. Licenca a confirmar na pagina do modelo."
-```
+O carregador recusa o manifesto inteiro, de propósito (fail-closed), se houver: id duplicado, `destino` com `..` ou
+absoluto, `origem` em `http://`, URL com credenciais embutidas, `sha256` malformado (ou presente em entrada `ollama`),
+chave desconhecida (erro de digitação), campo obrigatório ausente ou `origem: null` sem `PENDENTE`.
 
-Exemplo de entrada por URL com integridade declarada:
+## ⬇️ Como o download funciona
 
-```yaml
-  - id: "exemplo-modelo-url"
-    tipo: "url"
-    destino: "comfyui/ComfyUI_windows_portable/ComfyUI/models/vae/exemplo.safetensors"
-    origem: "https://exemplo.org/arquivos/exemplo.safetensors"
-    tamanho_aprox_gb: 0.3
-    licenca: {nome: "Apache-2.0", url: "https://www.apache.org/licenses/LICENSE-2.0"}
-    obrigatorio: false
-    usado_por: "Estudio ComfyUI: fluxo X"
-    sha256: "<64 hex minusculos, obtido de fonte confiavel>"
-    notas: ""
-```
+Referência do comportamento de `baixar_modelo` para tipos diferentes de `ollama`:
 
-O carregador recusa o manifesto inteiro se houver: id duplicado, `destino` com `..` ou absoluto, `origem` em `http://`,
-URL com credenciais embutidas, `sha256` malformado, chave desconhecida (erro de digitação), ou `origem: null` sem o
-marcador `PENDENTE`. Essa falha é intencional (fail closed).
+- **Arquivo parcial:** escreve em `<destino>.part` e só renomeia (atômico) para o nome final quando o conteúdo está completo
+  e, se houver, o `sha256` confere. Nunca existe arquivo parcial com o nome final.
+- **Retomada:** com `.part` existente, pede o restante com `Range` e `If-Range`. O validador é o `ETag` forte da primeira
+  resposta ou, sem ele, o `Last-Modified`, guardado em `<destino>.part.meta` junto de um hash da URL (a URL em si não é
+  gravada). `ETag` fraco (`W/`) não vale (RFC 9110). Sem validador e sem `sha256`, o parcial é descartado e o download
+  recomeça. Se o arquivo mudou no servidor ou o `Range` foi ignorado, a resposta é 200 e recomeça do zero. Numa resposta
+  206 o início do `Content-Range` precisa ser o tamanho do `.part`; senão o parcial é descartado.
+- **Tamanho:** o total esperado vem do `Content-Range` (206) ou do `Content-Length` (200). Menos bytes que o esperado é falha
+  transitória. Sem tamanho declarado e sem `sha256` no manifesto, o download falha: o fim da conexão não prova que o arquivo
+  veio inteiro. Com `sha256`, o hash decide.
+- **Repetição:** até 4 tentativas, com espera de 2, 4 e 8 s, para erros transitórios (timeout de 30 s por operação de
+  socket, HTTP 408, 425, 429, 500, 502, 503, 504, conexão caída). 401, 403, 404 e outros não são repetidos.
+- **Trava:** `<destino>.part.lock` impede dois downloads do mesmo arquivo. Se nenhum download estiver rodando e a trava
+  sobrou de uma queda, apague o `.lock`.
+- **Espaço:** antes de baixar, compara `tamanho_aprox_gb` (menos o que o `.part` já tem) com o espaço livre.
+- **`sha256` divergente:** o `.part` é apagado e o comando falha com saída 1. Um arquivo final antigo nunca é substituído
+  por conteúdo não verificado. Um arquivo final já presente cujo hash diverge é baixado de novo.
+- **Só `https://`:** redirecionamentos (até 5) são refeitos um a um; se qualquer salto for `http://`, para antes de
+  conectar. Respostas são pedidas com `Accept-Encoding: identity`.
+- **Ollama:** roda `ollama pull <origem>` com lista de argumentos (sem shell), com teto de 6 h. Se `ollama` não estiver no
+  `PATH`, o script informa o comando a rodar manualmente. Modelo já presente não dispara `pull`.
 
-## 4. Comandos
-
-Rode a partir da raiz do repositório, com o Python do projeto:
-
-```powershell
-D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --listar
-D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --obrigatorios
-D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --modelo ollama-qwen3.5-9b comfy-ae
-D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --verificar --obrigatorios
-D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --verificar
-```
-
-- `--listar`: tabela com `STATUS` (`presente`, `ausente`, `pendente-origem`). Não lê nem calcula hash de nenhum arquivo.
-- `--obrigatorios` / `--modelo ID ...`: baixa. Modelos já presentes são pulados (`ja-presente`). Um download
-  interrompido é retomado a partir do `.part`.
-- `--verificar`: sem ids, verifica todos. Com `sha256` declarado, calcula o hash (pode levar minutos em arquivos grandes).
-  Sem `sha256`, só confere a presença. Entradas `ollama` são confiadas ao próprio Ollama (que valida os digests no pull).
-
-Códigos de saída: `0` ok; `1` validação, verificação, entrada PENDENTE ou dependência ausente; `2` rede ou disco.
-
-Variáveis de ambiente:
-
-- `TUDOIA_MODELOS_DIR`: pasta base alternativa.
-- `HF_TOKEN`: token do Hugging Face. Só é enviado a `huggingface.co` e subdomínios. Nunca é gravado no manifesto, nem impresso.
-
-Uso pela API Python (para ligar ao CLI do TudoIA depois):
-
-```python
-import importlib.util, sys
-spec = importlib.util.spec_from_file_location("baixar", r"D:\TudoIA\scripts\modelos\baixar.py")
-baixar = importlib.util.module_from_spec(spec); sys.modules["baixar"] = baixar; spec.loader.exec_module(baixar)
-modelos = baixar.carregar_manifesto()
-status = baixar.status_modelos(modelos, baixar.resolver_base())
-```
-
-Funções públicas: `carregar_manifesto`, `status_modelos`, `status_modelo`, `selecionar_modelos`, `baixar_modelo`,
-`verificar_modelo`, `resolver_base`, `caminho_local`, `validar_destino`, `validar_url_https`.
-
-## 5. Como o download é feito
-
-- Escreve em `<destino>.part` e só renomeia para o nome final quando o conteúdo está completo e (se houver) o sha256 confere.
-  Nunca existe arquivo parcial com o nome final.
-- Retomada: se o `.part` existe, pede o restante com `Range` e `If-Range`. O validador do `If-Range` é o `ETag` forte
-  da primeira resposta ou, sem ele, o `Last-Modified`, guardado em `<destino>.part.meta`. `ETag` fraco (`W/`) não vale
-  (RFC 9110). Se o arquivo mudou no servidor, ou o servidor ignorou o `Range`, a resposta é 200 e o download recomeça do
-  zero.
-- Faixa conferida: numa resposta 206, o início do `Content-Range` precisa ser o tamanho do `.part`. Se não for, o
-  download não junta os pedaços (o arquivo sairia corrompido).
-- Tamanho: o total esperado vem do `Content-Range` (206) ou do `Content-Length` (200). Menos bytes que o esperado é falha
-  transitória e é repetido.
-- Sem tamanho declarado (sem `Content-Length`, por exemplo `chunked`) e sem `sha256` no manifesto, o download falha:
-  o fim da conexão não prova que o arquivo veio inteiro. Com `sha256`, o hash decide.
-- Repetição: até 4 tentativas com backoff (2, 4, 8 s) para erros transitórios (timeout, 429, 5xx, conexão caída).
-  Erros permanentes (401, 403, 404) não são repetidos.
-- Trava: um arquivo `<destino>.part.lock` impede dois downloads simultâneos do mesmo arquivo. Se nenhum download estiver rodando
-  e a trava sobrou de uma queda, apague o `.lock`.
-- Espaço: antes de baixar, compara o `tamanho_aprox_gb` com o espaço livre.
-- sha256 divergente: o `.part` é apagado e o comando falha com código 1. Um arquivo final antigo nunca é substituído por
-  conteúdo não verificado.
-- Só `https://`. Redirecionamentos são refeitos um a um: se qualquer salto for `http://`, o download para antes de conectar.
-- Ollama: roda `ollama pull <origem>` com lista de argumentos (sem shell). Se `ollama` não estiver no PATH, o script
-  informa o comando a rodar manualmente.
-
-## 6. Como adicionar um modelo
+## ➕ Adicionar um modelo
 
 1. Confirme a origem na fonte oficial (página do modelo, repositório Hugging Face, URL direta).
-2. Acrescente a entrada em `config/modelos.yaml` com um `id` novo. Para Hugging Face, use `tipo: huggingface`, `origem` com
-   `dono/repositorio`, `arquivo` e, se possível, `revisao` com commit fixo.
-3. Se souber o sha256 por fonte confiável, declare-o. Não calcule a partir de cópia local sem conferir a origem.
-4. Rode `--listar` e confira o status. Depois `--modelo ID` e `--verificar --modelo ID`.
-5. Rode `D:\TudoIA\.venv\Scripts\python.exe -m pytest -q tests\modelos` para garantir que o manifesto continua válido.
+2. Acrescente a entrada em `config/modelos.yaml` com um `id` novo. Para Hugging Face use `tipo: huggingface`, `origem`
+   `dono/repositorio`, `arquivo` e, de preferência, `revisao` com commit fixo. Para URL direta de ComfyUI use
+   `comfyui-node-asset` com o `destino` sob `ComfyUI/ComfyUI/models/<categoria>/`.
+3. Declare o `sha256` se o conhecer por fonte confiável; não o calcule a partir de cópia local sem conferir a origem.
+4. Rode `--listar`, depois `--modelo ID` e `--verificar --modelo ID`.
+5. Rode `uv run --frozen pytest -q tests/modelos` para garantir que o manifesto continua válido.
 
-Para um modelo Ollama personalizado (como `tudoia-chat`), o manifesto guarda só a base (`FROM`). Depois do pull da base, crie o
-modelo local com `ollama create tudoia-chat -f runtime\ollama\modelfiles\Modelfile.tudoia-chat` (o mesmo para os outros `Modelfile.*`).
+Licenças: `licenca.nome: null` significa não confirmada; confirme na página do modelo antes de uso comercial. Modelos do
+Hugging Face com licença sob aceite respondem 401 ou 403 sem token: aceite a licença na conta, crie um token de leitura em
+`https://huggingface.co/settings/tokens` e exporte `HF_TOKEN` no ambiente antes de rodar o script (no PowerShell:
+`$env:HF_TOKEN = "<token>"`). Não o cole no manifesto nem em logs.
 
-## 7. Espaço em disco por perfil
+## ☁️ Catálogo de provedores
 
-Valores aproximados, calculados a partir de `tamanho_aprox_gb` (cada arquivo contado uma vez; componentes compartilhados,
-como o `umt5_xxl` do Wan, entram só na primeira vez).
+`config/catalogo-modelos.yaml` lista os provedores de nuvem e seus modelos. Ele não baixa nada: alimenta o roteador. O
+painel o lê (`painel/tudoia_painel/catalogo.py`) para gerar a configuração do LiteLLM, calcular limites e servir as rotas
+de provedores (`/api/provedores...`), e também o altera quando você cadastra provedor ou modelo pelo painel. A ordem de
+roteamento fica em `config/roteamento.yaml` (ver [roteador.md](roteador.md)); a chave de cada provedor, no `.env`.
 
-| Perfil | Modelos | GB aprox. |
+Estrutura (chave de topo `provedores`, um mapa por id de provedor):
+
+| Campo do provedor | Efeito |
+|---|---|
+| `nome`, `tier` | nome exibido; `FREE` ou `PAID` (outro valor é erro de carga) |
+| `chave`, `chaves_extras` | variáveis do `.env`; o provedor só é considerado ligado se **todas** estiverem preenchidas |
+| `site_chave`, `site_limites`, `fonte_limites` | links e origem dos limites exibidos no painel |
+| `api_base`, `url_modelos` | endpoint e URL de listagem usada em "descobrir modelos" |
+| `limites` | por exemplo `rpm`, `rpd`, `usd_dia`, `neurons_dia`, `reset` |
+| `descartar_params` | parâmetros que o provedor recusa com 400 |
+| `repeticoes` | `num_retries` do deployment |
+| `modelos[]` | `nome`, `id` (formato do LiteLLM), `papeis` (`chat`, `codigo`, `raciocinio`, `visao`), `contexto`, `ativo` (padrão `true`), `desativado_por_falha` |
+
+Conteúdo em 2026-11-03: 10 provedores (5 FREE: `nvidia`, `openrouter`, `groq`, `gemini`, `cloudflare`; 5 PAID:
+`anthropic`, `openai`, `deepseek`, `xai`, `huggingface`) e 585 modelos listados, dos quais 34 ativos. A lista é gerada e
+muda com frequência; confie no arquivo, não neste número.
+
+> [!NOTE]
+> O arquivo é grande (3,5 mil linhas) e mantido em boa parte pelo painel. Prefira editá-lo pela tela de provedores; o painel
+> regrava o arquivo ao cadastrar ou alterar provedores e modelos, então mantenha edições manuais fora de uso concorrente
+> com a tela.
+
+## ❌ Erros / diagnóstico
+
+| Sintoma | Causa provável | Ação |
 |---|---|---|
-| Stack de texto (mínimo) | Ollama: qwen3.5:9b, qwen3.5:4b, bge-m3 (obrigatórios) | 11,1 |
-| + código e raciocínio | + qwen2.5-coder:7b, deepseek-r1:7b | 20,5 |
-| Estúdio: SDXL foto | Juggernaut XL v9 | 6,6 |
-| Estúdio: Z-Image turbo | z-image turbo, qwen3 4B, ae | 11,3 |
-| Estúdio: Flux schnell | flux1 schnell GGUF, t5xxl, clip_l, ae | 11,4 |
-| Estúdio: KREA2 | krea2 turbo, qwen3vl 4B, VAE, LoRA | 18,1 |
-| Estúdio: música (YuE) | yue2 3B | 3,7 |
-| Vídeo: Wan 2.2 5B | ti2v 5B, umt5, VAE | 16,9 |
-| Vídeo: Wan 2.2 14B (t2v ou i2v) | 2 UNets, umt5, VAE, 4 LoRAs | 35,4 |
-| Vídeo: MiniMax H3 | UNet, qwen3vl 32B, 2 VAEs, LoRA | 39,1 |
-| Todos os ComfyUI do manifesto | (inclui os acima) | 165,0 |
+| `erro: ... https` ao carregar | manifesto com `http://` ou URL sem host | use `https://` |
+| `destino ... '..'` ou absoluto | caminho fora da base | use caminho relativo a `modelos` |
+| `'ollama' nao encontrado no PATH` | Ollama não instalado ou fora do `PATH` | instale e reabra o terminal, ou rode o `ollama pull` indicado |
+| Pull feito, mas `--listar` mostra `ausente` | servidor Ollama usa outro `OLLAMA_MODELS` | alinhe `TUDOIA_OLLAMA_MODELS` e reinicie o Ollama |
+| `acesso negado (HTTP 401/403)` | modelo restrito ou token ausente | aceite a licença no Hugging Face e exporte `HF_TOKEN` |
+| `arquivo nao encontrado no servidor (HTTP 404)` | `origem` ou `arquivo` errados no manifesto | corrija a entrada |
+| `sha256 divergente` | arquivo corrompido ou origem mudou | o `.part` foi apagado; tente de novo e, se persistir, confira `sha256` e `revisao` |
+| `outro download ... em andamento` | trava de um download interrompido | sem download rodando, apague `<arquivo>.part.lock` |
+| `espaco livre insuficiente` | disco cheio em relação ao `tamanho_aprox_gb` | libere espaço ou aponte `--base-dir` / `TUDOIA_MODELOS_DIR` para outro disco |
+| Download para no meio (saída 2) | rede instável ou timeout | rode de novo: o `.part` é retomado |
+| `certificado TLS nao confiavel` | proxy ou antivírus com certificado próprio | instale a CA corporativa no Windows e tente de novo |
+| `o servidor nao informou o tamanho do arquivo ...` | resposta sem `Content-Length` e entrada sem `sha256` | declare o `sha256` no manifesto |
+| `PyYAML nao instalado` | ambiente sem as dependências do projeto | rode com o venv do projeto (`uv run`) |
 
-Não entram no total: `qwen3:8b` e `qwen3-coder:30b` do Ollama (não medidos),
-e os binários do ComfyUI portable e do Ollama, que são aplicativos e não modelos. Reserve espaço extra para `.part` durante
-downloads grandes.
+## 🛡️ Segurança
 
-## 8. Licenças e modelos com acesso restrito
+- Só `https://` é aceito, também em cada redirecionamento; URL com credenciais embutidas é recusada.
+- `HF_TOKEN` só é enviado a `huggingface.co` e subdomínios; o redirecionamento para um CDN de outro domínio segue sem o
+  cabeçalho `Authorization`. O token nunca é gravado no manifesto nem impresso, e as mensagens de erro não ecoam URLs com
+  query.
+- `destino` é validado duas vezes (no carregamento e em `caminho_local`): nada sai da pasta base por `..`, caminho absoluto
+  ou fluxo alternativo de dados do NTFS.
+- Pesos são código executável em potencial para quem os carrega (formatos pickle, nós do ComfyUI). Declare `sha256` e fixe
+  `revisao` para origens que você controla ou audita; sem `sha256` a integridade se limita ao tamanho.
+- O download de modelos locais pelo painel (`POST /api/modelos/local/baixar`) exige o papel `tudoia-admin`
+  (ver [keycloak.md](keycloak.md#papéis-do-painel)).
+- Privacidade: o catálogo de nuvem envia o conteúdo das conversas ao provedor escolhido. Dados pessoais e confidenciais
+  devem usar só modelos locais (grupos pinados ao Ollama). Detalhes em [seguranca.md](../seguranca.md).
 
-- Cada entrada tem `licenca`. `null` significa que a licença ainda não foi confirmada no repositório. Confirme na
-  página do modelo antes de usar comercialmente.
-- Modelos hospedados no Hugging Face podem exigir aceitar a licença na conta. Sem isso, o download responde 401 ou 403 e o
-  baixador explica o motivo. Para esses casos:
-  1. Entre em `huggingface.co`, abra a página do modelo e aceite a licença.
-  2. Crie um token em `https://huggingface.co/settings/tokens` (leitura basta).
-  3. Defina `HF_TOKEN` no ambiente (no PowerShell: `$env:HF_TOKEN = "hf_..."`). Não cole o token no manifesto nem em logs.
-- O token só vai para `huggingface.co` e subdomínios. Hosts de CDN que não sejam do Hugging Face recebem a requisição sem o token.
-- O `.env` da raiz não é lido pelo baixador. Se quiser usar `HF_TOKEN` por lá, exporte a variável antes de rodar o script.
+## ❓ Perguntas frequentes
 
-## 9. Nova máquina: passo a passo
+**Por que `--listar` não mostra se o hash confere?** Porque listar não lê arquivos. Use `--verificar`.
 
-1. Clone ou copie o projeto. A pasta `modelos\` não deve vir junto (está no `.gitignore`).
-2. Instale o Ollama e confirme que `ollama` está no PATH (`ollama --version`).
-3. Defina a pasta de modelos do Ollama. Pelo `scripts\tudoia.ps1`, `OLLAMA_MODELS` aponta para `TUDOIA_OLLAMA_MODELS` ou,
-   sem ela, para `<raiz>\modelos\ollama\models`. Se quiser outro disco, defina `TUDOIA_MODELOS_DIR` e
-   `TUDOIA_OLLAMA_MODELS=<essa pasta>\ollama\models`.
-4. Suba o servidor Ollama (o `tudoia.ps1` faz isso) e rode:
-   `D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --listar` para ver o que falta.
-5. Baixe os obrigatórios: `D:\TudoIA\.venv\Scripts\python.exe scripts\modelos\baixar.py --obrigatorios`.
-6. Crie os modelos locais do TudoIA a partir dos Modelfiles em `runtime\ollama\modelfiles\` (`ollama create tudoia-chat -f ...`, e os outros), se for usá-los.
-7. Para o Estúdio, baixe os modelos ComfyUI desejados (`--modelo ID ...`) depois que as origens estiverem preenchidas (seção 10).
-   Hoje nenhuma origem ComfyUI está no manifesto, então esse passo depende do preenchimento.
-8. Confira com `--verificar --obrigatorios`.
+**Entrada `ollama` verifica `sha256`?** Não. O Ollama valida os digests no `pull`; o baixador só confere que o manifesto do
+modelo existe na pasta de pesos.
 
-## 10. Entradas PENDENTE (o dono precisa preencher)
+**Os testes do baixador usam a internet?** Não: sobem um servidor HTTPS local em loopback. Rode `uv run --frozen pytest -q tests/modelos`.
 
-Estas 29 entradas existem no manifesto, mas `origem` é `null`: o baixador as lista como `pendente-origem` e não baixa nada.
-O repositório não diz de onde esses arquivos vieram, então nenhuma URL foi inventada. Para cada uma, informe:
+---
 
-- o repositório de origem (ex.: `dono/repositorio` no Hugging Face, com `arquivo` = caminho exato) **ou** uma URL `https://` direta;
-- se for Hugging Face com acesso restrito, se a licença foi aceita na conta;
-- a revisão (commit) usada, se souber;
-- o sha256 de uma fonte confiável, se houver (não calcule a partir do arquivo local sem conferir a origem);
-- a licença (nome e URL).
-
-Depois, troque `origem: null` por `origem: "..."`, ajuste `tipo` para `huggingface` (se for HF), remova `PENDENTE` das notas e rode `--listar`.
-
-**ComfyUI (29 entradas, todas presentes localmente, origem desconhecida)**
-
-- Checkpoints: `comfy-juggernaut-xl-v9` (Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors), `comfy-yue2-3b-int8`
-- CLIP: `comfy-clip-l`, `comfy-t5xxl-fp8`
-- Text encoders: `comfy-qwen3vl-4b-fp8`, `comfy-qwen3vl-32b-minimax`, `comfy-qwen3-4b-fp8-mixed`, `comfy-umt5-xxl-fp8`
-- Diffusion models: `comfy-krea2-turbo-int8`, `comfy-minimax-h3-fl2va-int8`, `comfy-wan22-i2v-high-fp8`, `comfy-wan22-i2v-low-fp8`,
-  `comfy-wan22-t2v-high-fp8`, `comfy-wan22-t2v-low-fp8`, `comfy-wan22-ti2v-5b-fp16`, `comfy-z-image-turbo-int8`
-- UNet: `comfy-flux1-schnell-gguf` (exige o custom node ComfyUI-GGUF, presente em `custom_nodes\ComfyUI-GGUF`)
-- VAE: `comfy-ae`, `comfy-minimax-h3-audio-vae`, `comfy-minimax-h3-video-vae`, `comfy-qwen-image-vae`, `comfy-wan22-vae`, `comfy-wan21-vae`
-- LoRA: `comfy-krea2-darkbrush-lora`, `comfy-minimax-h3-turbo-8step-lora`, `comfy-wan22-i2v-lightx2v-high-lora`,
-  `comfy-wan22-i2v-lightx2v-low-lora`, `comfy-wan22-t2v-lightx2v-high-lora`, `comfy-wan22-t2v-lightx2v-low-lora`
-
-## 11. Solução de problemas
-
-| Sintoma | Causa provável | O que fazer |
-|---|---|---|
-| `erro: ... https` ao carregar | Manifesto com `http://` ou URL sem host | Use `https://` |
-| `destino ... '..'` ou absoluto | Caminho fora da pasta base | Use caminho relativo a `modelos` |
-| `'ollama' nao encontrado no PATH` | Ollama não instalado ou PATH sem ele | Instale e reabra o terminal; ou rode o `ollama pull` indicado |
-| Pull feito, mas `--listar` mostra `ausente` | Servidor Ollama usa outro `OLLAMA_MODELS` | Corrija `OLLAMA_MODELS` do servidor (seção 2) e reinicie o Ollama |
-| `acesso negado (HTTP 401/403)` | Modelo restrito ou token ausente | Aceite a licença no Hugging Face e defina `HF_TOKEN` (seção 8) |
-| `sha256 divergente` | Arquivo corrompido, ou origem mudou | O `.part` foi apagado. Tente de novo; se persistir, confira o sha256 e a revisão |
-| `outro download ... em andamento` | Trava de um download anterior interrompido | Se nenhum download estiver rodando, apague `<arquivo>.part.lock` |
-| `espaco livre insuficiente` | Disco cheio em relação ao `tamanho_aprox_gb` | Libere espaço, ou aponte `--base-dir`/`TUDOIA_MODELOS_DIR` para outro disco |
-| Download para no meio (código 2) | Rede instável ou timeout | Rode de novo: o `.part` é retomado |
-| `certificado TLS nao confiavel` | Proxy ou antivírus com certificado próprio | Instale a CA corporativa no Windows e tente de novo |
-| `PyYAML nao instalado` | Ambiente sem as dependências do projeto | `D:\TudoIA\.venv\Scripts\python.exe -m pip install pyyaml` (ou rode com o venv do projeto) |
-
-## 12. Decisões em aberto (o dono confirma)
-
-1. **Quais modelos são obrigatórios por perfil.** Hoje `obrigatorio: true` só para `qwen3.5:9b`, `qwen3.5:4b` e `bge-m3`
-   (o Cérebro e o classificador semântico do roteador usam o `bge-m3`; o painel usa o `qwen3.5:4b`). Todos os ComfyUI são opcionais.
-2. **`qwen3-coder:30b`** (base do `Modelfile.opencode-coder`) é grande e não está no disco. Confirme se entra no perfil padrão.
-3. **Modelos presentes sem referência.** `gemma4:e4b-it-qat` e `qwen2.5-coder:1.5b` estão no disco do Ollama, mas nenhum
-   Modelfile nem código do repositório os usa. Não entraram no manifesto. Remova do disco ou inclua.
-4. **Modelfiles e fluxos fora de `modelos\`.** Já há uma movimentação em curso (`modelos\ollama\Modelfile.*` para
-   `runtime\ollama\modelfiles\`, e `modelos\comfyui\fluxos\` para `runtime\comfyui\fluxos\`), feita por outro trabalho no
-   working tree. Esta documentação usa os caminhos novos; confirme que a movimentação foi concluída e que o painel acompanha.
-5. **Instalação do ComfyUI portable.** Hoje fica dentro de `modelos\comfyui\`. O manifesto não instala o ComfyUI, só os modelos.
-   Decida onde ele fica, para que a pasta `modelos\` possa ser só de dados.
-6. **Empacotamento.** Quem gera a cópia/instalação do projeto precisa excluir `modelos\` (o `.gitignore` já exclui os pesos
-   para o git, mas não para cópias de pasta).
-7. **Revisões fixadas e sha256.** Para cada origem preenchida, recomendo fixar commit e sha256 vindos da fonte.
+[🏠 README](../../README.md) · ⬅️ [Keycloak](keycloak.md) · [Serviços Docker](servicos-docker.md) ➡️

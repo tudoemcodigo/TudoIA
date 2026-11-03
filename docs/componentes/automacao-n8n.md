@@ -1,118 +1,200 @@
-# Automação com n8n
+---
+titulo: Automação com n8n
+tipo: guia
+dono: TudoIA (mantenedor do repositório)
+status: vigente
+classificacao: publico
+verificado-em: 2026-11-03
+---
 
-O n8n roda como container no stack Docker (serviço `n8n` em `runtime/docker-compose.yml`). Os quatro workflows versionados ficam em `automacao/n8n/`. Eles resumem documentos, pesquisam na web, montam um digest de notícias e ingerem um documento enviado por formulário.
+[🏠 TudoIA](../../README.md) › [📚 Documentação](../README.md) › 🔁 Automação n8n
 
-## Onde roda e o que ele enxerga
+# 🔁 Automação com n8n
 
-- Interface e formulários em `http://localhost:5678`, publicada só em `127.0.0.1` (`127.0.0.1:5678:5678`).
-- Volume `dados/documentos` do host montado em `/data/docs` dentro do container. É a mesma pasta que o Cérebro lê (em `/docs`, somente leitura).
-- `N8N_RESTRICT_FILE_ACCESS_TO=/data/docs`: os nós de leitura e escrita de arquivo só alcançam essa pasta. Qualquer caminho fora dela é recusado pelo n8n.
-- Fuso: `GENERIC_TIMEZONE` e `TZ` vêm de `TZ` do `.env`. Os horários dos gatilhos de agenda seguem esse fuso.
-- Alcança os outros serviços pelo nome do container na rede do compose: `http://cerebro:8765` e, pelas credenciais, o LiteLLM e o SearXNG. O Keycloak é alcançado por `http://host.docker.internal:8180`.
-- `N8N_ENCRYPTION_KEY` vem do `.env` e cifra as credenciais salvas. Restaurar o volume `n8n` exige a mesma chave (ver `scripts/backup/restaurar.md`).
-- `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`: nenhum nó Code ou expressão (`$env`) lê as variáveis do container. Nenhum fluxo versionado usa `$env`. Os segredos ficam no cofre de credenciais do n8n.
-- Healthcheck: `GET /healthz` a cada 30 s.
-- Versão: a imagem é `n8n:latest` fixada por digest no compose. O container em execução respondeu `n8n --version` = 2.44.6. O número da versão não está escrito em nenhum arquivo do repositório.
+> Para quem usa e mantém os fluxos de automação do TudoIA. Responde: como o n8n roda no stack, como importar os quatro
+> workflows versionados, que credenciais criar, o que cada fluxo faz e quais limites e riscos existem.
 
-Estrutura de pastas usada pelos workflows:
+## 📑 Sumário
 
+- [🎯 Visão geral](#-visão-geral)
+- [🚀 Uso](#-uso)
+- [🔀 Workflows](#-workflows)
+- [⚙️ Opções](#️-opções)
+- [❌ Erros / diagnóstico](#-erros--diagnóstico)
+- [🛡️ Segurança](#️-segurança)
+- [❓ Perguntas frequentes](#-perguntas-frequentes)
+
+## 🎯 Visão geral
+
+O n8n é o serviço `n8n` do perfil `n8n` em `runtime/docker-compose.yml` (ver [servicos-docker.md](servicos-docker.md)).
+Os workflows versionados ficam em `automacao/n8n/`: resumir documentos, agente pesquisador, digest de notícias e ingestão
+de documento no Cérebro.
+
+```mermaid
+C4Container
+  title n8n no stack TudoIA
+  Person(u, "Usuário")
+  Container(n8, "n8n", "container", "127.0.0.1:5678")
+  Container(lt, "litellm", "gateway", "modelo tudoia-auto")
+  Container(sx, "searxng", "busca", ":8080")
+  Container(ce, "cerebro", "MCP", "POST /indexar")
+  Container(kc, "keycloak", "OIDC", "token client_credentials")
+  Rel(u, n8, "navegador / formulário")
+  Rel(n8, lt, "resumos e agentes")
+  Rel(n8, sx, "busca")
+  Rel(n8, kc, "token (host.docker.internal:8180)")
+  Rel(n8, ce, "indexar")
 ```
-dados/documentos/
-  entrada/   documentos de origem (lidos e gravados pelos workflows)
-  resumos/   resumos em Markdown (gravados pelos workflows)
-```
 
-## Importar os workflows
+O que o container enxerga (conferido no compose):
 
-1. Suba o stack (`scripts\tudoia.ps1 up`) e abra `http://localhost:5678`. Na primeira execução, o n8n pede para criar o usuário dono da instância.
-2. Grave a credencial do Cérebro (passo único, com o container `n8n` no ar e o Keycloak já provisionado):
+- Interface e formulários em `http://localhost:5678`, publicada só em `127.0.0.1`.
+- `dados/documentos` do host em `/data/docs` (leitura e escrita); é a mesma pasta que o Cérebro lê em `/docs`, somente
+  leitura. `N8N_RESTRICT_FILE_ACCESS_TO=/data/docs`: os nós de arquivo só alcançam essa pasta.
+- Volume `n8n` em `/home/node/.n8n` (banco, credenciais cifradas).
+- Fuso: `GENERIC_TIMEZONE` e `TZ` vêm de `TZ` do `.env`; os gatilhos de agenda seguem esse fuso.
+- Rede: alcança `litellm`, `searxng` e `cerebro` pelo nome do serviço; o Keycloak por `host.docker.internal:8180`.
+- Healthcheck: `GET /healthz` a cada 30 s, início 60 s.
+- A imagem é `docker.n8n.io/n8nio/n8n:latest` fixada por digest. A versão não está escrita no repositório.
+
+Pastas usadas pelos workflows (dentro de `dados/documentos`): `entrada/` (documentos de origem) e `resumos/` (resumos em
+Markdown). Crie-as antes da primeira execução; não verifiquei se o n8n as cria sozinho.
+
+## 🚀 Uso
+
+1. Suba o stack com o perfil `n8n` em `COMPOSE_PROFILES` (`scripts\tudoia.ps1 up`) e abra `http://localhost:5678`. Na
+   primeira vez o n8n pede para criar o usuário dono.
+2. Com o container no ar e o Keycloak já provisionado (ver [keycloak.md](keycloak.md)), grave a credencial do Cérebro:
 
    ```powershell
-   .\scripts\tudoia.ps1 n8n-credencial
+   scripts\tudoia.ps1 n8n-credencial
    ```
 
-   O comando (`scripts/n8n/credencial_cerebro.py`) lê `TUDOIA_MCP_CLIENT_ID` e `TUDOIA_MCP_CLIENT_SECRET` do `.env` e grava no n8n a credencial OAuth2 `TudoIA Cérebro (client_credentials)`, id `tudoiaCerebroOAuth`, com o token URL `http://host.docker.internal:8180/realms/<realm>/protocol/openid-connect/token`. O segredo passa pelo stdin do `docker exec`, nunca por argumento. O arquivo temporário dentro do container é criado com `umask 077` e apagado em seguida. Rodar de novo sobrescreve a mesma credencial. Saída: `0` ok, `1` segredo ausente no `.env` (rode o provisionamento do Keycloak), `2` falha no Docker ou no n8n.
-3. Crie as outras duas credenciais com os nomes exatos abaixo. Os workflows referenciam as credenciais pelo nome.
+   O comando (`scripts/n8n/credencial_cerebro.py`) lê `TUDOIA_MCP_CLIENT_ID` (padrão `tudoia-mcp`),
+   `TUDOIA_MCP_CLIENT_SECRET` e `TUDOIA_KEYCLOAK_REALM` (padrão `tudoia`) e grava, via `n8n import:credentials` dentro do
+   container, a credencial OAuth2 `TudoIA Cérebro (client_credentials)` (id `tudoiaCerebroOAuth`, `clientCredentials`, token
+   em `http://host.docker.internal:8180/realms/<realm>/protocol/openid-connect/token`). O segredo vai pelo stdin do
+   `docker exec`, nunca por argumento; o arquivo temporário usa `umask 077` e é apagado em seguida. Repetir sobrescreve a
+   mesma credencial.
 
-   | Nome da credencial | Tipo no n8n | Usado por | Observação |
+   | Código de saída | Significado |
+   |---|---|
+   | `0` | credencial gravada |
+   | `1` | `TUDOIA_MCP_CLIENT_SECRET` ausente no `.env` (rode o provisionamento do Keycloak) |
+   | `2` | Docker indisponível ou o n8n recusou a importação |
+
+3. Crie no n8n as outras duas credenciais, com estes nomes exatos (os fluxos as referenciam pelo nome):
+
+   | Credencial | Tipo no n8n | Usada por | Observação |
    |---|---|---|---|
-   | `TudoIA LiteLLM` | OpenAI API | os quatro workflows (modelo de chat) | aponta para o LiteLLM na rede do compose (endereço e chave ficam na credencial; a confirmar qual chave do LiteLLM ela usa). Não cole o valor da chave em arquivos do repositório. |
-   | `SearXNG local` | SearXNG API | `02-agente-pesquisador` | aponta para o SearXNG (`http://searxng:8080` na rede do compose). A URL fica na credencial, não no JSON. |
+   | `TudoIA LiteLLM` | OpenAI API | os quatro fluxos | aponta para o LiteLLM do compose; a chave fica só na credencial |
+   | `SearXNG local` | SearXNG API | `02-agente-pesquisador` | URL `http://searxng:8080` na credencial |
 
-   O JSON não traz segredos. Os workflows trazem apenas o nome e, em dois casos, o ID interno da credencial (`ingerir-documento.json`: `TudoIA LiteLLM` e `tudoiaCerebroOAuth`), que não é segredo.
+   O JSON dos fluxos não contém segredo; só nomes e, em `ingerir-documento.json`, ids internos de credencial.
+4. Importe cada arquivo (**Workflows** > **Import from file**): `01-resumir-documentos.json`, `02-agente-pesquisador.json`,
+   `03-digest-noticias.json`, `ingerir-documento.json`.
+5. Os JSON não têm o campo `active`: entram desativados. Ative os de agenda (01, 03) e o de formulário (ingerir) quando
+   quiser. O 02 é usado pela URL do gatilho de chat.
 
-4. Importe cada arquivo: menu **Workflows**, **Import from file** (ou colar o conteúdo do JSON). São quatro arquivos:
-   - `automacao/n8n/01-resumir-documentos.json`
-   - `automacao/n8n/02-agente-pesquisador.json`
-   - `automacao/n8n/03-digest-noticias.json`
-   - `automacao/n8n/ingerir-documento.json`
-5. Os JSON não têm o campo `active`. Os workflows entram **desativados**. Ative os de agenda (01 e 03) e o de formulário (ingerir) quando quiser que eles respondam aos gatilhos. O de chat (02) fica disponível na URL do próprio gatilho de chat.
+> [!NOTE]
+> Quem importou uma versão antiga de `ingerir-documento.json` (que lia `$env` para o token) deve rodar o
+> `n8n-credencial` e reimportar: com `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` o fluxo antigo não lê mais o segredo.
 
-Quem já tinha importado o `ingerir-documento.json` antigo (com o nó que lia `$env` para pedir o token) precisa rodar o `n8n-credencial` e reimportar o fluxo. Com `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`, o fluxo antigo não consegue mais ler o segredo.
+## 🔀 Workflows
 
-A compatibilidade dos workflows com a versão do n8n não foi testada nesta documentação: a importação foi conferida só pela leitura do JSON. `tests/n8n/test_fluxos_n8n.py` confere que nenhum fluxo lê `$env` e que o formulário de ingestão exige login. Confirme na primeira importação.
+Todos usam o modelo `tudoia-auto` via credencial `TudoIA LiteLLM`.
 
-## Workflows
+### 01 - Resumir documentos (`01-resumir-documentos.json`)
 
-### 1. TudoIA - Resumir documentos (`01-resumir-documentos.json`)
-
-- **Gatilhos:** manual ("Executar agora") e agenda diária às 7h.
-- **Entrada:** `/data/docs/entrada/*.{txt,md}`. Lê cada arquivo e extrai o texto.
-- **Processo:** agente com o modelo `tudoia-auto` (via LiteLLM). Pede resumo de até 8 tópicos em português e uma linha final "Ações:" com tarefas, se houver.
+- **Gatilhos:** manual e agenda diária às 7h.
+- **Entrada:** `/data/docs/entrada/*.{txt,md}`; extrai o texto de cada arquivo.
+- **Processo:** agente pede resumo em português do Brasil de até 8 tópicos e uma linha final `Ações:` com tarefas, se houver.
 - **Saída:** `/data/docs/resumos/<nome original>.resumo.md`.
-- **Chamadas externas:** nenhuma direta. Tudo passa pelo LiteLLM.
-- **Credenciais:** `TudoIA LiteLLM`.
-- **Observação:** o texto do arquivo entra inteiro no prompt, sem limite de tamanho (ao contrário do ingerir, que corta em 30 000 caracteres). Um arquivo grande pode estourar o contexto do modelo.
+- **Limite:** o texto entra inteiro no prompt, sem corte; arquivo grande pode estourar o contexto do modelo.
 
-### 2. TudoIA - Agente pesquisador (`02-agente-pesquisador.json`)
+### 02 - Agente pesquisador (`02-agente-pesquisador.json`)
 
-- **Gatilho:** Chat (gatilho de chat do n8n). A conversa é aberta pela URL do próprio gatilho.
-- **Processo:** agente com o modelo `tudoia-auto`, instruído a pesquisar fatos recentes, citar as fontes e usar a calculadora para contas. Responde em português.
-- **Ferramentas:** busca no SearXNG (5 resultados, idioma `pt-BR`) e calculadora.
-- **Chamadas internas:** LiteLLM e SearXNG.
-- **Credenciais:** `TudoIA LiteLLM` e `SearXNG local`.
-- **Observação:** o gatilho de chat não tem autenticação no JSON. Como a porta só escuta em `127.0.0.1`, quem alcança a conversa é quem tem acesso à máquina. Se o n8n for exposto a outra rede, proteja esse gatilho antes.
+- **Gatilho:** Chat do n8n, aberto pela URL do próprio gatilho.
+- **Processo:** agente com data de hoje (fuso `America/Sao_Paulo`) no prompt, instruído a pesquisar, citar fontes e usar a
+  calculadora. Ferramentas: SearXNG (5 resultados, idioma `pt-BR`) e Calculadora.
+- **Credenciais:** `TudoIA LiteLLM`, `SearXNG local`.
+- **Atenção:** o gatilho de chat não tem autenticação no JSON; ver [Segurança](#️-segurança).
 
-### 3. TudoIA - Digest de notícias (`03-digest-noticias.json`)
+### 03 - Digest de notícias (`03-digest-noticias.json`)
 
 - **Gatilhos:** manual e agenda diária às 8h.
-- **Fonte externa:** feed RSS `https://g1.globo.com/rss/g1/tecnologia/`. Pega os 10 primeiros itens e junta títulos e links.
-- **Processo:** agente com o modelo `tudoia-auto` escreve um digest curto em português, agrupado por assunto, com o link de cada notícia.
+- **Fonte:** RSS `https://g1.globo.com/rss/g1/tecnologia/` (URL escrita no nó "Ler RSS"; trocar a fonte é editar o nó), 10
+  primeiros itens.
+- **Processo:** agente escreve digest curto e neutro, em português, com os links.
 - **Saída:** `/data/docs/resumos/digest-AAAA-MM-DD.md`.
-- **Credenciais:** `TudoIA LiteLLM`.
-- **Observação:** a URL do feed está escrita no nó. Trocar de fonte é editar esse nó.
+- **Chamada externa:** só o RSS; o texto vai ao LiteLLM, que pode encaminhar a provedor de nuvem conforme o roteamento.
 
-### 4. TudoIA - Ingerir documento (`ingerir-documento.json`)
+### 04 - Ingerir documento (`ingerir-documento.json`)
 
-É o fluxo que liga o n8n ao Cérebro.
+O fluxo que liga o n8n ao Cérebro.
 
-- **Gatilho:** formulário do n8n (`formTrigger` versão 2.6), caminho `tudoia-ingerir-documento`, com autenticação "n8n User Auth" (`authentication: n8nUserAuth`): só quem está logado no n8n abre o formulário. Aceita um arquivo `.txt`, `.md` ou `.pdf`. O endereço segue o padrão do n8n: `http://localhost:5678/form/tudoia-ingerir-documento` (confirme na instância). O formulário devolve uma mensagem ao final.
+- **Gatilho:** formulário (`formTrigger`), caminho `tudoia-ingerir-documento`, `authentication: n8nUserAuth`: só quem
+  está logado no n8n abre o formulário. Aceita `.txt`, `.md`, `.pdf`. URL esperada: `http://localhost:5678/form/tudoia-ingerir-documento`
+  (padrão do n8n; confirme na instância).
 - **Passos:**
-  1. "Preparar arquivo": limpa o nome (remove caminho e caracteres estranhos) e valida a extensão no servidor. O atributo `accept` do formulário só ajuda o navegador.
-  2. Se a extensão não é válida: mensagem de formato e fim.
-  3. Se já existe `entrada/<nome>` ou `resumos/<base>.md`: acrescenta `-AAAAMMDD-HHMMSS` ao nome. O workflow nunca sobrescreve.
+  1. "Preparar arquivo": limpa o nome (sem caminho nem caracteres estranhos) e valida a extensão no servidor.
+  2. Extensão inválida: mensagem de formato e fim.
+  3. Se já existe `entrada/<nome>` ou `resumos/<base>.md`, acrescenta `-AAAAMMDD-HHMMSS` aos dois nomes (nunca sobrescreve).
   4. Grava o original em `/data/docs/entrada`.
-  5. PDF: extrai o texto do PDF. Demais: lê como texto.
-  6. Sem texto (PDF escaneado, vazio ou corrompido): grava o original, avisa e não gera resumo.
-  7. Resume com o modelo `tudoia-auto`, em até 15 tópicos, com um título na primeira linha. O texto é limitado a 30 000 caracteres.
-  8. Se o modelo falhar: avisa, mas o original fica salvo.
-  9. Grava o resumo em `/data/docs/resumos/<base>.md`.
-  10. `POST http://cerebro:8765/indexar` com timeout de 120 s, autenticado pela credencial OAuth2 `TudoIA Cérebro (client_credentials)` (o n8n pede o token ao Keycloak com o cliente `tudoia-mcp`). Resposta 200: indexação concluída. Resposta 409: já há indexação em andamento, e o arquivo entra na próxima rodada. Outra resposta: a mensagem final informa a falha e o resumo fica salvo. Se o Cérebro estiver fora do ar, o nó de erro leva ao aviso "Msg cérebro off", que promete indexação em até 10 minutos (o Cérebro reindexa a cada 600 s, em segundo plano). Não verifiquei na instância qual texto chega ao usuário nesse caso (a confirmar).
-- **Chamadas internas:** LiteLLM (resumo), Keycloak (token) e `http://cerebro:8765/indexar` (indexação).
-- **Credenciais:** `TudoIA LiteLLM` e `TudoIA Cérebro (client_credentials)`.
+  5. PDF: extrai o texto do PDF; demais: lê como texto. Sem texto (PDF escaneado, vazio ou corrompido): grava o original,
+     avisa e não gera resumo.
+  6. Resume (até 15 tópicos, título na primeira linha); o texto enviado ao modelo é cortado em 30 000 caracteres. Falha do
+     modelo: avisa, o original fica salvo.
+  7. Grava `resumos/<base>.md`.
+  8. `POST http://cerebro:8765/indexar`, timeout 120 s, autenticado pela credencial `TudoIA Cérebro (client_credentials)`.
+     200: indexação concluída. 409: já há indexação em andamento; o arquivo entra na próxima rodada. Outro status: a
+     mensagem informa a falha e o resumo fica salvo. Cérebro fora do ar: aviso "será indexado em até 10 min" (o Cérebro
+     reindexa a cada 600 s, `INTERVALO_INDEXACAO` em `runtime/cerebro/cerebro/servidor.py`).
+- **Credenciais:** `TudoIA LiteLLM`, `TudoIA Cérebro (client_credentials)`.
+- Endpoint, papéis e indexação: [cerebro.md](cerebro.md).
 
-## Riscos a conhecer
+## ⚙️ Opções
 
-- **Formulário com login do n8n** (antes: sem autenticação; corrigido). Só um usuário logado no n8n envia arquivos para `entrada/`. Quem tem conta no n8n continua podendo enviar documentos que o Cérebro indexa.
-- **Entrada controla o prompt.** O conteúdo dos documentos vai para o modelo. Um documento pode conter instruções que o modelo siga. O agente de resumo não tem ferramentas, então o dano fica no texto do resumo, mas o resumo é gravado e indexado. Trate o resumo como dado não confiável.
-- **Indexação autenticada** (antes: sem token; corrigido). O `POST /indexar` exige token com papel de operador ou admin.
-- **Credencial do Cérebro no volume `n8n`.** O segredo do cliente `tudoia-mcp` fica cifrado no volume com a `N8N_ENCRYPTION_KEY`. Quem tem a chave e o volume (por exemplo, um backup `n8n.tar.gz` mais o `.env`) obtém o segredo.
-- **Arquivo de entrada grande.** O workflow 01 não limita o tamanho do texto. O workflow de ingestão limita a 30 000 caracteres.
-- **Pastas de trabalho.** Crie `dados\documentos\entrada` e `dados\documentos\resumos` antes da primeira execução. Não verifiquei se o n8n cria essas pastas sozinho nem se os nós de leitura falham quando a pasta está vazia (a confirmar na instância).
+| Item | Valor | Onde |
+|---|---|---|
+| `N8N_ENCRYPTION_KEY` | do `.env`; cifra as credenciais | compose |
+| `N8N_BLOCK_ENV_ACCESS_IN_NODE` | `true` | compose (fixo) |
+| `N8N_RESTRICT_FILE_ACCESS_TO` | `/data/docs` | compose (fixo) |
+| `N8N_HOST` / `N8N_WEBHOOK_URL` | `localhost` / `http://localhost:5678/` | compose (fixos) |
+| `TUDOIA_MCP_CLIENT_ID` | `tudoia-mcp` | `.env`, lido por `credencial_cerebro.py` |
+| `TUDOIA_MCP_CLIENT_SECRET` | sem padrão; obrigatório | `.env` (gravado pelo provisionamento do Keycloak) |
+| `TUDOIA_KEYCLOAK_REALM` | `tudoia` | `.env` |
 
-## Veja também
+## ❌ Erros / diagnóstico
 
-- [servicos-docker.md](servicos-docker.md): o serviço `n8n` e os demais containers.
-- [cerebro.md](cerebro.md): o endpoint `/indexar`, a autenticação e a indexação em segundo plano.
-- [keycloak.md](keycloak.md): o cliente `tudoia-mcp`.
-- [../configuracao.md](../configuracao.md): variáveis do `.env`.
+| Sintoma | Causa | Ação |
+|---|---|---|
+| `n8n-credencial` sai com `1` | segredo do cliente `tudoia-mcp` ausente | rodar o provisionamento do Keycloak ([keycloak.md](keycloak.md)) |
+| `n8n-credencial` sai com `2` | container `n8n` parado, Docker fora ou importação recusada | subir o perfil `n8n`; ler o fim da mensagem de erro |
+| Fluxo reclama de `$env` | fluxo antigo | reimportar o arquivo atual |
+| Credenciais salvas não decifram após restaurar | `N8N_ENCRYPTION_KEY` diferente | restaurar a chave original do `.env`; o backup não a inclui |
+| Indexação responde 401/403 | credencial do Cérebro errada ou cliente sem papel | rodar `n8n-credencial` de novo; conferir o cliente `tudoia-mcp` |
+| Resposta de indexação 409 | indexação em andamento | nada; o arquivo entra na próxima rodada |
+
+## 🛡️ Segurança
+
+- Nenhum fluxo lê variável de ambiente (`tests/n8n/test_fluxos_n8n.py` confere que `$env` e `process.env` não aparecem e
+  que o formulário exige login). O segredo do Cérebro vive no cofre de credenciais do n8n.
+- A credencial do cliente `tudoia-mcp` fica cifrada no volume `n8n` com a `N8N_ENCRYPTION_KEY`: quem tem o volume (ex.:
+  backup `n8n.tar.gz`) e o `.env` obtém o segredo.
+- O formulário exige login no n8n, mas quem tem conta pode enviar documentos que o Cérebro indexa.
+- O conteúdo dos documentos vai ao modelo e pode conter instruções. Os agentes de resumo não têm ferramentas, então o dano
+  fica no texto do resumo, que é gravado e indexado: trate-o como dado não confiável.
+- O gatilho de chat do fluxo 02 não tem autenticação; a porta só escuta em loopback. Se o n8n for exposto a outra rede,
+  proteja o gatilho antes.
+- Modelo geral: [../seguranca.md](../seguranca.md).
+
+## ❓ Perguntas frequentes
+
+**Por que os fluxos entram desativados?** Os JSON não trazem `active`; ative o que quiser depois de importar.
+
+**Compatibilidade com a versão do n8n?** A importação foi conferida só pela leitura dos JSON; confirme na primeira importação.
+
+---
+
+[🏠 README](../../README.md) · ⬅️ [Serviços Docker](servicos-docker.md) · [Cérebro](cerebro.md) ➡️
