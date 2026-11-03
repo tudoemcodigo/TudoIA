@@ -101,6 +101,13 @@ Pelo painel (aba de governança), o botão **Sincronizar com os clientes** equiv
 Claude e do OpenCode. O painel também cria regras, skills e servidores MCP, testa um MCP (`POST /api/governanca/mcp/{id}/testar`)
 e gerencia instâncias (`/api/governanca/instancias`, com `POST .../detectar`).
 
+> [!NOTE]
+> **Sincronizar não é atualizar a Doutrina.** O botão **Sincronizar com os clientes** (`POST /api/governanca/sincronizar`) só
+> reaplica a governança aos clientes de IA, inclusive o caminho do MCP `doutrina-tec` já resolvido a partir do `.env`. A versão
+> da Doutrina é o **pin** em `governanca/doutrina.json` (SHA de 40 caracteres), que só muda com
+> `python -m scripts.empacotar.payload --sincronizar-pin` (decisão de quem empacota). O cartão "Doutrina TEC" da mesma tela
+> mostra o pin, a versão em uso e os arquivos derivados defasados, sem rede e sem gravar. Passo a passo: [doutrina.md](doutrina.md).
+
 ### Adicionar uma regra
 
 Crie `governanca/regras/<id>.md` (en-us, curta: ela vai em toda mensagem de todo cliente; temas específicos pertencem a
@@ -135,6 +142,8 @@ Pelo painel: `POST /api/governanca/skills` cria; `POST /api/governanca/skills/im
 2. `${VAR}` é obrigatória: se faltar ou estiver vazia no `.env`, o `sync` recusa. `${VAR:-}` é opcional.
 3. Ponha o valor no `.env` (ou na aba Segredos do painel, para admin). Nunca no `mcp.json`.
 4. Acrescente o id em `mcp` de `governanca.json` e rode `sync`.
+
+Servidor local em Python (como o `doutrina-tec`): `"command": "${TUDOIA_PYTHON}"` e `"args": ["${DOUTRINA_TEC}/tools/mcp_doutrina.py"]`; sem `npx` e sem baixar código. `command` e `args` aceitam `${VAR}`, resolvidos pelo `sync` e pelo teste do painel; variável obrigatória ausente falha citando só o nome.
 
 Fixe a versão do pacote (`@1.2.3`), nunca `@latest`. A aba Segredos lista como "MCP: &lt;id&gt;" as variáveis que aparecem em
 `${...}` no `env`, nos `args` ou na `url` do servidor.

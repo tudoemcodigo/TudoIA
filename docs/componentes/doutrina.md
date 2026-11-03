@@ -78,15 +78,8 @@ ambiente do cliente).
 
 ### Atualizar a versão fixada
 
-**Pelo painel (recomendado):** publique a mudança na `main` da Doutrina e, na aba de governança, clique em **Sincronizar
-Doutrina** (só o papel admin). O painel roda os passos 2 a 4 abaixo, em ordem, e mostra o progresso de cada etapa; a
-primeira falha interrompe as seguintes e fica explicada na tela. Rodar de novo retoma de onde parou. Exige `DOUTRINA_TEC`
-apontando para um **clone git** da Doutrina, `uv` no PATH (compilar o `.exe`) e Docker (reconstruir a SquadTI). Se a
-SquadTI estiver desligada, a etapa é pulada: a imagem nova sai quando ela for ligada com `iniciar.ps1 -ComSquadti`.
-Endpoints: `POST /api/governanca/doutrina/sincronizar` (202; 409 se já houver uma rodando) e `GET` no mesmo caminho
-(estado das etapas). Código: `painel/tudoia_painel/doutrina_sync.py`.
-
-**Pela linha de comando** (mesmos passos, um a um):
+O painel **não** atualiza a Doutrina: o cartão mostra o estado e a lista de passos. A atualização é decisão de quem
+empacota e roda na linha de comando:
 
 1. Publique a mudança na `main` da Doutrina.
 2. `python -m scripts.empacotar.payload --sincronizar-pin` busca o commit mais novo (`git ls-remote ... HEAD`), grava em
@@ -94,17 +87,17 @@ Endpoints: `POST /api/governanca/doutrina/sincronizar` (202; 409 se já houver u
    faz `git fetch` nesse clone para o commit existir localmente. Falha de rede não altera nada.
 3. `.\scripts\tudoia.ps1 empacotar` gera o pacote com a Doutrina nesse commit (lida do histórico git do clone, não da pasta
    de trabalho: edição local não entra).
-4. Reconstrua a imagem da SquadTI para usar a versão nova.
+4. Reconstrua a imagem da SquadTI para usar a versão nova (`up -d --build squadti` no compose, ou `tudoia.ps1 up`).
 
 `python -m scripts.empacotar.payload --derivar-pin` só propaga o SHA já gravado no JSON, sem rede. O botão **Sincronizar com
-os clientes** do painel **não** muda a versão da Doutrina: só reaplica o caminho do MCP. O empacotamento e a Doutrina dentro do
+os clientes** do painel **não** muda a versão da Doutrina: só reaplica a governança (regras, skills e MCP, inclusive o caminho do MCP). O empacotamento e a Doutrina dentro do
 instalador estão em [instalador.md](../instalador.md) (seção "A Doutrina TEC dentro do pacote").
 
 ### O que o painel mostra
 
 Aba de governança, cartão "Doutrina TEC" (`GET /api/governanca`, campo `doutrina`, calculado por
-`painel/tudoia_painel/doutrina_servico.py::estado_doutrina`). O cartão é somente leitura, sem rede e sem gravar nada;
-quem grava é o botão **Sincronizar Doutrina** (campo `doutrina_sync` da mesma resposta traz o estado da última execução).
+`painel/tudoia_painel/doutrina_servico.py::estado_doutrina`). O cartão é somente leitura, sem rede e sem gravar nada.
+Um bloco recolhido ("Como atualizar a Doutrina") repete os passos acima com os comandos do campo `comandos`.
 
 | Campo | Significado |
 |---|---|
@@ -202,9 +195,9 @@ ambiente da imagem define `DOUTRINA_TEC=/doutrina`. O compose repassa `SQUADTI_D
 - `tests/painel/test_doutrina_estado.py`: tudo em dia; variável ausente ou em branco; manifesto corrompido ou
   incompleto; pasta inexistente; derivados defasados; pin inválido vira aviso e não exceção; instalação sem arquivos da
   SquadTI; somente leitura e sem vazar o `.env`.
-- `tests/painel/test_doutrina_sync.py`: etapas em ordem, parada na primeira falha, varredura com achado reprova o pacote,
-  SquadTI desligada pulada, sem `DOUTRINA_TEC` falha antes de gravar o pin, uma execução por vez, mensagem de erro
-  limitada. `tests/painel/test_painel.py` (HTTP) e `test_autenticacao.py` (só admin dispara).
+- `tests/painel/test_painel.py` (HTTP: o campo `doutrina` em `GET /api/governanca`).
+- `tests/instalacao/test_payload.py`: instantâneo da Doutrina no pacote, pin, `--sincronizar-pin` e `--derivar-pin`. `tests/instalacao/test_etapas.py`: `garantir_doutrina`.
+- `tests/test_squadti_compose.py`: o SHA de `governanca/doutrina.json` é o mesmo do `Dockerfile` e do compose da SquadTI.
 - `runtime/squadti/orquestrador/tests/test_fronteiras.py` e `test_nos.py`: fail-closed da SquadTI e mudança de
   doutrina no meio da tarefa.
 

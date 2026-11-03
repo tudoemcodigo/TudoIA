@@ -51,7 +51,7 @@ flowchart TB
         PAINEL --> KC["Keycloak :8180"]
         CER -->|"JWKS"| KC
         PAINEL -->|".env · governança"| ARQ[("Arquivos do usuário<br/>.env · ~/.claude.json")]
-        GW --> PG[("Postgres :5433<br/>roles por database")]
+        GW --> PG[("litellm-db :5433<br/>Postgres do LiteLLM")]
         GW --> OLL["Ollama :11434<br/>sem autenticação"]
         PAINEL --> SQ["SquadTI :8790<br/>docker.sock montado"]
     end
@@ -64,7 +64,7 @@ flowchart TB
 |---|---|
 | Nada fora de loopback | Todas as portas do compose são `127.0.0.1:...` (`tests/runtime/test_compose.py::test_portas_so_em_loopback`); o painel sobe em `127.0.0.1`; o Ollama em `127.0.0.1` |
 | Falhar fechado | Sem OIDC completo, `/api` responde 503; sem credencial, `/mcp` do Cérebro responde 503; Keycloak fora do ar nega a requisição com 503 |
-| Menor privilégio | Três papéis; o LiteLLM recebe só as variáveis que usa; o `n8n` não lê variáveis de ambiente; cada serviço tem role e database próprios no Postgres |
+| Menor privilégio | Três papéis; o LiteLLM recebe só as variáveis que usa; o `n8n` não lê variáveis de ambiente; o LiteLLM e o Keycloak têm cada um o seu Postgres (`litellm-db`, `keycloak-db`) |
 | Entrada sempre limitada | Corpo, upload, página lida, PDF, resultado de busca e prazo de cada operação têm teto |
 | Rastro sem conteúdo | Auditoria e eventos registram quem, quando e o quê, nunca corpo de pedido, prompt ou valor de segredo |
 
@@ -74,7 +74,7 @@ flowchart TB
 |---|---|---|
 | Chaves de provedores (NIM, Groq, Anthropic etc.) | `.env`; no container do LiteLLM, só as chaves listadas no compose | Alta: custo financeiro e acesso às contas |
 | Chaves internas (`LITELLM_MASTER_KEY`, `TUDOIA_SESSAO_SEGREDO`, `CEREBRO_TOKEN_ESTATICO`, `N8N_ENCRYPTION_KEY` etc.) | `.env` | Alta: `LITELLM_MASTER_KEY` dá acesso ao gateway; `CEREBRO_TOKEN_ESTATICO` dá escrita na memória do Cérebro |
-| Senhas do Postgres (`POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`) | `.env` e volume `<projeto>_postgres` | Alta: o superusuário lê todos os databases |
+| Senhas dos Postgres (`LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`) | `.env` e volumes `<projeto>_litellm-db`, `<projeto>_keycloak-db` | Alta: dão acesso às chaves virtuais do LiteLLM e às contas do Keycloak |
 | Segredo do cliente `tudoia-mcp` | `.env` (`TUDOIA_MCP_CLIENT_SECRET`) e cofre do n8n | Alta: emite token de operador para o Cérebro |
 | Token e chave da SquadTI | `.env` (`TUDOIA_SQUADTI_TOKEN`, `SQUADTI_API_KEY`) | Alta: dispara execução de código gerado por modelo |
 | Tokens de MCP (Context7, GitHub e Supabase quando ligados) | `.env`; gravados em `~\.claude.json`, `opencode.json` e `~\.gemini\config\mcp_config.json` pela governança | Alta |
@@ -220,13 +220,10 @@ Arquivo: `runtime/docker-compose.yml`. Os testes de `tests/runtime/test_compose.
   chaves de provedor (`NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`,
   `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `FAL_AI_API_KEY`, `HF_TOKEN`). O teste garante que toda chave do
   catálogo está na lista e que segredos alheios (senha do Keycloak, token do GitHub, chaves do n8n, `TUDOIA_MCP_CLIENT_SECRET`) não estão.
-- **Postgres único** (`postgres`, container `tudoia-postgres`): o init (`runtime/postgres/init/01-bancos.sh`) cria, na primeira subida do volume, um role e um
-  database por consumidor (`litellm`, `keycloak`) e faz `REVOKE CONNECT ... FROM PUBLIC` nos três databases, então nenhum role conecta no database do outro. As
-  senhas entram no SQL como variáveis do `psql`, nunca na linha de comando. O superusuário (`POSTGRES_ADMIN_PASSWORD`) só o próprio Postgres recebe. O compose recusa subir
-  sem as três senhas (`:?defina no .env`).
+- **Dois Postgres, um por consumidor** (`litellm-db` e, só com o perfil `keycloak`, `keycloak-db`): cada um tem o seu role, o seu database e o seu volume, criados pela imagem a partir de `POSTGRES_USER`, `POSTGRES_DB` e `POSTGRES_PASSWORD`. Só o `litellm-db` publica porta (`127.0.0.1:5433`). Nenhuma das duas senhas (`LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`) é exigida pelo compose (sem `:?`): vazia, o serviço sobe e o banco recusa o login; `tudoia segredos` as gera. Risco 22.
 - O n8n roda com `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`: nenhum nó Code ou expressão lê variáveis do container (nem `N8N_ENCRYPTION_KEY`). O segredo do cliente `tudoia-mcp` vai para o
   cofre do n8n por `scripts/n8n/credencial_cerebro.py`, pelo stdin do `docker exec`. O formulário de ingestão exige login no n8n (`authentication: n8nUserAuth`).
-- Healthcheck em `postgres`, `litellm`, `searxng`, `cerebro`, `n8n`, `keycloak` e `squadti`.
+- Healthcheck em `litellm-db`, `litellm`, `searxng`, `cerebro`, `n8n`, `keycloak-db`, `keycloak` e `squadti`.
 - Todas as portas são publicadas só em `127.0.0.1`.
 
 ### Cérebro: autenticação
@@ -297,8 +294,9 @@ Arquivos: `runtime/docker-compose.yml` (serviço `squadti`), `runtime/squadti/or
 
 - O container roda sem privilégios extras: usuário não root, `read_only: true`, `tmpfs` em `/tmp`, `cap_drop: [ALL]`, `no-new-privileges`, `pids_limit`, teto de memória e de CPU (`SQUADTI_MEMORIA`, `SQUADTI_CPUS`). Escreve só no volume `squadti-dados`. **Exceção importante: o `docker.sock` do host está montado** (risco 21).
 - A API da Squad exige `TUDOIA_SQUADTI_TOKEN` de 32 caracteres ou mais (comparação em tempo constante), aceita `Host` só de loopback e corpo `POST` JSON de até 64 KB (`api.py`). `/saude` não pede token.
-- Chave virtual própria no LiteLLM (`scripts/squadti/chave.py`): alias e tag `squadti`, 90 dias, só os perfis locais, híbrido e nuvem; `tudoia-max` e `tudoia-auto` ficam de fora. O valor da chave nunca é impresso.
-- Privacidade: o painel recusa (422 `consentimento_nuvem`) qualquer perfil que não seja `local-estrito` sem consentimento explícito, porque o gateway pode reenviar à nuvem (risco 16). O orquestrador só usa nuvem com `TUDOIA_PERMITIR_NUVEM=1` (IA-PRV-01, ECO-CON-03).
+- Chave virtual própria no LiteLLM (`scripts/squadti/chave.py`): alias e tag `squadti`, 90 dias, só os modelos dos perfis `local-estrito`, `local`, `hibrido`, `nuvem` e `auto` (`tudoia-auto` entrou com o painel v2); `tudoia-max` (pago) fica de fora. O valor da chave nunca é impresso.
+- Privacidade: o painel recusa (422 `consentimento_nuvem`) qualquer perfil que não seja `local-estrito` sem consentimento explícito, porque o gateway pode reenviar à nuvem (risco 16); isso vale também para o perfil `auto`. O orquestrador só usa nuvem com `TUDOIA_PERMITIR_NUVEM=1` (IA-PRV-01, ECO-CON-03).
+- Papéis no painel (`rotas/squadti.py`, `autenticacao.py`): leitor vê tarefas, mensagens, auditoria, proveniência, log e a configuração dos agentes; operador inicia tarefas, responde, **conversa com o CHEFE** (`POST .../mensagem`, até 4000 caracteres), continua tarefa escalada e aprova (inclusive o release, que só gera notas); **só admin** salva a configuração dos agentes (`POST /api/squadti/agentes`, em `PREFIXOS_ESCRITA_SO_ADMIN`), porque ela define perfil, temperatura e orçamento de cada agente.
 - Sem a Doutrina legível o orquestrador não trabalha (falha fechada, ECO-CON-01); a versão da Doutrina é gravada no estado da tarefa (ECO-CON-02).
 
 ### Logs e observabilidade
@@ -431,15 +429,16 @@ Cada item diz o que é, onde está, o impacto e o estado. A numeração é está
 
 - Onde: `runtime/docker-compose.yml`, serviço `squadti`: `/var/run/docker.sock:/var/run/docker.sock`, `group_add: ["0"]` e `TESTCONTAINERS_HOST_OVERRIDE`. O comentário `ATENÇÃO` no compose registra a decisão do dono de 03/11/2026, tomada para os testes de integração (Testcontainers).
 - Impacto: quem controla o socket controla o Docker do host (volumes, containers, redes) e pode virar root no host. O código que o modelo gera e a Squad executa deixa de estar isolado do host. O restante do endurecimento reduz o dano de outros caminhos, **não deste**.
-- Quem alcança: o papel `tudoia-operador` pode iniciar tarefas (`POST /api/squadti/tarefas` não é só admin), e o conteúdo da tarefa chega ao modelo; qualquer prompt malicioso que induza o modelo a gerar código hostil roda lá (leitura do código; não executado).
+- Quem alcança: o papel `tudoia-operador` inicia tarefas (`POST /api/squadti/tarefas`), responde à entrevista, fala com o CHEFE (`POST .../mensagem`), continua tarefas escaladas e aprova, e tudo isso chega ao modelo; qualquer prompt malicioso que induza o modelo a gerar código hostil roda lá. Desde o painel v2 só o admin altera a configuração dos agentes (`/api/squadti/agentes` em `PREFIXOS_ESCRITA_SO_ADMIN`), mas isso não fecha este risco: iniciar tarefa continua sendo do operador (leitura do código; não executado).
 - Para voltar ao isolamento: remova a linha do socket, o `group_add` e o `TESTCONTAINERS_HOST_OVERRIDE`; os testes de integração da Squad deixam de rodar. O teste `tests/test_squadti_compose.py` exige o aviso junto da linha e a menção em [squadti.md](componentes/squadti.md).
-- Sugestão para o dono: restringir `/api/squadti` a admin enquanto o socket estiver montado.
+- Sugestão para o dono: restringir também o início de tarefas e a conversa com o CHEFE a admin enquanto o socket estiver montado.
 
-### 22. Postgres único compartilha servidor entre consumidores (segue)
+### 22. Bancos Postgres: senha só vale na criação do volume e a porta do LiteLLM fica no host (segue)
 
-- Onde: `runtime/docker-compose.yml`, serviço `postgres`, porta `127.0.0.1:5433`. LiteLLM e Keycloak usam databases e roles distintos, isolados por `REVOKE CONNECT` (init), mas dividem o processo e o volume.
-- Impacto: quem tem o superusuário (`tudoia_admin`, senha em `POSTGRES_ADMIN_PASSWORD`) lê os dois bancos, inclusive os hashes de senha do Keycloak. A senha só vale na criação do volume; trocar a variável depois não muda a do banco (`ALTER ROLE`, [runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco)).
-- O init só roda uma vez: em volume existente, mudanças em `01-bancos.sh` não se aplicam.
+- Onde: `runtime/docker-compose.yml`, serviços `litellm-db` (publica `127.0.0.1:5433`) e `keycloak-db` (sem porta no host).
+- Impacto: o `litellm-db` guarda as chaves virtuais e o gasto do LiteLLM; qualquer processo local que tenha `LITELLM_DB_PASSWORD` (que está no `.env`) lê e altera esses dados pela porta 5433. O `keycloak-db` guarda o realm e os hashes de senha, e só é alcançável pela rede do compose.
+- As senhas só valem na criação do volume: trocar a variável no `.env` depois não muda a do banco ([runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco)). Nenhuma das duas variáveis é exigida pelo compose (sem `:?`).
+- O backup cobre só o `litellm-db`; o `keycloak-db` não tem cópia (`scripts/backup/backup.py`).
 
 ### 23. Cadeia de suprimentos do instalador e da release (em aberto)
 

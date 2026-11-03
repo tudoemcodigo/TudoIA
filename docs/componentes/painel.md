@@ -18,6 +18,7 @@ verificado-em: 2026-11-03
 
 - [🎯 Visão geral](#-visão-geral)
 - [🚀 Uso](#-uso)
+- [🤖 Tela SquadTI](#-tela-squadti)
 - [⚙️ Opções](#️-opções)
 - [🔌 API](#-api)
 - [🧩 Serviços controlados](#-serviços-controlados)
@@ -70,7 +71,7 @@ Estrutura do código:
 |---|---|
 | `.\scripts\tudoia.ps1 painel` | Roda `python -m tudoia_painel painel` em primeiro plano, em `http://127.0.0.1:3100/app/`. Não repassa `--porta`. |
 | `.\scripts\painel.ps1` | Se o painel não responde na porta 3100, sobe-o em segundo plano; abre o navegador (`-SemNavegador` desliga). |
-| `.\scripts\iniciar.ps1` | Liga Docker, Ollama, ComfyUI, serviços e painel (em segundo plano, sem janela). `-ComSquadti` liga também a API da Squad. |
+| `.\scripts\iniciar.ps1` | Liga Docker, Ollama, ComfyUI, serviços e painel (em segundo plano, sem janela). O painel sobe **sempre**, mesmo que Docker, Ollama ou o compose falhem (ele mostra o que ficou fora); nesse caso o script avisa e sai com 1. `-ComSquadti` liga também a API da Squad. |
 | `.\scripts\tudoia.ps1 up` | Sobe a pilha Docker (`compose up -d --build`) e o painel em segundo plano. |
 | `.\scripts\reiniciar.ps1` | Reinicia só o painel (e a Squad, se estava ligada). `-Tudo` desliga e liga tudo. Use depois de mudar código de rota ou serviço. |
 | `.\scripts\parar.ps1` | Desliga o ecossistema (ver abaixo). |
@@ -99,9 +100,9 @@ Definida em `cli.py`. Os comandos passam por `.\scripts\tudoia.ps1 <comando>` qu
 | `gerar-config` | Gera `runtime/litellm/config.yaml` a partir do catálogo, do roteamento e do `.env`. |
 
 Segredos gerados por `segredos`: `WEBUI_SECRET_KEY`, `SEARXNG_SECRET`, `N8N_ENCRYPTION_KEY`, `LITELLM_MASTER_KEY`
-(prefixo `sk-`), `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `TUDOIA_SESSAO_SEGREDO` e
-`CEREBRO_TOKEN_ESTATICO`. Com o perfil `keycloak` em `COMPOSE_PROFILES`, também `TUDOIA_KEYCLOAK_ADMIN_PASSWORD`; com o
-perfil `squadti`, também `TUDOIA_SQUADTI_TOKEN`. O comando imprime só os nomes.
+(prefixo `sk-`), `LITELLM_DB_PASSWORD`, `TUDOIA_SESSAO_SEGREDO` e
+`CEREBRO_TOKEN_ESTATICO`. Com o perfil `keycloak` em `COMPOSE_PROFILES`, também `TUDOIA_KEYCLOAK_ADMIN_PASSWORD` e
+`KEYCLOAK_DB_PASSWORD`; com o perfil `squadti`, também `TUDOIA_SQUADTI_TOKEN`. O comando imprime só os nomes.
 
 ### Telas
 
@@ -114,7 +115,7 @@ A navegação (`static/index.html`) agrupa as telas por contexto:
 | IA | `modelos` | Catálogo agrupado por origem e tipo, teste de modelos, modelos locais do Ollama. |
 | IA | `provedores` | Provedores de nuvem: cadastro, descoberta e sincronização de modelos, links para chave e limites. |
 | IA | `roteador` | Grupos do `tudoia-auto`, membros, auto-vínculo e geração do `config.yaml`. Ver [roteador.md](roteador.md). |
-| Agentes | `squadti` | Inicia tarefas, responde à entrevista, aprova especificação e release. Ver [squadti.md](squadti.md). |
+| Agentes | `squadti` | Duas abas: **Tarefas** (lista, nova tarefa, cockpit e conversa com o CHEFE) e **Agentes** (configuração; só o admin salva). Ver [Tela SquadTI](#-tela-squadti) e [squadti.md](squadti.md). |
 | Uso | `telemetria` ("Atividade"), `limites` ("Custos e cotas") | Tráfego ao vivo e consumo de tokens por provedor. |
 | Sistema | `servicos`, `hardware` | Estado e ações dos serviços; GPU, VRAM e fila do ComfyUI. |
 | Segurança | `segredos` ("Chaves e segredos"), `governanca` ("Agentes e regras") | Chaves do `.env` mascaradas; regras, skills, MCP, instâncias e Doutrina. Ver [governanca.md](governanca.md). |
@@ -123,6 +124,31 @@ A navegação (`static/index.html`) agrupa as telas por contexto:
 Os ícones são os do mapa `ICONES` em `static/painel.js` (Lucide, ver [terceiros.md](../terceiros.md)). Arquivos
 estáticos servidos em `/app/{arquivo}`: `painel.js`, `painel.css`, `squadti.js`, `squadti.css`, `fontes.css`, `logo.svg`,
 `favicon.ico`, `logo-512.png` e `fonte-N.woff2` (1 a 2 dígitos). Qualquer outro nome responde 404.
+
+## 🤖 Tela SquadTI
+
+`static/squadti.js` (carregado depois de `painel.js`) e `static/squadti.css`. Todo texto que vem da API entra por
+`textContent`: briefing, mensagens, log e arquivos são conteúdo de modelo ou de usuário, nunca marcação.
+
+- **Aba Tarefas.** Lista de tarefas com a situação em português (aguardando respostas, aprovar especificação, aprovar
+  release, em andamento, concluída, bloqueada, escalada, escalada por QA ou por revisão). A lista atualiza a cada 5 s
+  enquanto a tela está aberta. **Nova tarefa** pede identificador, briefing, perfil, stack (automática por padrão) e
+  orçamento opcional; perfil diferente de `local-estrito` mostra o aviso de que o texto pode sair da máquina e exige o
+  consentimento.
+- **Cockpit** (ao abrir uma tarefa): trilha dos nós (analista, arquiteto, dba, dev_backend, dev_frontend, qa_testes,
+  revisor, appsec, devops, documentacao, release) com status pendente, rodando, ok ou falhou; barras de consumo dos três
+  eixos do orçamento (tokens, tempo, chamadas); log ao vivo (lido a cada 2 s enquanto a execução roda, até 500 eventos);
+  auditoria e proveniência; arquivos gerados; botões de responder, aprovar especificação, aprovar release e **continuar**
+  (tarefa escalada; permite ajustar os tetos, e não pula aprovações nem portões).
+- **Conversa com o CHEFE.** Canal único com a Squad (até 4 000 caracteres por mensagem; Enter envia). `status` pede um
+  resumo; `/ajuste <texto>` registra uma instrução, tratada como dado, para as próximas fases, sem alterar aprovações,
+  portões nem configuração. Durante a entrevista, responder ali ou no formulário vale igual.
+- **Aba Agentes.** Perfil, temperatura e máximo de tokens por agente (`chefe`, `analista`, `arquiteto`, `dba`, `backend`,
+  `frontend`, `revisor`, `senior`, `hacker`, `mantenedor`, `documentacao`), modo de revisão, validação em execução e
+  orçamento padrão. Perfis que podem sair da máquina ganham o selo "pode sair da máquina". Leitor e operador veem, **só o
+  admin salva** (`POST /api/squadti/agentes`).
+
+O que a Squad faz com cada agente está em [squadti.md](squadti.md).
 
 ## ⚙️ Opções
 
@@ -232,23 +258,38 @@ Nota: o `GET` de `/api/governanca/mcp` e de qualquer subcaminho também é só a
 
 ### SquadTI
 
-| Método | Rota | O que faz |
-|---|---|---|
-| GET | `/api/squadti/estado` | `{configurado, no_ar, perfis}`. Consulta `/saude` da Squad com timeout de 2 s. |
-| GET | `/api/squadti/tarefas` | Lista tarefas. |
-| GET | `/api/squadti/tarefas/{tarefa}` | Detalhe. |
-| GET | `/api/squadti/tarefas/{tarefa}/arquivo?caminho=` | Lê arquivo gerado (`caminho` de 1 a 300 caracteres). |
-| POST | `/api/squadti/tarefas` | Inicia tarefa (202). |
-| POST | `/api/squadti/tarefas/{tarefa}/responder` | Responde à entrevista (202). |
-| POST | `/api/squadti/tarefas/{tarefa}/aprovar` | Aprova a especificação (202). |
-| POST | `/api/squadti/tarefas/{tarefa}/aprovar-release` | Aprova o release (202). Só gera notas: nada é commitado nem publicado. |
+Fonte: `painel/tudoia_painel/rotas/squadti.py`. Todas as rotas repassam à API da Squad (`/api/...`, sem o prefixo `squadti`).
 
-O painel só repassa pedidos validados à API da Squad, com o token de `TUDOIA_SQUADTI_TOKEN`, timeout de 15 s e
-Bearer fixo. `tarefa` casa `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`; `briefing` e `resposta` têm no máximo 20 000
-caracteres; o corpo rejeita campos extras. Perfis oferecidos: `local-estrito` (padrão), `local`, `hibrido`, `nuvem`
-(`max` não é oferecido). Qualquer perfil diferente de `local-estrito` exige `consentimento_nuvem: true`, senão 422 com
-código `consentimento_nuvem` (o gateway pode reenviar à nuvem um pedido que não cabe no modelo local). Resposta 401 da
-Squad vira 503 (token divergente); 5xx da Squad vira 503; 4xx é repassado com o código e a mensagem (até 500 caracteres).
+| Método | Rota | Papel | O que faz |
+|---|---|---|---|
+| GET | `/api/squadti/estado` | leitor | `{configurado, no_ar, perfis}`. Consulta `/saude` da Squad com timeout de 2 s. |
+| GET | `/api/squadti/tarefas` | leitor | Lista tarefas com situação e execução. |
+| GET | `/api/squadti/tarefas/{tarefa}` | leitor | Detalhe: situação, perguntas, arquivos, execução. |
+| GET | `/api/squadti/tarefas/{tarefa}/arquivo?caminho=` | leitor | Lê arquivo gerado (`caminho` de 1 a 300 caracteres). |
+| GET | `/api/squadti/tarefas/{tarefa}/mensagens` | leitor | Histórico da conversa com o CHEFE. |
+| GET | `/api/squadti/tarefas/{tarefa}/auditoria` | leitor | Trilha de auditoria por nó. |
+| GET | `/api/squadti/tarefas/{tarefa}/proveniencia` | leitor | Proveniência da tarefa. |
+| GET | `/api/squadti/tarefas/{tarefa}/log?desde=` | leitor | Log ao vivo a partir do evento `desde` (0 a 1 000 000, padrão 0). |
+| GET | `/api/squadti/agentes` | leitor | Configuração atual dos agentes. |
+| POST | `/api/squadti/tarefas` | operador | Inicia tarefa (202). Campos: `tarefa`, `briefing`, `perfil`, `consentimento_nuvem`, `stack` (`dotnet` ou `python`; ausente = o CHEFE decide), `orcamento`. |
+| POST | `/api/squadti/tarefas/{tarefa}/responder` | operador | Responde à entrevista (202). |
+| POST | `/api/squadti/tarefas/{tarefa}/mensagem` | operador | Mensagem ao CHEFE (202; timeout de 120 s, porque o CHEFE chama o modelo antes de responder). |
+| POST | `/api/squadti/tarefas/{tarefa}/aprovar` | operador | Aprova a especificação (202). |
+| POST | `/api/squadti/tarefas/{tarefa}/aprovar-release` | operador | Aprova o release (202). Só gera notas: nada é commitado nem publicado. |
+| POST | `/api/squadti/tarefas/{tarefa}/continuar` | operador | Retoma tarefa escalada, com novo `orcamento` opcional (202). |
+| POST | `/api/squadti/agentes` | **admin** | Salva a configuração dos agentes (`PREFIXOS_ESCRITA_SO_ADMIN`). |
+
+O painel só repassa pedidos validados à API da Squad, com o token de `TUDOIA_SQUADTI_TOKEN`, timeout de 15 s (120 s na
+mensagem) e Bearer fixo. `tarefa` casa `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`; `briefing` e `resposta` têm no máximo 20 000
+caracteres e a mensagem ao CHEFE, 4 000; o corpo rejeita campos extras. `orcamento` aceita `tokens` (1 000 a 50 000 000),
+`tempo_s` (60 a 86 400) e `chamadas` (1 a 10 000); eixo ausente não muda, `null` é sem limite. Perfis oferecidos:
+`local-estrito` (padrão), `local`, `hibrido`, `nuvem` e `auto` (`tudoia-auto`; `max` não é oferecido). Qualquer perfil
+diferente de `local-estrito` exige `consentimento_nuvem: true`, senão 422 com código `consentimento_nuvem` (o gateway pode
+reenviar à nuvem um pedido que não cabe no modelo local). A configuração dos agentes aceita até 32 agentes (nome
+`^[a-z][a-z0-9_]{0,31}$`) com `perfil`, `temperatura` (0 a 1,5) e `max_tokens` (256 a 32 000), `revisao.modo`
+(`simples` ou `dupla`), `validacao` (objeto raso de até 2 níveis e 16 chaves) e `orcamento`; a Squad valida de novo.
+Resposta 401 da Squad vira 503 (token divergente); 5xx da Squad vira 503; 4xx é repassado com o código e a mensagem (até
+500 caracteres).
 
 ### Estúdio e chat
 
@@ -260,7 +301,7 @@ alterar: operador.
 | Papel | Pode | Não pode |
 |---|---|---|
 | `tudoia-leitor` | Ver as telas (`GET`), inclusive o estado da governança | Alterar qualquer coisa. Não acessa `/api/segredos`, `/api/provedores` nem `/api/governanca/mcp`. |
-| `tudoia-operador` | Alterar o que não é administrativo: serviços, roteamento, modelos, Estúdio, SquadTI | Segredos, provedores, qualquer alteração em `/api/governanca/*`, baixar modelo local |
+| `tudoia-operador` | Alterar o que não é administrativo: serviços, roteamento, modelos, Estúdio, SquadTI (iniciar tarefa, responder, falar com o CHEFE, continuar, aprovar) | Segredos, provedores, qualquer alteração em `/api/governanca/*`, salvar a configuração dos agentes da SquadTI (`POST /api/squadti/agentes`), baixar modelo local |
 | `tudoia-admin` | Tudo | Nada |
 
 A regra é a função pura `decidir` (`autenticacao.py`):
@@ -268,7 +309,7 @@ A regra é a função pura `decidir` (`autenticacao.py`):
 1. `/api/sessao` passa sempre. Sem papéis: 401 `nao_autenticado`.
 2. `PREFIXOS_SO_ADMIN` (`/api/segredos`, `/api/provedores`, `/api/governanca/skills/importar`, `/api/governanca/mcp`,
    `/api/modelos/local/baixar`) vale para qualquer método: só admin.
-3. `PREFIXOS_ESCRITA_SO_ADMIN = ("/api/governanca",)`: todos leem, só admin altera.
+3. `PREFIXOS_ESCRITA_SO_ADMIN = ("/api/governanca", "/api/squadti/agentes")`: todos leem, só admin altera.
 4. Qualquer outro método que não seja `GET`, `HEAD` ou `OPTIONS` exige operador ou admin.
 
 O papel vem do claim `groups` ou de `realm_access.roles`. Sem nenhum papel do painel, o login é recusado com 403
@@ -281,7 +322,7 @@ fixo `RS256`; chaves públicas em cache por 600 s; `kid` desconhecido só dispar
 
 | Tipo | Nomes | Como |
 |---|---|---|
-| Docker (`DOCKER`) | `litellm`, `postgres`, `cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak`, `squadti` | `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env` |
+| Docker (`DOCKER`) | `litellm`, `litellm-db`, `cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak`, `keycloak-db`, `squadti` | `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env` |
 | Host (`HOST`) | `ollama` (11434), `comfyui` (8188) | Processo. Para parar, encerra o dono da porta; no Ollama também `ollama.exe` e `ollama_llama_server.exe`; no ComfyUI, processos cuja linha de comando contém a pasta do portable (caminho passado por variável de ambiente, nunca no texto do comando). |
 
 Ações (`ACOES`): `start` = `up -d`; `stop` = `stop`; `restart` = `up -d --no-deps --force-recreate`. O `restart`
@@ -345,7 +386,7 @@ rotas de teste (`/api/modelos/testar`, `/api/roteador/testar`, `/api/governanca/
 | 400 | `requisicao_invalida` | `Content-Length` inválido |
 | 401 | `nao_autenticado` | Sem sessão válida em `/api` |
 | 401 | `login_recusado`, `bearer_desativado`, `token_invalido` | Falha de login ou de Bearer |
-| 403 | `papel_insuficiente` | O papel não permite a ação |
+| 403 | `papel_insuficiente` | O papel não permite a ação (por exemplo, operador salvando a configuração dos agentes) |
 | 403 | `sem_papel` | Login sem papel do painel |
 | 403 | `host_recusado` | `Host` diferente de `127.0.0.1:<porta>` ou `localhost:<porta>` |
 | 403 | `origem_recusada` | `Origin`, `Referer` ou `Sec-Fetch-Site` de outro site |
@@ -394,14 +435,14 @@ Detalhes e modelo de ameaças em [seguranca.md](../seguranca.md). Controles do p
 - **Importar skill** executa `npx` com repositório externo: só admin (IA-FER-01: leia a skill antes de adotá-la).
 - **Teste de MCP stdio** executa o comando do catálogo: só admin. O teste HTTP não segue redirecionamento (o token não
   acompanha um 3xx a outro host) e testa o Cérebro pelo `/saude`, porque o `/mcp` exige token.
-- **Squad**: o painel chama a Squad só em loopback, com token e timeout; o release só gera notas.
+- **Squad**: o painel chama a Squad só em loopback, com token e timeout; o release só gera notas. A configuração dos agentes (perfil, temperatura, orçamento) só o admin grava. Com o `docker.sock` montado na Squad, quem inicia tarefa (operador) aciona código gerado por modelo: ver o [risco 21](../seguranca.md#21-dockersock-montado-na-squadti-em-aberto-decisão-do-dono).
 
 ## 🧪 Testes
 
 Suíte do painel: `tests\painel\` (`test_painel.py`, `test_autenticacao.py`, `test_bearer.py`, `test_cli.py`,
 `test_contrato_erro.py`, `test_doutrina_estado.py`, `test_estudio_revisao.py`, `test_fronteiras.py`,
 `test_mcp_stdio.py`, `test_mcp_teste.py`, `test_provedores_crud.py`, `test_servicos_parar.py`,
-`test_servicos_reiniciar.py`, `test_squadti.py`, `test_video_longo.py` e outros). Comando, na raiz do repositório:
+`test_servicos_reiniciar.py`, `test_squadti.py`, `test_squadti_servico.py`, `test_squadti_v2.py`, `test_video_longo.py` e outros). Comando, na raiz do repositório:
 
 ```powershell
 uv run --frozen pytest -q tests/painel

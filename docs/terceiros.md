@@ -147,7 +147,8 @@ Os digests completos estão em `runtime/docker-compose.yml` e nos `Dockerfile`. 
 
 | Serviço | Imagem (tag) |
 |---|---|
-| `postgres` | `postgres:17.6-alpine` |
+| `litellm-db` | `postgres:17.6-alpine` |
+| `keycloak-db` | `postgres:17-alpine` |
 | `litellm` | `ghcr.io/berriai/litellm:main-latest` |
 | `searxng` | `searxng/searxng:2026.10.19-81371861f` |
 | `cerebro` (construída aqui) | Base `python:3.12-slim` (sem digest) e `ghcr.io/astral-sh/uv:0.13.0` (sem digest) |
@@ -156,6 +157,19 @@ Os digests completos estão em `runtime/docker-compose.yml` e nos `Dockerfile`. 
 | `n8n` | `docker.n8n.io/n8nio/n8n:latest` |
 | `keycloak` | `quay.io/keycloak/keycloak:26.3` |
 | `squadti` (construída aqui) | Bases `alpine/git:2.49.1`, `node:24-slim`, `ghcr.io/astral-sh/uv:0.13.0` e `mcr.microsoft.com/dotnet/sdk:10.0` (todas por digest); clona a Doutrina de `github.com/tudoemcodigo/Doutrina` no commit fixado |
+
+### Imagens que a SquadTI sobe no sandbox
+
+O sandbox de validação (`runtime/squadti/orquestrador/sandbox.py`) cria, por tarefa, containers irmãos pelo `docker.sock` do host. As imagens são fixadas por digest no código; as licenças **não foram verificadas** nesta página.
+
+| Uso | Imagem (tag) | Onde está fixada |
+|---|---|---|
+| Sonda HTTP e kit de ataque e macaco de API (`kit_api.py`) | `python:3.12-slim` | `IMAGEM_PYTHON` |
+| Teste de carga | `grafana/k6` (sem tag, só digest) | `IMAGEM_K6` |
+| Macaco de interface (`kit_ui.py`, com Playwright) | `mcr.microsoft.com/playwright/python` (sem tag, só digest) | `IMAGEM_PLAYWRIGHT` |
+| Banco do sistema gerado | `postgres:17-alpine` (digest diferente do `keycloak-db`) | `IMAGENS_BANCO` |
+
+A imagem do sistema gerado (`squadti-sut-<tarefa>`) é construída da pasta do projeto que o modelo escreveu e removida ao fim. Os comandos de auditoria rodam dentro do container da SquadTI e baixam ferramentas na hora: `dotnet list package --vulnerable`, `npm audit` e, na stack `python`, `uv run --with pip-audit pip-audit` (a versão do `pip-audit` não é fixada pelo TudoIA). Os testes de integração dos projetos gerados (Testcontainers, segundo o comentário do compose) baixam as imagens que o próprio projeto declarar; o TudoIA não as controla.
 
 ### Open WebUI
 
@@ -215,6 +229,8 @@ Não são redistribuídos. Listados porque recebem dados do TudoIA. Os termos de
 | GitHub | Importação de skill por URL (lista branca `REPO_GITHUB`); clone da Doutrina no build da SquadTI; MCP remoto `github` (inativo) | URL do repositório; sem dado do usuário | `painel/tudoia_painel/skills_servico.py`, `runtime/squadti/Dockerfile` |
 | Hugging Face e registro do Ollama | Download de pesos de modelos (baixador e `ollama pull` pelo painel) | Nome do arquivo ou modelo; `HF_TOKEN` nos downloads do Hugging Face quando existe | `scripts/modelos/baixar.py`, `painel/tudoia_painel/modelos_service.py` |
 | Feed RSS do G1 (tecnologia) | Digest de notícias (n8n) | Nenhum dado do usuário, só a requisição de leitura | `automacao/n8n/03-digest-noticias.json` |
+| nuget.org, feed público das TEC.* (`TUDOIA_NUGET_FEED_URL`) e GitHub Packages (`tec-interno`) | Restauração de pacotes dos projetos .NET que a SquadTI gera; o `tec-interno` só com `TUDOIA_NUGET_USER` e `TUDOIA_NUGET_PAT` por variável de ambiente | Nome e versão dos pacotes; o PAT vai só como referência `%TUDOIA_NUGET_PAT%` no `NuGet.Config`, nunca em disco | `runtime/squadti/entrypoint.sh` |
+| npm e PyPI (pela SquadTI) | comandos `npm` do frontend gerado e `npm audit`; `uv sync` e `pip-audit` na stack `python` | Nome e versão dos pacotes | `runtime/squadti/orquestrador/stacks.py` |
 | npm (`npx`) | Execução dos servidores MCP fixados | Nome e versão do pacote | `governanca/mcp.json` |
 
 Os provedores de modelo de texto (OpenAI, Anthropic, NVIDIA NIM, OpenRouter, Gemini, DeepSeek, xAI e outros) são configurados no LiteLLM; os nomes das chaves estão em `.env.example` e em [configuração](configuracao.md).

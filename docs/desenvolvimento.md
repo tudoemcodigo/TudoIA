@@ -20,6 +20,7 @@ verificado-em: 2026-11-03
   - [Ambiente Python](#ambiente-python)
   - [Lint](#lint)
   - [Testes](#testes)
+  - [Suíte de evals da SquadTI](#suíte-de-evals-da-squadti)
   - [Verificações de sintaxe](#verificações-de-sintaxe)
   - [Integração contínua](#integração-contínua)
   - [Doutrina fixada e instalador](#doutrina-fixada-e-instalador)
@@ -57,7 +58,7 @@ Layout das pastas:
 | `instalador/` | Pacote `tudoia_instalador` (tela web local e etapas) e `dados/` com o `payload.zip` gerado. Ver [instalador](instalador.md). |
 | `modelos/` | Pesos e binários locais (Ollama, ComfyUI portable). **Não versionado.** |
 | `painel/` | Pacote `tudoia_painel`: `app.py` monta o app, `rotas/` tem um `APIRouter` por domínio, mais serviços, autenticação e a interface estática. Ver [painel](componentes/painel.md). |
-| `runtime/` | O que roda no Docker e as configurações: `docker-compose.yml`, `cerebro/`, `litellm/` (hook do roteador), `squadti/`, `postgres/init/`, `searxng/`, `open-webui/`, `ollama/modelfiles/` e `comfyui/workflows/`. |
+| `runtime/` | O que roda no Docker e as configurações: `docker-compose.yml`, `cerebro/`, `litellm/` (hook do roteador), `squadti/` (orquestrador, kits, evals), `searxng/`, `open-webui/`, `ollama/modelfiles/` e `comfyui/workflows/`. |
 | `scripts/` | `tudoia.ps1`, `tudoia.sh`, `tudoia.cmd`, ciclo de vida (`iniciar.ps1`, `parar.ps1`, `reiniciar.ps1`, `painel.ps1`, `desinstalar.ps1`) e os módulos Python `backup`, `empacotar`, `keycloak`, `modelos`, `n8n`, `openwebui`, `squadti` e `studio`. |
 | `tests/` | Suíte do projeto raiz. As do Cérebro e da SquadTI ficam dentro de cada projeto. |
 | Raiz | `pyproject.toml`, `uv.lock`, `.python-version` (3.12), `.env.example`, `.gitattributes`, `.gitignore`, `LICENSE` (Apache-2.0), `NOTICE`, `SPEC.md` e `AGENTS.md` (gerado pela governança, não edite à mão). |
@@ -87,8 +88,6 @@ Configuração em `[tool.ruff]` do `pyproject.toml`: `line-length = 120`, `targe
 uv run --frozen ruff check .
 ```
 
-Resultado em 2026-11-03: `All checks passed!` (ruff 0.17.3).
-
 ### Testes
 
 Comandos exatos do CI:
@@ -101,20 +100,12 @@ cd runtime\squadti; uv run --frozen python -W error -m pytest -q       # SquadTI
 
 Configuração da raiz (`[tool.pytest.ini_options]`): `testpaths = ["tests"]` e `pythonpath = [".", "painel", "runtime/litellm", "instalador"]`; os avisos de `httpx` e `authlib` são filtrados ali. O Cérebro usa `asyncio_mode = "auto"`. A SquadTI usa `testpaths = ["orquestrador/tests"]`.
 
-**Sem rede.** `tests/conftest.py` faz todo transporte HTTP real do `httpx` falhar com `ConnectError`; teste que precisa de resposta usa `httpx.MockTransport`, e o `TestClient` do FastAPI não passa pela rede. A exceção é o teste de integração do Keycloak (`TUDOIA_KEYCLOAK_IT=1`). Os testes também não usam Docker nem GPU.
+**Sem rede.** `tests/conftest.py` faz todo transporte HTTP real do `httpx` falhar com `ConnectError`; teste que precisa de resposta usa `httpx.MockTransport`, e o `TestClient` do FastAPI não passa pela rede. A exceção é o teste de integração do Keycloak (`TUDOIA_KEYCLOAK_IT=1`). Os testes também não usam Docker nem GPU. As suítes do Cérebro e da SquadTI não passam pelo `conftest.py` da raiz: a da SquadTI usa Docker falso, modelo substituído por dublê e servidores em `127.0.0.1` dentro do próprio processo.
 
-Resultado das execuções de 2026-11-03 (Windows, uv 0.13.0):
+O resultado de uma execução vale só para o momento em que foi feita: rode os comandos acima e leia a saída; o CI é a referência.
 
-| Suíte | Resultado |
-|---|---|
-| Raiz | `2 failed, 1360 passed, 1 skipped` em 7 min 15 s. Ver a nota abaixo. |
-| Cérebro | `149 passed` em 10,7 s |
-| SquadTI | `190 passed` em 12,9 s |
-
-As duas falhas da raiz, que o CI cobraria:
-
-- `tests/test_scripts_ps1.py::test_parar_por_linha_de_comando_so_atinge_quem_casa_o_texto_literal` falhou durante a execução em paralelo com a suíte do Cérebro e **passou** ao rodar o arquivo sozinho (`16 passed`). Provável sensibilidade a carga; a causa não foi isolada.
-- `tests/test_squadti_compose.py::test_docker_sock_montado_traz_group_add_host_override_e_aviso` lê `docs/componentes/squadti.md` e exige as expressões `docker.sock` e `root no host`. O guia da SquadTI estava sendo reescrito na mesma data e não as continha. **Quem editar esse guia precisa manter as duas expressões** (o teste trata o aviso do `docker.sock` como parte do contrato).
+> [!IMPORTANT]
+> `tests/test_squadti_compose.py::test_docker_sock_montado_traz_group_add_host_override_e_aviso` lê `docs/componentes/squadti.md` e exige as expressões `docker.sock` e `root no host`: o aviso do `docker.sock` é parte do contrato. Quem reescrever esse guia precisa mantê-las.
 
 Cobertura da suíte da raiz:
 
@@ -142,6 +133,26 @@ uv run --frozen pytest -q tests\keycloak
 
 Sem a variável, o teste aparece como `skipped`.
 
+Cobertura da suíte da SquadTI (`runtime/squadti/orquestrador/tests/`, com `-W error`):
+
+| Arquivo | O que cobre |
+|---|---|
+| `test_api.py`, `test_main.py`, `test_erros_cli.py` | API HTTP local (token, `Host`, tipo e tamanho do corpo, consentimento de nuvem), CLI e mensagens de erro do gateway sem repetir o corpo da resposta. |
+| `test_grafo.py`, `test_nos.py`, `test_entrega.py` | Topologia e execução do grafo real com nós substituídos por dublês; nós de desenvolvimento e de entrega (revisor, appsec, devops, documentação, release). |
+| `test_v2_modulos.py`, `test_v2_nos.py` | CHEFE (plano, critérios de pronto, escalada, conversa), entrada sanitizada, auditoria e orçamento, aprovação por hash, stacks, configuração dos agentes, proveniência. |
+| `test_v2_runtime.py`, `test_kits.py` | Sandbox, carga e validação em execução contra um Docker falso que registra cada comando (rede interna, sem porta publicada, sem capabilities); kit de ataque e macaco contra servidores reais em processo, um vulnerável de propósito e um endurecido. |
+| `test_fronteiras.py`, `test_cobertura_segredos.py` | Caminho, área e tamanho de arquivo, executável fora da lista, Doutrina ilegível ou trocada no meio da tarefa, gate de cobertura e varredura de segredos. |
+| `test_licoes.py` | Livro de Lições: registro, dedup por tarefa, triagem, estados, texto fixo, prompt, proposta de Doutrina e exportação. |
+| `test_evals.py` | Verificadores dos evals contra workspaces falsos e o driver contra uma API simulada. **Não roda os evals de verdade.** |
+
+### Suíte de evals da SquadTI
+
+Os testes acima provam o orquestrador com modelo falso. Os evals (`runtime/squadti/evals/`) medem se, com modelo real, a Squad entrega código bom: o driver envia briefings sintéticos (casos dourados) pela API, aprova sozinho a especificação e o release (**modo eval**, registrado no resultado) e confere o workspace com verificadores em código. Não fazem parte do `pytest` nem do CI: consomem tokens, podem usar nuvem e levam de dezenas de minutos a horas por caso. Comando, opções e leitura do relatório (`pass@k`, `pass^k`): [evals](squadti/evals.md).
+
+```powershell
+docker exec -e PYTHONPATH=/app squadti python -m evals.run --caso a-crud-tarefas --saida /dados/evals/resultados
+```
+
 ### Verificações de sintaxe
 
 O CI confere também o JavaScript (sem build) e os scripts PowerShell:
@@ -151,7 +162,7 @@ node --check painel/tudoia_painel/static/painel.js
 node --check instalador/tudoia_instalador/static/instalador.js
 ```
 
-Resultado em 2026-11-03 (Node 24.20.0; o CI usa Node 22): os dois sem erro. A checagem dos `.ps1` usa o parser do PowerShell em **todos** os arquivos de `scripts\`:
+O CI usa Node 22. A checagem dos `.ps1` usa o parser do PowerShell em **todos** os arquivos de `scripts\`:
 
 ```powershell
 foreach ($f in Get-ChildItem "$PWD\scripts" -Filter *.ps1) {
@@ -161,7 +172,7 @@ foreach ($f in Get-ChildItem "$PWD\scripts" -Filter *.ps1) {
 }
 ```
 
-(Não executada nesta data; o CI a roda no PowerShell 7. Os `.ps1` do ciclo de vida precisam ser ASCII puro: o PowerShell 5.1 lê arquivo sem BOM como ANSI, e `tests/test_scripts_ps1.py` confere.)
+(O CI a roda no PowerShell 7. Os `.ps1` do ciclo de vida precisam ser ASCII puro: o PowerShell 5.1 lê arquivo sem BOM como ANSI, e `tests/test_scripts_ps1.py` confere.)
 
 ### Integração contínua
 
@@ -172,7 +183,7 @@ foreach ($f in Get-ChildItem "$PWD\scripts" -Filter *.ps1) {
 | `verificar` | `windows-latest` (o TudoIA é Windows-first), Python 3.12, Node 22, `uv==0.13.0` | `uv sync --frozen`; `uv run --frozen ruff check .`; `uv run --frozen pytest -q`; no `runtime/cerebro`, `uv sync --frozen` e `uv run --frozen pytest -q`; `node --check` do `painel.js` e do `instalador.js`; parse de todos os `scripts\*.ps1` |
 | `squadti` | `ubuntu-latest` | No `runtime/squadti`, `uv sync --frozen` e `uv run --frozen python -W error -m pytest -q`; `docker compose --profile squadti -f docker-compose.yml --env-file ../.env.example config --quiet` (valida o compose); `docker build -t tudoia-squadti:ci runtime/squadti`. Não publica nada. |
 
-`.github/workflows/release.yml` roda ao empurrar uma tag `v*`: confere que a tag, o `version` do `pyproject.toml` e o `VERSAO` de `instalador/tudoia_instalador/__init__.py` são iguais, roda lint e testes, constrói o `TudoIA-Setup.exe`, confere o sha256, atesta a proveniência e anexa o `.exe` e o `.sha256` à release do GitHub. O `.exe` não é assinado digitalmente (ver [instalador](instalador.md)).
+`.github/workflows/release.yml` roda ao empurrar uma tag `v*`: confere que a tag, o `version` do `pyproject.toml` e o `VERSAO` de `instalador/tudoia_instalador/__init__.py` são iguais, roda o lint e a suíte da raiz, constrói o `TudoIA-Setup.exe`, confere o sha256, atesta a proveniência e anexa o `.exe` e o `.sha256` à release do GitHub. O `.exe` não é assinado digitalmente (ver [instalador](instalador.md)).
 
 ### Doutrina fixada e instalador
 

@@ -42,6 +42,7 @@ verificado-em: 2026-11-03
 | Resolver um problema em produção local | [Operação](operacao.md) |
 | Mexer no código, rodar lint e testes | [Desenvolvimento](desenvolvimento.md) |
 | Avaliar os riscos e reportar uma falha | [Segurança](seguranca.md) |
+| Medir a qualidade do que a SquadTI entrega | [Evals](squadti/evals.md) |
 | Conferir licenças e serviços externos | [Terceiros](terceiros.md) |
 
 ## 🗂️ Documentos
@@ -52,10 +53,10 @@ Tipos (DOC-EST-02): `tutorial`, `guia`, `referencia`, `explicacao`, `adr`, `runb
 
 | Documento | Tipo | O que responde |
 |---|---|---|
-| [Glossário](glossario.md) | glossário | O termo canônico de cada conceito (Painel, Roteador, `tudoia-auto`, grupo de modelos, Cérebro, Governança, instância, bloco gerenciado, SquadTI, Doutrina, Estúdio, Keycloak, realm...) e o sinônimo que não se usa. |
-| [Arquitetura](arquitetura.md) | explicação | Componentes, portas, fluxos (login, chat, imagem, leitura de página, governança), serviços Docker e onde ficam os dados. |
+| [Glossário](glossario.md) | glossário | O termo canônico de cada conceito (Painel, Roteador, `tudoia-auto`, grupo de modelos, Cérebro, Governança, instância, bloco gerenciado, Doutrina, Estúdio, Keycloak, realm e, na SquadTI, CHEFE, stack, kit, sandbox, proveniência, eval...) e o sinônimo que não se usa. |
+| [Arquitetura](arquitetura.md) | explicação | Componentes, portas, fluxos (login, chat, imagem, leitura de página, governança, SquadTI), ciclo de vida de iniciar e parar, serviços Docker e onde ficam os dados. |
 | [Configuração](configuracao.md) | referência | Toda variável do `.env` e do ambiente: padrão, efeito, quem lê, como diagnosticar. |
-| [Desenvolvimento](desenvolvimento.md) | guia | Ambiente, lint, testes (comandos do CI e resultados), empacotamento, convenções e como adicionar um componente. |
+| [Desenvolvimento](desenvolvimento.md) | guia | Ambiente, lint, testes (comandos do CI, suítes e evals), empacotamento, convenções e como adicionar um componente. |
 | [Terceiros](terceiros.md) | referência | Skills, servidores MCP, dependências, imagens, ComfyUI, pesos e serviços externos, com versão e licença. |
 | [Segurança](seguranca.md) | explicação | Modelo de ameaças, controles e riscos residuais; como reportar uma vulnerabilidade. |
 
@@ -85,7 +86,7 @@ Tipos (DOC-EST-02): `tutorial`, `guia`, `referencia`, `explicacao`, `adr`, `runb
 
 ### SquadTI (desenho)
 
-O desenho da SquadTI fica em `squadti/`. O estado real do código está em [SquadTI (componente)](componentes/squadti.md).
+O desenho da SquadTI, a suíte de evals e o Livro de Lições ficam em `squadti/`. O estado real do código está em [SquadTI (componente)](componentes/squadti.md).
 
 | Documento | Tipo | Status | O que responde |
 |---|---|---|---|
@@ -96,6 +97,8 @@ O desenho da SquadTI fica em `squadti/`. O estado real do código está em [Squa
 | [05 Consumo da Doutrina pela SquadTI](squadti/05-fonte-da-verdade-arquitetura.md) | explicação | vigente | Como as regras chegam aos agentes, o orçamento de tokens e a falha fechada. |
 | [06 Sistema web da SquadTI (proposta)](squadti/06-sistema-web-squadti.md) | explicação | vigente | Proposta de portal, **não implementada**. |
 | [07 Análise crítica e benchmarks](squadti/07-analise-critica-e-benchmarks.md) | explicação | histórico | Registro datado do desenho inicial; não é reescrito. |
+| [Evals](squadti/evals.md) | guia | vigente | Como medir, com modelo real, se a Squad entrega código bom: casos dourados, verificadores, `pass@k` e `pass^k`. |
+| [Livro de Lições](squadti/licoes.md) | referência | vigente | Como um achado dos agentes vira prevenção: ciclo, árvore de decisão, aprovação humana, formato do livro. O módulo ainda não está ligado ao grafo. |
 
 ### Perfis de agente da SquadTI
 
@@ -115,6 +118,11 @@ Pasta `squadti/04-agentes/`: um perfil por papel (tipo referência, status vigen
 | [qa-testes](squadti/04-agentes/qa-testes.md) | QA e Testes Automatizados |
 | [release-notas](squadti/04-agentes/release-notas.md) | Release |
 | [revisor-codigo](squadti/04-agentes/revisor-codigo.md) | Revisor de Código |
+| [carga-sre](squadti/04-agentes/carga-sre.md) | Carga (DevOps/SRE) |
+| [hacker-ofensivo](squadti/04-agentes/hacker-ofensivo.md) | Hacker (AppSec ofensivo) |
+| [macaco-qa](squadti/04-agentes/macaco-qa.md) | Macaco (QA de uso à força) |
+| [mantenedor-manutencao](squadti/04-agentes/mantenedor-manutencao.md) | Mantenedor (eu daqui a 1 ano) |
+| [senior-master](squadti/04-agentes/senior-master.md) | Sênior Master |
 
 Fora de `docs/`: [README](../README.md) · [SPEC.md](../SPEC.md) (interface pública do módulo `governanca`) · [NOTICE](../NOTICE) · [LICENSE](../LICENSE) · [`.env.example`](../.env.example) · [CI](../.github/workflows/ci.yml) · [`governanca/ORIGEM.md`](../governanca/ORIGEM.md).
 

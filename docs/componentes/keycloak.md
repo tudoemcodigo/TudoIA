@@ -61,7 +61,7 @@ Onde cada peça vive:
 | Autenticação e autorização do painel | `painel/tudoia_painel/autenticacao.py` |
 | Testes | `tests/keycloak/` |
 
-O banco é o database `keycloak` do Postgres único do TudoIA (role `keycloak`, senha em `KEYCLOAK_DB_PASSWORD`). A senha do
+O banco é o container próprio `keycloak-db` (Postgres, database `keycloak`, role `keycloak`, senha em `KEYCLOAK_DB_PASSWORD`; `runtime/docker-compose.yml`). A senha do
 admin do realm `master` é `TUDOIA_KEYCLOAK_ADMIN_PASSWORD`, gerada por `tudoia segredos`. Quem prefere um Keycloak próprio
 tira `keycloak` de `COMPOSE_PROFILES` e aponta `TUDOIA_OIDC_ISSUER` para ele.
 

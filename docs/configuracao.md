@@ -104,9 +104,8 @@ Detalhes do realm e dos IdPs: [Keycloak](componentes/keycloak.md).
 | `SEARXNG_SECRET` | sempre | Segredo do SearXNG. | |
 | `N8N_ENCRYPTION_KEY` | sempre | Cifra as credenciais salvas no n8n. | Trocar a chave, ou restaurar um volume do n8n com outra chave, torna as credenciais ilegíveis. |
 | `LITELLM_MASTER_KEY` | sempre | Chave mestra do gateway (`general_settings.master_key`); o painel a usa no chat e no teste de conexão. | Quem usa a chave (clientes, `.aider.conf.yml`) precisa da nova depois de trocar. |
-| `POSTGRES_ADMIN_PASSWORD` | sempre | Senha do superusuário `tudoia_admin` do Postgres único. Só o próprio container a recebe. | Vale só na criação do volume. |
-| `LITELLM_DB_PASSWORD` | sempre | Senha do role `litellm` (dono do banco `litellm`), também na `DATABASE_URL` do `litellm`. | O init só cria o role na criação do volume; para trocar depois, ver [Trocar a senha de um banco](#trocar-a-senha-de-um-banco). |
-| `KEYCLOAK_DB_PASSWORD` | sempre | Senha do role `keycloak` (`KC_DB_PASSWORD`). O banco existe mesmo sem o perfil `keycloak`. | Igual à anterior. |
+| `LITELLM_DB_PASSWORD` | sempre | Senha do Postgres do LiteLLM (`litellm-db`, role `litellm`), também na `DATABASE_URL` do `litellm`. | Vale só na criação do volume `litellm-db`; para trocar depois, ver [Trocar a senha de um banco](#trocar-a-senha-de-um-banco). |
+| `KEYCLOAK_DB_PASSWORD` | só com o perfil `keycloak` | Senha do Postgres do Keycloak (`keycloak-db`, role `keycloak`; no `keycloak`, `KC_DB_PASSWORD`). | Igual à anterior, no volume `keycloak-db`. |
 | `TUDOIA_SESSAO_SEGREDO` | sempre | Assina o cookie de sessão do painel. | Trocar derruba todas as sessões abertas. |
 | `CEREBRO_TOKEN_ESTATICO` | sempre | Token sem expiração, papel de operador, que os clientes MCP locais mandam ao Cérebro (`Bearer ${CEREBRO_TOKEN_ESTATICO}` em `governanca/mcp.json`). O compose o repassa ao serviço `cerebro`. | Mínimo de 32 caracteres: abaixo disso o Cérebro desliga o caminho (`runtime/cerebro/cerebro/autenticacao.py`, `token_estatico_do_ambiente`). Revogar: trocar o valor, recriar o `cerebro` e rodar `tudoia.ps1 sync`. |
 | `TUDOIA_KEYCLOAK_ADMIN_PASSWORD` | só com o perfil `keycloak` | Ver a seção do Keycloak. | |
@@ -115,26 +114,13 @@ Detalhes do realm e dos IdPs: [Keycloak](componentes/keycloak.md).
 #### Trocar a senha de um banco
 
 > [!WARNING]
-> Mudar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env` **não** muda a senha dentro do banco: o `runtime/postgres/init/01-bancos.sh` só roda na primeira subida do volume. Altere o role e recrie o serviço dependente.
-
-```powershell
-# 1. Confira o alvo: o container deve se chamar tudoia-postgres e estar no ar.
-docker ps --filter "name=tudoia-postgres" --format "{{.Names}}"
-# 2. Abra o psql no container. Dentro dele, \password <role> pede a senha sem ecoar e sem passá-la na linha de comando.
-docker exec -it tudoia-postgres psql -U tudoia_admin -d postgres
-#    postgres=# \password litellm
-#    postgres=# \q
-# 3. Grave a mesma senha em LITELLM_DB_PASSWORD no .env e recrie o serviço.
-docker compose -p tudoia -f runtime/docker-compose.yml --env-file .env up -d --no-deps --force-recreate litellm
-```
-
-Para o Keycloak, use `\password keycloak`, grave em `KEYCLOAK_DB_PASSWORD` e recrie o serviço `keycloak`. `\password` altera apenas a senha do role citado.
+> Mudar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env` **não** muda a senha dentro do banco: a imagem do Postgres só lê `POSTGRES_PASSWORD` quando cria o volume. Altere o role e recrie o serviço dependente. Passo a passo e confirmação em [operação](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco).
 
 ### 🐳 Stack Docker
 
 | Variável | Padrão | Efeito |
 |---|---|---|
-| `COMPOSE_PROFILES` | `cerebro,webui,n8n,keycloak` no template | Perfis do compose que sobem: `cerebro` (Cérebro e SearXNG), `webui` (Open WebUI, Kokoro e SearXNG), `n8n`, `keycloak` e `squadti`. LiteLLM e Postgres sempre sobem. O `segredos` consulta esta variável para gerar a senha do Keycloak e o token da SquadTI. |
+| `COMPOSE_PROFILES` | `cerebro,webui,n8n,keycloak` no template | Perfis do compose que sobem: `cerebro` (Cérebro e SearXNG), `webui` (Open WebUI, Kokoro e SearXNG), `n8n`, `keycloak` e `squadti`. LiteLLM e o Postgres dele (`litellm-db`) sempre sobem; o perfil `keycloak` traz o `keycloak-db`. O `segredos` consulta esta variável para gerar a senha do Keycloak e o token da SquadTI. |
 | `TUDOIA_COMPOSE_PROJETO` | `tudoia` | Nome do projeto compose, prefixo dos volumes. Outro nome isola esta instalação de outra na mesma máquina. Lida pelo painel, por `tudoia.ps1` e `tudoia.sh`, por `_comum.ps1` e pelo backup. |
 
 ### 📁 Caminhos
@@ -153,7 +139,7 @@ Deixe vazias para usar os padrões do repositório.
 | Variável | Padrão | Efeito |
 |---|---|---|
 | `OLLAMA_URL` | vazia no template | Endereço do Ollama visto de dentro do container do LiteLLM. O compose repassa `${OLLAMA_URL:-http://host.docker.internal:11434}`: vazia vira esse padrão. O `config.yaml` gerado usa `os.environ/OLLAMA_URL` nos modelos locais e o hook do roteador lê a mesma variável. O Cérebro e o Open WebUI têm o endereço fixo no compose. |
-| `TZ` | vazia | Fuso dos containers (Postgres, LiteLLM, Open WebUI, n8n; no Keycloak, `UTC` se vazia). Exemplo: `America/Sao_Paulo`. |
+| `TZ` | vazia | Fuso dos containers (`litellm-db`, LiteLLM, Open WebUI, n8n; no Keycloak e no `keycloak-db`, `UTC` se vazia). Exemplo: `America/Sao_Paulo`. |
 | `TUDOIA_ESTUDIO_POLLINATIONS` | vazia | `1` permite que o Estúdio gere a imagem no Pollinations (serviço público, sem conta, que recebe o prompt na URL) quando o ComfyUI e a Cloudflare falham. Vazia ou outro valor: o prompt nunca vai para lá e a resposta traz um aviso (`rotas/estudio_imagem.py`). |
 
 ### ☁️ Provedores gratuitos
@@ -202,8 +188,8 @@ O Estúdio usa o ComfyUI em `127.0.0.1:8188` e o Ollama em `127.0.0.1:11434` (`p
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | só se o MCP `github` estiver ativo | Token do servidor remoto oficial do GitHub. Sem ela, o `sync` recusa e nada é escrito. |
 | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` | só se o MCP `supabase` estiver ativo | Token e referência do projeto (o catálogo usa `--read-only` e `--project-ref=${SUPABASE_PROJECT_REF}`). Sem elas, o `sync` recusa. |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | não | Nenhum MCP do catálogo as referencia; aparecem na aba Segredos como rótulos. |
-| `DOUTRINA_TEC` | para o MCP `doutrina-tec` e a tela da Doutrina | Pasta da Doutrina (com `gerado/manifesto.json`). O instalador preenche; numa cópia de desenvolvimento aponte para o clone. Vazia ou ilegível, a skill, o MCP e a SquadTI falham fechado (ver [Doutrina](componentes/doutrina.md)). |
-| `TUDOIA_PYTHON` | para o MCP `doutrina-tec` | Python que roda o servidor MCP da Doutrina; o instalador preenche, numa cópia de desenvolvimento aponte para o `.venv` do TudoIA. |
+| `DOUTRINA_TEC` | para o MCP `doutrina-tec` e a tela da Doutrina | Pasta da Doutrina (com `gerado/manifesto.json`). O instalador grava `<pasta de instalação>/doutrina` (a que vai no pacote); numa cópia de desenvolvimento aponte para o clone. Vazia ou ilegível, a skill, o MCP e a SquadTI falham fechado (ver [Doutrina](componentes/doutrina.md)). |
+| `TUDOIA_PYTHON` | para o MCP `doutrina-tec` | Python que roda `tools/mcp_doutrina.py`. O instalador grava o `python.exe` do `.venv` da pasta de instalação; numa cópia de desenvolvimento aponte para o `.venv` do TudoIA. O MCP não usa `npx`. |
 
 As variáveis obrigatórias são as que aparecem como `${VAR}` sem valor padrão em `governanca/mcp.json` **e** pertencem a um MCP ativo em `governanca/governanca.json`. Ver [governança](componentes/governanca.md).
 
@@ -253,7 +239,7 @@ Definidas pelo compose ou pelo Dockerfile; **não** defina no `.env` (a maioria 
 | Sintoma | Causa provável | Ação |
 |---|---|---|
 | Toda rota `/api` do painel responde 503 | Falta `TUDOIA_OIDC_ISSUER`, `TUDOIA_OIDC_CLIENT_ID` ou `TUDOIA_OIDC_CLIENT_SECRET`, ou `TUDOIA_SESSAO_SEGREDO` tem menos de 32 caracteres | Rode `tudoia keycloak` (grava as três) e `tudoia segredos`; reinicie o painel. |
-| `docker compose` recusa subir e cita `defina no .env (tudoia segredos)` | `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` vazia | `.\scripts\tudoia.ps1 segredos` |
+| `litellm` ou `keycloak` não ficam saudáveis; log com `password authentication failed` | `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` vazia ou diferente da gravada no volume do banco (o compose não as exige) | `.\scripts\tudoia.ps1 segredos`; com o volume já criado, ver [operação](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
 | Provedor não aparece no roteador | Chave vazia, ou chave preenchida depois sem recriar o `litellm` | Preencha, gere a configuração pela aba Roteador e use `restart` do serviço (recria o container e relê o `.env`). |
 | `sync` recusa e escreve nada | Variável obrigatória de um MCP ativo está vazia (por exemplo `GITHUB_PERSONAL_ACCESS_TOKEN`) | Preencha a variável ou desative o MCP em `governanca.json`. |
 | Cérebro responde 401 ao cliente MCP | `CEREBRO_TOKEN_ESTATICO` vazio, curto (< 32) ou diferente do que o cliente recebeu no último `sync` | Gere o segredo, recrie o `cerebro` e rode `tudoia.ps1 sync`. |

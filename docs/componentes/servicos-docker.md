@@ -19,7 +19,7 @@ verificado-em: 2026-11-03
 
 - [🎯 Visão geral](#-visão-geral)
 - [📦 Containers](#-containers)
-- [🗄️ Postgres e o init de bancos](#️-postgres-e-o-init-de-bancos)
+- [🗄️ Bancos Postgres](#️-bancos-postgres)
 - [🚀 Uso](#-uso)
 - [⚙️ Opções](#️-opções)
 - [🖥️ Processos do host](#️-processos-do-host)
@@ -32,23 +32,23 @@ verificado-em: 2026-11-03
 Os containers vivem em `runtime/docker-compose.yml` (projeto `tudoia`, `name: tudoia`). Ollama e ComfyUI rodam direto no
 Windows porque precisam da GPU e ficam fora do compose.
 
-- **Perfis.** Só `postgres` e `litellm` sobem sem perfil. O resto é escolhido em `COMPOSE_PROFILES` no `.env`
+- **Perfis.** Só `litellm-db` e `litellm` sobem sem perfil. O resto é escolhido em `COMPOSE_PROFILES` no `.env`
   (o `.env.example` traz `cerebro,webui,n8n,keycloak`; o perfil `squadti` não vem ligado):
 
   | Perfil | Serviços |
   |---|---|
-  | (nenhum) | `postgres`, `litellm` |
+  | (nenhum) | `litellm-db`, `litellm` |
   | `cerebro` | `cerebro`, `searxng` |
   | `webui` | `open-webui`, `kokoro`, `searxng` |
   | `n8n` | `n8n` |
-  | `keycloak` | `keycloak` |
+  | `keycloak` | `keycloak-db`, `keycloak` |
   | `squadti` | `squadti` |
 
 - **Portas.** Todas publicadas só em `127.0.0.1` (o teste `test_portas_so_em_loopback` falha se alguma não for).
 - **Segredos.** O compose lê o `.env` da raiz (`--env-file`) só para substituir `${VAR}`. Nenhum serviço usa `env_file`:
   cada um recebe só as variáveis listadas em `environment`.
 - **Rede.** O compose não declara redes: todos os serviços ficam na rede padrão do projeto (`<projeto>_default`) e se
-  alcançam pelo nome do serviço (`postgres`, `litellm`, `searxng`, `cerebro`). Para o host (Ollama, Keycloak a partir
+  alcançam pelo nome do serviço (`litellm-db`, `litellm`, `searxng`, `cerebro`). Para o host (Ollama, Keycloak a partir
   do Cérebro) usam `host.docker.internal`, mapeado por `extra_hosts: host-gateway`.
 - **Projeto.** `TUDOIA_COMPOSE_PROJETO` no `.env` (padrão `tudoia`) muda o prefixo dos volumes e containers de rede;
   outro nome isola uma segunda instalação. Os `container_name` são fixos, então duas instalações não coexistem sem
@@ -66,7 +66,8 @@ C4Container
     Container(pn, "Painel", "processo", ":3100")
   }
   System_Boundary(d, "Docker compose (projeto tudoia)") {
-    ContainerDb(pg, "postgres", "Postgres 17", ":5433")
+    ContainerDb(pg, "litellm-db", "Postgres 17", ":5433")
+    ContainerDb(kdb, "keycloak-db", "Postgres 17", "só na rede interna")
     Container(lt, "litellm", "Gateway", ":4000")
     Container(ce, "cerebro", "MCP", ":8765")
     Container(sx, "searxng", "Busca", ":8080")
@@ -78,7 +79,7 @@ C4Container
   }
   Rel(u, pn, "usa")
   Rel(lt, pg, "SQL")
-  Rel(kc, pg, "SQL")
+  Rel(kc, kdb, "SQL")
   Rel(lt, ol, "host.docker.internal")
   Rel(wu, ol, "direto")
   Rel(ce, sx, "busca")
@@ -91,7 +92,8 @@ Digests omitidos por legibilidade; a tag completa está no compose. Todos têm `
 
 | Serviço | Container | Imagem | Porta no host | Healthcheck |
 |---|---|---|---|---|
-| `postgres` | `tudoia-postgres` | `postgres:17.6-alpine` | `5433` para `5432` | `pg_isready -U tudoia_admin -d postgres`, 5 s, timeout 5 s, 10 tentativas |
+| `litellm-db` | `litellm-db` | `postgres:17.6-alpine` | `5433` para `5432` | `pg_isready -U litellm -d litellm`, 5 s, timeout 5 s, 10 tentativas |
+| `keycloak-db` | `keycloak-db` | `postgres:17-alpine` | nenhuma | `pg_isready -U keycloak -d keycloak`, 5 s, timeout 5 s, 10 tentativas |
 | `litellm` | `litellm` | `ghcr.io/berriai/litellm:main-latest` | `4000` | `GET /health/liveliness`, 30 s, timeout 10 s, 3 tentativas, início 60 s |
 | `searxng` | `searxng` | `searxng/searxng:2026.10.19-81371861f` | `8080` | `GET /healthz` contém `OK`, 30 s, início 20 s |
 | `cerebro` | `cerebro` | build de `runtime/cerebro/Dockerfile` | `8765` | `GET /saude`, 30 s, início 30 s |
@@ -105,27 +107,28 @@ Digests omitidos por legibilidade; a tag completa está no compose. Todos têm `
 
 | Serviço | Variáveis recebidas (nomes) | Volumes | Depende de |
 |---|---|---|---|
-| `postgres` | `POSTGRES_USER=tudoia_admin`, `POSTGRES_DB=postgres`, `POSTGRES_PASSWORD` (de `POSTGRES_ADMIN_PASSWORD`), `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `TZ` | volume `postgres` em `/var/lib/postgresql/data`; `runtime/postgres/init` em `/docker-entrypoint-initdb.d` (somente leitura) | nada |
-| `litellm` | `DATABASE_URL` (monta com `LITELLM_DB_PASSWORD`), `LITELLM_MASTER_KEY`, `OLLAMA_URL`, `TZ`, `NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `FAL_AI_API_KEY`, `HF_TOKEN` | `runtime/litellm/config.yaml` (gerado), `roteador.py`, `roteador_regras.py`, `roteador_eventos.py`, `roteador_resiliente.py` (todos somente leitura); `config/` em `/app/config` (somente leitura); `dados/logs` em `/app/logs` | `postgres` saudável |
+| `litellm-db` | `POSTGRES_USER=litellm`, `POSTGRES_DB=litellm`, `POSTGRES_PASSWORD` (de `LITELLM_DB_PASSWORD`), `TZ` | volume `litellm-db` em `/var/lib/postgresql/data` | nada |
+| `keycloak-db` | `POSTGRES_USER=keycloak`, `POSTGRES_DB=keycloak`, `POSTGRES_PASSWORD` (de `KEYCLOAK_DB_PASSWORD`), `TZ` (`UTC` se ausente) | volume `keycloak-db` em `/var/lib/postgresql/data` | nada |
+| `litellm` | `DATABASE_URL` (monta com `LITELLM_DB_PASSWORD`), `LITELLM_MASTER_KEY`, `OLLAMA_URL`, `TZ`, `NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `FAL_AI_API_KEY`, `HF_TOKEN` | `runtime/litellm/config.yaml` (gerado), `roteador.py`, `roteador_regras.py`, `roteador_eventos.py`, `roteador_resiliente.py` (todos somente leitura); `config/` em `/app/config` (somente leitura); `dados/logs` em `/app/logs` | `litellm-db` saudável |
 | `searxng` | `SEARXNG_SECRET` | `runtime/searxng` em `/etc/searxng` (leitura e escrita) | nada |
 | `cerebro` | `OLLAMA_URL` (fixo no compose, `http://host.docker.internal:11434`), `SEARXNG_URL`, `CEREBRO_DOCS`, `CEREBRO_DOCS_HOST`, `CEREBRO_DADOS`, `CEREBRO_OIDC_ISSUER`, `CEREBRO_OIDC_JWKS_URL`, `CEREBRO_OIDC_CLIENT_ID`, `CEREBRO_TOKEN_ESTATICO` | `dados/documentos` em `/docs` (somente leitura); `dados/cerebro` em `/dados` | `searxng` (só início) |
 | `squadti` | `TUDOIA_SQUADTI_TOKEN`, `TUDOIA_API_KEY` (de `SQUADTI_API_KEY`), `TUDOIA_GATEWAY_URL`, `TUDOIA_TIMEOUT_S`, `TUDOIA_CONTEXTO_TOKENS`, `TUDOIA_NUGET_USER`, `TUDOIA_NUGET_PAT`, `TUDOIA_NUGET_FEED_URL`, `TESTCONTAINERS_HOST_OVERRIDE` | volume `squadti-dados` em `/dados`; `SQUADTI_TEMPLATE_DIR` (padrão `dados/squadti-template`) em `/template` (somente leitura); `/var/run/docker.sock` | `litellm` saudável |
 | `kokoro` | nenhuma | nenhum | nada |
 | `open-webui` | `OLLAMA_BASE_URL`, `WEBUI_NAME=TudoIA`, `WEBUI_SECRET_KEY`, `ENABLE_API_KEYS=true`, `TZ` | volume `open-webui` em `/app/backend/data`; `runtime/open-webui/env.py` e nove imagens de `runtime/open-webui/static` sobre `/app/build/static` (somente leitura) | `searxng`, `kokoro` (só início) |
 | `n8n` | `GENERIC_TIMEZONE`, `TZ`, `N8N_HOST=localhost`, `N8N_WEBHOOK_URL`, `N8N_RESTRICT_FILE_ACCESS_TO=/data/docs`, `N8N_ENCRYPTION_KEY`, `N8N_BLOCK_ENV_ACCESS_IN_NODE=true` | volume `n8n` em `/home/node/.n8n`; `dados/documentos` em `/data/docs` | nada |
-| `keycloak` | `KC_BOOTSTRAP_ADMIN_USERNAME` (de `TUDOIA_KEYCLOAK_ADMIN`, padrão `admin`), `KC_BOOTSTRAP_ADMIN_PASSWORD` (de `TUDOIA_KEYCLOAK_ADMIN_PASSWORD`), `KC_DB*`, `KC_DB_PASSWORD` (de `KEYCLOAK_DB_PASSWORD`), `KC_HEALTH_ENABLED`, `TZ` | `infra/keycloak/tema/tudoia` em `/opt/keycloak/themes/tudoia` (somente leitura) | `postgres` saudável |
+| `keycloak` | `KC_BOOTSTRAP_ADMIN_USERNAME` (de `TUDOIA_KEYCLOAK_ADMIN`, padrão `admin`), `KC_BOOTSTRAP_ADMIN_PASSWORD` (de `TUDOIA_KEYCLOAK_ADMIN_PASSWORD`), `KC_DB*` (aponta para `keycloak-db`), `KC_DB_PASSWORD` (de `KEYCLOAK_DB_PASSWORD`), `KC_HEALTH_ENABLED`, `TZ` | `infra/keycloak/tema/tudoia` em `/opt/keycloak/themes/tudoia` (somente leitura) | `keycloak-db` saudável |
 
-Volumes nomeados (declarados no compose): `open-webui`, `n8n`, `postgres`, `squadti-dados`. Com o prefixo do projeto, viram
-`tudoia_n8n` etc. O `scripts/backup/backup.py` empacota os volumes `n8n` e `open-webui` e faz `pg_dump` dentro do container do Postgres.
+Volumes nomeados (declarados no compose): `open-webui`, `n8n`, `litellm-db`, `keycloak-db`, `squadti-dados`. Com o prefixo do projeto, viram
+`tudoia_n8n` etc. O `scripts/backup/backup.py` empacota os volumes `n8n` e `open-webui` e faz `pg_dump` dentro do container `litellm-db` (o `keycloak-db` não entra no backup).
 
 Contratos que os testes cobrem (`tests/runtime/test_compose.py`): sem `env_file`; toda chave `chave:` do catálogo de
 modelos e do `config/video-nuvem.yaml` está no `environment` do `litellm`; o `litellm` não recebe segredo alheio; o `n8n`
-bloqueia `$env` e não recebe `TUDOIA_MCP_CLIENT_SECRET`; só `litellm` e `postgres` não têm perfil; dependência fica no
-mesmo perfil do dependente; um único Postgres e `POSTGRES_ADMIN_PASSWORD` fora de todo outro serviço.
+bloqueia `$env` e não recebe `TUDOIA_MCP_CLIENT_SECRET`; só `litellm` e `litellm-db` não têm perfil; dependência fica no
+mesmo perfil do dependente; o Keycloak embutido usa imagem fixada e segredos do `.env`.
 
 ### Ordem de início
 
-Só `litellm`, `keycloak` (ambos esperam o `postgres` saudável) e `squadti` (espera o `litellm` saudável) têm `depends_on`
+Só `litellm` (espera o `litellm-db` saudável), `keycloak` (espera o `keycloak-db` saudável) e `squadti` (espera o `litellm` saudável) têm `depends_on`
 com condição. Os demais `depends_on` (`cerebro` e `open-webui`) garantem só a ordem de criação, não a prontidão.
 
 ### SquadTI: isolamento e docker.sock
@@ -148,23 +151,21 @@ Feed NuGet das bibliotecas `TEC.*` (todos opcionais, só por ambiente): `TUDOIA_
 credencial) ou o par `TUDOIA_NUGET_USER` + `TUDOIA_NUGET_PAT` (feed privado `tec-interno`; o GitHub Packages exige PAT com
 `read:packages`). Sem nenhum, o restore dos pacotes `TEC.*` não tem origem. Como cada um é consumido: [squadti.md](squadti.md).
 
-## 🗄️ Postgres e o init de bancos
+## 🗄️ Bancos Postgres
 
-Um único servidor Postgres atende o LiteLLM e o Keycloak, com um database e um role por consumidor.
+Cada consumidor tem o seu servidor Postgres, sem script de init: a imagem cria o role e o database a partir de
+`POSTGRES_USER`, `POSTGRES_DB` e `POSTGRES_PASSWORD`.
 
-- `runtime/postgres/init/01-bancos.sh` roda **uma vez**, na primeira subida de um volume `postgres` vazio (`initdb`). Num
-  volume existente, o Postgres ignora a pasta.
-- Exige `LITELLM_DB_PASSWORD` e `KEYCLOAK_DB_PASSWORD`; sem elas, o script sai com erro.
-- Cria os roles `litellm` e `keycloak` (`LOGIN`), os databases `litellm` e `keycloak` (donos respectivos) e faz
-  `REVOKE CONNECT ... FROM PUBLIC` nos databases `litellm`, `keycloak` e `postgres`. Resultado: nenhum role conecta no
-  database do outro.
-- As senhas entram no SQL como variáveis do `psql` (`:'nome'`, escapadas como literal), não na linha de comando.
-- O superusuário `tudoia_admin` (`POSTGRES_ADMIN_PASSWORD`) é entregue só ao próprio Postgres, nunca a outro serviço.
-- O arquivo precisa ter fim de linha LF (o teste confere): com CRLF o `sh` do container não o executa.
+| Container | Role e database | Senha (variável do `.env`) | Porta no host | Perfil |
+|---|---|---|---|---|
+| `litellm-db` | `litellm` / `litellm` | `LITELLM_DB_PASSWORD` | `127.0.0.1:5433` | sempre |
+| `keycloak-db` | `keycloak` / `keycloak` | `KEYCLOAK_DB_PASSWORD` | nenhuma (só pela rede do compose) | `keycloak` |
 
 > [!WARNING]
-> Trocar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env` depois da primeira subida **não** altera a senha dentro
-> do banco. Use `ALTER ROLE` (ver [configuracao.md](../configuracao.md)). Porta no host: `127.0.0.1:5433`.
+> A senha só vale na criação do volume. Trocar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env` depois da primeira
+> subida **não** altera a senha dentro do banco (ver [runbook](../operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco)).
+> Nenhuma das duas variáveis tem `:?` no compose: vazias, o serviço sobe e o banco recusa o login. Rode
+> `scripts/tudoia.ps1 segredos` antes do primeiro `up`.
 
 ## 🚀 Uso
 
@@ -229,8 +230,8 @@ Variáveis do `.env` que mudam o compose (lista completa em [../configuracao.md]
 |---|---|---|
 | `COMPOSE_PROFILES` | `cerebro,webui,n8n,keycloak` (no `.env.example`) | Perfis ligados |
 | `TUDOIA_COMPOSE_PROJETO` | `tudoia` | Nome do projeto compose |
-| `TZ` | vazia no `.env.example`; sem padrão no compose | Fuso de postgres, litellm, open-webui, n8n, keycloak (`UTC` se ausente) |
-| `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | obrigatórias (`:?`) | Senhas do Postgres; sem elas o `up` falha |
+| `TZ` | vazia no `.env.example`; sem padrão no compose | Fuso de litellm-db, litellm, open-webui, n8n (`UTC` se ausente em keycloak e keycloak-db) |
+| `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | geradas por `segredos` | Senhas dos dois Postgres (valem na criação do volume) |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama visto pelo LiteLLM |
 | `SQUADTI_MEMORIA` / `SQUADTI_CPUS` | `6g` / `4` | Teto de memória e CPU da SquadTI |
 | `SQUADTI_TIMEOUT_S` / `SQUADTI_CONTEXTO_TOKENS` | `300` / `32768` | Timeout e contexto da SquadTI |
@@ -248,7 +249,7 @@ Variáveis do `.env` que mudam o compose (lista completa em [../configuracao.md]
 
 ### ComfyUI
 
-- Início: `cmd.exe /c run_nvidia_gpu.bat` em `TUDOIA_COMFYUI_PORTABLE` (padrão `modelos\comfyui\ComfyUI_windows_portable`),
+- Início: `python_embeded\python.exe ... ComfyUI\main.py --disable-auto-launch` em `TUDOIA_COMFYUI_PORTABLE` (padrão `modelos\comfyui\ComfyUI_windows_portable`; sem esse Python, `cmd.exe /c run_nvidia_gpu.bat`), exigindo o `run_nvidia_gpu.bat` na pasta;
   saída em `dados/logs/comfyui.log`. Porta 8188, não configurável pelo `.env`. Parada por porta e pelo caminho do portable.
   Uso em [estudio.md](estudio.md).
 
@@ -256,10 +257,10 @@ Variáveis do `.env` que mudam o compose (lista completa em [../configuracao.md]
 
 | Sintoma | Causa provável | Ação |
 |---|---|---|
-| `up` falha com `defina no .env (tudoia segredos)` | senha obrigatória ausente | rodar `scripts\tudoia.ps1 segredos` (nomes) e preencher o `.env` |
+| `litellm` não sobe ou reinicia em laço, log com `password authentication failed` ou `LITELLM_DB_PASSWORD` vazia | senha ausente ou diferente da gravada no volume | rodar `scripts\tudoia.ps1 segredos`; se o volume já existe, ver o runbook de senha do banco |
 | `litellm` não sobe, `config.yaml` é diretório | `runtime/litellm/config.yaml` não existe (gerado pelo painel, `POST /api/roteador/gerar`; fora do git) | gerar pelo painel antes do `up`; no Windows, remover o diretório criado pelo Docker |
 | Provedor novo sem chave dentro do LiteLLM | chave do catálogo não está no `environment` do `litellm` | acrescentar a variável; `tests/runtime/test_compose.py` detecta |
-| Senha do banco trocada e serviço não autentica | o init só roda no volume novo | `ALTER ROLE` (ver configuracao.md) |
+| Senha do banco trocada e serviço não autentica | a senha vive no volume, criada na primeira subida | [runbook](../operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
 | `up` recusa perfil | dependência em outro perfil | manter dependência no mesmo perfil (teste cobre) |
 | Chave nova no `.env` não chega ao container | `restart` simples não relê o `.env` | usar o `restart` do painel (recria) ou `up -d --force-recreate <serviço>` |
 | `squadti` não cria containers de teste | socket ausente ou sem grupo 0 | ver aviso do docker.sock acima |
@@ -270,7 +271,7 @@ Variáveis do `.env` que mudam o compose (lista completa em [../configuracao.md]
   exponha a porta 8180.
 - O LiteLLM não recebe `.env` inteiro: o container mais exposto a texto de terceiros fica sem a senha do Keycloak, o token
   do GitHub e as chaves do n8n.
-- Usuários: `cerebro` e `squadti` rodam como uid 10001 (sem root). `postgres`, `litellm`, `searxng`, `kokoro`,
+- Usuários: `cerebro` e `squadti` rodam como uid 10001 (sem root). `litellm-db`, `keycloak-db`, `litellm`, `searxng`, `kokoro`,
   `open-webui`, `n8n` e `keycloak` usam o usuário padrão de cada imagem (não alterado pelo compose; não conferido aqui).
 - Imagens `cerebro` e `squadti`: o `cerebro` parte de `python:3.12-slim` e `ghcr.io/astral-sh/uv:0.13.0` por tag, sem
   digest; o `squadti` fixa todas as bases por digest. Risco residual do `cerebro`: a tag pode mudar o conteúdo.

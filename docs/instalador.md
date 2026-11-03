@@ -218,28 +218,6 @@ MCP `doutrina-tec` e a SquadTI falham fechado (ECO-CON-01). Visão do conjunto: 
 - **Instalar:** o instalador grava `DOUTRINA_TEC` (`<instalação>\doutrina`) e `TUDOIA_PYTHON` (`<instalação>\.venv\Scripts\python.exe`) no `.env`.
   Se o código veio do GitHub e não traz `doutrina/`, a etapa `codigo` baixa a Doutrina no SHA fixado; se não conseguir, a instalação falha.
 
-### A Doutrina TEC dentro do pacote
-
-O pacote leva um instantâneo da [Doutrina TEC](https://github.com/tudoemcodigo/Doutrina) em `doutrina/` (`gerado/`,
-`familias/`, `INDEX.md`, `llms.txt`, `tools/mcp_doutrina.py`, licença). Sem ela a skill `doutrina-tec`, o MCP `doutrina-tec`
-e a SquadTI falham fechado (ECO-CON-01).
-
-- **Versão:** `governanca/doutrina.json` fixa o **commit completo (40 caracteres)**; branch, tag e SHA curto são recusados.
-  É a única fonte: o `Dockerfile` e o `docker-compose.yml` da SquadTI repetem o mesmo SHA e
-  `tests/test_squadti_compose.py` reprova se divergirem.
-- **Empacotar:** defina `DOUTRINA_TEC` com um clone da Doutrina que tenha esse commit (`git fetch` se faltar). O conteúdo
-  vem do histórico git daquele commit, não da pasta de trabalho: edição local não entra. Sem `DOUTRINA_TEC`, sem o commit
-  ou com o manifesto incompleto, o pacote **não é gerado**.
-- **Atualizar a Doutrina:** publique na `main` da Doutrina e rode `python -m scripts.empacotar.payload --sincronizar-pin`.
-  O comando **sempre busca o commit mais novo** da `main` no GitHub (`git ls-remote`), grava o SHA completo em
-  `governanca/doutrina.json`, propaga para o `Dockerfile` e o compose da SquadTI e, se `DOUTRINA_TEC` estiver definida, faz
-  `git fetch` no clone. Se a consulta falhar, nada é alterado. Depois rode `empacotar`. `--derivar-pin` só propaga o SHA já
-  gravado, sem rede. O `empacotar` se recusa a gerar o pacote se o `Dockerfile` ou o compose divergirem do JSON.
-- **No painel:** Agentes e regras > Regras, skills e MCP mostra o cartão "Doutrina TEC" (versão em uso, commit fixado,
-  arquivos defasados e os comandos acima). É só leitura: a tela não consulta o GitHub nem altera a versão.
-- **Instalar:** o instalador grava `DOUTRINA_TEC` e `TUDOIA_PYTHON` no `.env` (o MCP `doutrina-tec` usa os dois). Se o código
-  veio do GitHub e não traz `doutrina/`, a etapa de código baixa a Doutrina no SHA fixado; se não conseguir, a instalação falha.
-
 ### Publicar uma release
 
 O `.exe` **não vai para o Git** (`dist/` e `build/` estão no `.gitignore`): sai de uma release do GitHub, construída pelo CI em

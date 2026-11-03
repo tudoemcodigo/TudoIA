@@ -115,15 +115,15 @@ O `.env` está no `.gitignore` e nunca vai para o git. Os segredos internos come
 ```
 
 Preenche só as chaves internas vazias e imprime só os nomes (`gerado: <NOME>`): `WEBUI_SECRET_KEY`, `SEARXNG_SECRET`,
-`N8N_ENCRYPTION_KEY`, `LITELLM_MASTER_KEY`, `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD`,
+`N8N_ENCRYPTION_KEY`, `LITELLM_MASTER_KEY`, `LITELLM_DB_PASSWORD`,
 `TUDOIA_SESSAO_SEGREDO` e `CEREBRO_TOKEN_ESTATICO`. Com `keycloak` em `COMPOSE_PROFILES` gera também
-`TUDOIA_KEYCLOAK_ADMIN_PASSWORD`; com `squadti`, `TUDOIA_SQUADTI_TOKEN` (`painel/tudoia_painel/cli.py`). Valores existentes não
+`TUDOIA_KEYCLOAK_ADMIN_PASSWORD` e `KEYCLOAK_DB_PASSWORD`; com `squadti`, `TUDOIA_SQUADTI_TOKEN` (`painel/tudoia_painel/cli.py`). Valores existentes não
 são trocados. Antes de cada gravação o `.env` anterior vai para `dados\backups\env\` (até 10 cópias).
 
 > [!IMPORTANT]
 > Guarde uma cópia do `.env` fora da máquina, em cofre. O backup do TudoIA não copia o `.env`, e sem a mesma
-> `N8N_ENCRYPTION_KEY` as credenciais do n8n restauradas não decifram. Também não troque `POSTGRES_ADMIN_PASSWORD`,
-> `LITELLM_DB_PASSWORD` nem `KEYCLOAK_DB_PASSWORD` depois da primeira subida sem seguir o [runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco).
+> `N8N_ENCRYPTION_KEY` as credenciais do n8n restauradas não decifram. Também não troque `LITELLM_DB_PASSWORD`
+> nem `KEYCLOAK_DB_PASSWORD` depois da primeira subida sem seguir o [runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco).
 
 Para usar `tudoia segredos` sem o caminho, ponha `scripts\` no PATH: o `scripts\tudoia.cmd` só repassa os argumentos ao
 `tudoia.ps1`. O `pyproject.toml` não instala um executável `tudoia`.
@@ -255,7 +255,7 @@ conta de `--admin-inicial`. Conta sem papel `tudoia-*` recebe 403 no login.
 
 O `scripts/backup/backup.py` cria `dados\backups\<AAAAMMDD-HHMMSS>\` com:
 
-- `postgres-litellm.sql.gz` e `postgres-keycloak.sql.gz`: `pg_dump` de cada database do Postgres único (`docker exec tudoia-postgres`);
+- `litellm-db.sql.gz`: `pg_dump` do banco do LiteLLM (`docker exec litellm-db`); o banco do Keycloak (`keycloak-db`) **não** entra no backup;
 - `cerebro.db`: cópia consistente pela API de backup do SQLite, conferida com `PRAGMA quick_check`;
 - `n8n.tar.gz` e `open-webui.tar.gz`: tar dos volumes `<projeto>_n8n` e `<projeto>_open-webui`, lidos somente para leitura por um
   container `alpine:3.20.3` sem rede;
@@ -285,7 +285,7 @@ Rode na ordem. Cada item diz o resultado esperado.
 
 | Verificação | Comando | Esperado |
 |---|---|---|
-| Containers | `.\scripts\tudoia.ps1 status` | `postgres` (`tudoia-postgres`) e `litellm` sempre; mais os dos perfis ligados (`cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak`), em execução. Têm healthcheck: `postgres`, `litellm`, `searxng`, `cerebro`, `n8n`, `keycloak`, `squadti` |
+| Containers | `.\scripts\tudoia.ps1 status` | `litellm-db` e `litellm` sempre; mais os dos perfis ligados (`cerebro`, `searxng`, `open-webui`, `kokoro`, `n8n`, `keycloak-db`, `keycloak`, `squadti`), em execução. Têm healthcheck: `litellm-db`, `litellm`, `searxng`, `cerebro`, `n8n`, `keycloak-db`, `keycloak`, `squadti` |
 | Cérebro | `curl.exe -s http://127.0.0.1:8765/saude` | JSON com `"ok": true` (e contagens e estado da indexação) |
 | Painel no ar | `curl.exe -s http://127.0.0.1:3100/saude` | `{"ok":true}` |
 | Painel sem login | `curl.exe -s http://127.0.0.1:3100/api/sessao` | `"configurado": true` e `"autenticado": false` |
@@ -326,7 +326,7 @@ Os scripts do dia a dia ficam em `scripts\` e são os que os atalhos do instalad
 | Script | O que faz |
 |---|---|
 | `iniciar.ps1 [-SemNavegador] [-ComSquadti]` | Liga o Docker Desktop (espera até 5 min), o Ollama (só se `TUDOIA_OLLAMA_MODELS` está no `.env` e `ollama` no PATH), o ComfyUI (só se `TUDOIA_COMFYUI_PORTABLE` está no `.env`), a stack (`up -d --wait`, até 300 s) e o painel. O painel sobe **sempre**, mesmo se a infraestrutura falhar; nesse caso o script avisa e sai com 1 |
-| `parar.ps1` | Para o painel, a SquadTI, **todos** os serviços Docker de qualquer perfil (`stop --profile '*'`), o **Ollama** e o **ComfyUI**. Volumes e dados ficam. Sai com 1 se algo continuar no ar |
+| `parar.ps1` | Para o painel, a SquadTI, **todos** os serviços Docker de qualquer perfil (`compose --profile '*' stop`), o **Ollama** e o **ComfyUI**. Volumes e dados ficam. Sai com 1 se algo continuar no ar |
 | `reiniciar.ps1 [-Tudo] [-ComSquadti] [-SemNavegador]` | Padrão: reinicia **só** o painel (e a Squad, se estava no ar). `-Tudo`: `parar.ps1` e depois `iniciar.ps1` |
 | `painel.ps1 [-SemNavegador]` | Abre o painel; se a porta 3100 não responde, sobe antes |
 | `desinstalar.ps1` | Desinstala (pede `DESINSTALAR`; dados e modelos só saem com `APAGAR`) |
@@ -365,7 +365,7 @@ scripts/tudoia.sh up
   ([seguranca.md](seguranca.md#riscos-residuais), risco 4). Se o código do painel mudou, `.\scripts\reiniciar.ps1`.
 - **Parar:** `.\scripts\parar.ps1` (tudo, inclusive Ollama e ComfyUI) ou `.\scripts\tudoia.ps1 down` (só containers).
 - **Desinstalar (instalação do instalador):** atalho **TudoIA - Desinstalar** ou `.\scripts\desinstalar.ps1`; ver [instalador.md](instalador.md#depois-de-instalado).
-- **Remover dados à mão (DESTRUTIVO):** apague `dados\` e os volumes `<projeto>_open-webui`, `<projeto>_n8n`, `<projeto>_postgres` e
+- **Remover dados à mão (DESTRUTIVO):** apague `dados\` e os volumes `<projeto>_open-webui`, `<projeto>_n8n`, `<projeto>_litellm-db`, `<projeto>_keycloak-db` e
   `<projeto>_squadti-dados`. Antes, confirme o alvo com `docker volume ls --filter name=<projeto>_` e guarde o `.env`, `dados\backups\` e
   `~\.tudoia\backups\`. Sem a `N8N_ENCRYPTION_KEY`, as credenciais salvas no n8n não decifram.
 
@@ -375,8 +375,8 @@ scripts/tudoia.sh up
 |---|---|---|
 | `up` para no `sync` com "variável ... ausente no .env" | Um MCP ativo precisa de variável vazia (ex.: `DOUTRINA_TEC`, `TUDOIA_PYTHON`, `CEREBRO_TOKEN_ESTATICO`) | Preencha a variável (passos 3 e 4) ou remova o MCP de `governanca.json` |
 | `sync` recusa com "workspace inexistente" | Caminho de `workspaces` não existe nesta máquina | Ajuste `workspaces` |
-| `litellm` não sobe ou reinicia em loop | `runtime\litellm\config.yaml` ausente (o Docker cria uma **pasta** no lugar do arquivo montado) ou inválido; outra causa possível: senha do Postgres | `docker logs litellm`; gere o arquivo (passo 5). Se for senha do banco, ver [runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
-| `up` falha com `defina no .env (tudoia segredos)` | `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` vazia (o compose exige as três) | `.\scripts\tudoia.ps1 segredos` |
+| `litellm` não sobe ou reinicia em loop | `runtime\litellm\config.yaml` ausente (o Docker cria uma **pasta** no lugar do arquivo montado) ou inválido; outra causa possível: senha do banco | `docker logs litellm`; gere o arquivo (passo 5). Se for senha do banco, ver [runbook](operacao.md#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
+| `litellm` ou `keycloak` não ficam saudáveis; log com `password authentication failed` | `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` vazia (o compose não as exige) ou diferente da gravada no volume | `.\scripts\tudoia.ps1 segredos` |
 | `up` termina com "O painel nao respondeu na porta 3100" | `.venv` ausente (falta `uv sync`) ou painel travou ao iniciar | `dados\logs\painel.err.log`; [runbook](operacao.md#o-painel-não-sobe-ou-uma-porta-está-ocupada) |
 | Sessão do painel cai a cada 5 min | O Keycloak ainda tem o token de 300 s do cliente `tudoia-painel` | `.\scripts\tudoia.ps1 keycloak`; saia e entre de novo |
 | `n8n-credencial` sai com código 1 | `TUDOIA_MCP_CLIENT_SECRET` vazio no `.env` | `.\scripts\tudoia.ps1 keycloak` |

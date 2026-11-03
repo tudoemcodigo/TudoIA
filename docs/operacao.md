@@ -42,7 +42,7 @@ Triagem em um minuto:
 
 | O que olhar | Comando | Normal |
 |---|---|---|
-| Containers do compose | `.\scripts\tudoia.ps1 status` | `postgres` e `litellm` `healthy`, mais os dos perfis ligados |
+| Containers do compose | `.\scripts\tudoia.ps1 status` | `litellm-db` e `litellm` `healthy`, mais os dos perfis ligados |
 | Painel | `curl.exe -s http://127.0.0.1:3100/saude` | `{"ok":true}` |
 | Cérebro | `curl.exe -s http://127.0.0.1:8765/saude` | JSON com `"ok": true` |
 | Gateway | `curl.exe -s http://127.0.0.1:4000/health/liveliness` | resposta 200 |
@@ -88,7 +88,7 @@ Como ler o resultado:
 
 - `OwningProcess` 0 é entrada fantasma de um processo que morreu; ignore. Em alguns Windows o estado vem vazio, por isso o filtro é por `OwningProcess`, não por `Listen` (`scripts/_comum.ps1`, `DonosDaPorta`).
 - Se a `CommandLine` do dono da 3100 contém `-m tudoia_painel painel`, é o próprio painel (travado ou de outra sessão). Qualquer outra coisa é outro programa.
-- Portas do TudoIA: painel 3100, LiteLLM 4000, Postgres 5433, Cérebro 8765, SearXNG 8080, Open WebUI 3000, Kokoro 8880, n8n 5678, Keycloak 8180, SquadTI 8790, Ollama 11434, ComfyUI 8188. Todas em `127.0.0.1`.
+- Portas do TudoIA: painel 3100, LiteLLM 4000, Postgres do LiteLLM 5433, Cérebro 8765, SearXNG 8080, Open WebUI 3000, Kokoro 8880, n8n 5678, Keycloak 8180, SquadTI 8790, Ollama 11434, ComfyUI 8188. Todas em `127.0.0.1`.
 
 ### Mitigação
 
@@ -149,7 +149,7 @@ As causas, conferidas no código:
 
 | Causa | Onde | Quando acontece |
 |---|---|---|
-| `parar.ps1` | `scripts/parar.ps1` | Sempre para o painel, a SquadTI, **todos** os containers (`--profile '*'`), o Ollama e o ComfyUI. Até esta versão só parava Ollama e ComfyUI se o `.env` apontasse para eles. É o que o atalho **TudoIA - Parar** e `reiniciar.ps1 -Tudo` fazem |
+| `parar.ps1` | `scripts/parar.ps1` | Sempre para o painel, a SquadTI, **todos** os containers (`--profile '*'`), o Ollama e o ComfyUI. Desde o PR #19 não depende do `.env` para o Ollama e o ComfyUI (antes só os parava se o `.env` apontasse para eles). É o que o atalho **TudoIA - Parar** e `reiniciar.ps1 -Tudo` fazem |
 | Parar ou reiniciar "todos" no painel | `servicos.py` `acao_todos` (`POST /api/servicos/todos/stop` ou `restart`) | Encerra Ollama e ComfyUI antes dos containers |
 | Painel iniciado dentro de um Job Object do Windows | `servicos.py` (`DETACHED_FLAGS = CREATE_NEW_PROCESS_GROUP \| DETACHED_PROCESS`) | O painel inicia Ollama e ComfyUI destacados, mas isso não os tira de um Job Object. Se o painel (ou o `up` e o `iniciar.ps1` que o iniciam) rodou como **tarefa em segundo plano de uma ferramenta que usa Job Object**, como a de um agente de IA, parar a tarefa leva a árvore inteira. Observado pelo mantenedor em 30/10/2026, duas vezes, com Ollama e ComfyUI; não reproduzido nesta revisão |
 | Parar o serviço pelo painel | `servicos.py` `_stop_host` | Encerra **qualquer** processo que escute em 11434 ou 8188, sem conferir qual é (risco 24 em [seguranca.md](seguranca.md#riscos-residuais)) |
@@ -215,7 +215,7 @@ curl.exe -s http://127.0.0.1:3100/api/sessao                     # "configurado"
 |---|---|---|
 | `/api/sessao` com `"configurado": false` ou 503 `auth_nao_configurada` | `TUDOIA_OIDC_ISSUER`, `TUDOIA_OIDC_CLIENT_ID` ou `TUDOIA_OIDC_CLIENT_SECRET` vazios, `TUDOIA_SESSAO_SEGREDO` com menos de 32 caracteres, ou painel não reiniciado depois do `keycloak` | Mitigação 2 e 3 |
 | 503 `indisponivel` com Keycloak parado | Reconfirmação no Keycloak falhou (fail-closed) | Mitigação 1 |
-| Log do Keycloak com `password authentication failed` | Senha do role `keycloak` no `.env` difere da do banco | [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
+| Log do Keycloak com `password authentication failed` | `KEYCLOAK_DB_PASSWORD` no `.env` difere da do banco (`keycloak-db`) | [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
 | `keycloak` sai com código 2 / `user_not_found` | O admin de `KC_BOOTSTRAP_ADMIN_*` só é criado na **primeira** inicialização do banco; o `master` não tem esse usuário | Corrija o admin pelo console do Keycloak antes de provisionar ([keycloak.md](componentes/keycloak.md)) |
 | Sessão cai a cada 5 min | Token de 300 s do cliente `tudoia-painel` ainda no Keycloak | Mitigação 3 |
 | `Invalid redirect_uri` | Painel em porta diferente da registrada no cliente | Use a porta 3100 (`http://127.0.0.1:3100/app/`) ou rode `keycloak` de novo |
@@ -225,12 +225,12 @@ curl.exe -s http://127.0.0.1:3100/api/sessao                     # "configurado"
 ### Mitigação
 
 1. Keycloak parado ou `unhealthy`: aba **Serviços** > reiniciar `keycloak`, ou
-   `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env up -d keycloak`. Ele leva até 90 s para ficar pronto (`start_period`) e depende do Postgres `healthy`.
+   `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env up -d keycloak`. Ele leva até 90 s para ficar pronto (`start_period`) e depende do `keycloak-db` `healthy`.
 2. Reaplicar o template do realm (idempotente; a segunda execução imprime "igual"): `.\scripts\tudoia.ps1 keycloak`. Ele aplica o template inteiro e regrava no `.env` o que for gerado.
 3. Depois de `keycloak`, reinicie o painel, que só lê o `.env` ao iniciar: `.\scripts\reiniciar.ps1 -SemNavegador`. Quem já tinha sessão sai e entra de novo.
 4. Primeiro administrador perdido: `.\scripts\tudoia.ps1 keycloak --admin-inicial <email>` cria a conta e imprime uma senha temporária **uma vez** (troca obrigatória; política de 12 caracteres).
 5. Segredo de cliente comprometido: veja [Segredo comprometido](#segredo-comprometido) (`--rotacionar-secret`).
-6. Realm corrompido ou perdido: restaure o database `keycloak` ([Backup e restauração](#backup-e-restauração)) e rode `keycloak`.
+6. Realm corrompido ou perdido: o `backup` não cobre o `keycloak-db`; sem cópia própria do volume, recrie o realm com `keycloak` (e `--admin-inicial` para o primeiro administrador).
 
 ### Escalonamento
 
@@ -238,7 +238,7 @@ Falha de conexão que persiste com o container `healthy`, ou realm que não acei
 
 ### Reversão
 
-`keycloak` é idempotente e não apaga papéis ou grupos que não estão no template, mas **remove** papel sobrando nos grupos `tudoia-*` gerenciados. Para desfazer uma alteração indevida do realm, restaure `postgres-keycloak.sql.gz`.
+`keycloak` é idempotente e não apaga papéis ou grupos que não estão no template, mas **remove** papel sobrando nos grupos `tudoia-*` gerenciados. Para desfazer uma alteração indevida do realm não há backup pronto: o `keycloak-db` **não** entra no `backup` (ver [Backup e restauração](#backup-e-restauração)). Sem uma cópia própria do volume, reaplique o template com `keycloak` (contas criadas à mão se perdem).
 
 ### Confirmação de recuperação
 
@@ -275,8 +275,8 @@ curl.exe -s http://127.0.0.1:11434/api/version                     # Ollama, par
 | Observação | Causa provável | Ação |
 |---|---|---|
 | `config.yaml` ausente, pasta ou inválido | Arquivo gerado e não versionado (`.gitignore`); o compose o monta como arquivo | Mitigação 2 |
-| Log com `password authentication failed` / `litellm` não fica `healthy` | Senha do role `litellm` no `.env` difere da do banco | [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
-| `postgres` não está `healthy` | Volume corrompido ou disco cheio | `docker logs --tail 50 tudoia-postgres`; restaure ([Backup e restauração](#backup-e-restauração)) |
+| Log com `password authentication failed` / `litellm` não fica `healthy` | `LITELLM_DB_PASSWORD` no `.env` difere da do banco (`litellm-db`) | [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco) |
+| `litellm-db` não está `healthy` | Volume corrompido ou disco cheio | `docker logs --tail 50 litellm-db`; restaure ([Backup e restauração](#backup-e-restauração)) |
 | Chave de provedor nova e o modelo continua sem chave | O container foi iniciado antes; um `restart` simples mantém o ambiente antigo | Mitigação 1 (recriar) |
 | `[roteador] não li ...` | `config/roteamento.yaml` ou arquivo lido pelo hook ilegível | Corrija o arquivo; o hook mantém a última versão válida |
 | Um membro de nuvem falha | O próprio LiteLLM esfria o membro por 60 s e usa o fallback do grupo | Espere; confira a chave do provedor e o limite no painel |
@@ -286,7 +286,7 @@ curl.exe -s http://127.0.0.1:11434/api/version                     # Ollama, par
 
 1. Recriar o gateway lendo o `.env` de novo (é o que a aba **Serviços** faz em "reiniciar"):
    `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env up -d --no-deps --force-recreate litellm`.
-   Os dados ficam no Postgres; nada se perde.
+   Os dados ficam no `litellm-db`; nada se perde.
 2. Gerar o `config.yaml` a partir de `config/catalogo-modelos.yaml`, `config/roteamento.yaml` e do `.env` (o painel faz o mesmo em `POST /api/roteador/gerar`):
    ```powershell
    $env:PYTHONPATH = "$PWD;$PWD\painel"
@@ -299,7 +299,7 @@ curl.exe -s http://127.0.0.1:11434/api/version                     # Ollama, par
 
 ### Escalonamento
 
-Gateway que não sobe com `config.yaml` válido, Postgres saudável e senhas coerentes: issue no repositório com `docker logs --tail 80 litellm` (confira que não há chave no trecho). Falha de provedor (limite, indisponibilidade): suporte do provedor.
+Gateway que não sobe com `config.yaml` válido, `litellm-db` saudável e senhas coerentes: issue no repositório com `docker logs --tail 80 litellm` (confira que não há chave no trecho). Falha de provedor (limite, indisponibilidade): suporte do provedor.
 
 ### Reversão
 
@@ -352,6 +352,7 @@ A última linha mostra só o tamanho. A Squad só sobe com `TUDOIA_SQUADTI_TOKEN
    `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env up -d --build squadti`
    ou `.\scripts\iniciar.ps1 -ComSquadti -SemNavegador` (idempotente, liga também o que estiver parado), ou a aba **Serviços** > reiniciar `squadti` (recria o container).
 2. Tarefa interrompida pelo reinício: o estado (checkpoint) fica no volume `squadti-dados`; veja como retomar em [squadti.md](componentes/squadti.md).
+   Tarefa **escalada** (QA, revisão, orçamento ou bloqueio) não é queda da Squad: no cockpit do menu SquadTI, leia o relatório do CHEFE, ajuste os tetos se o motivo foi orçamento e use **Continuar** (`POST /api/squadti/tarefas/{tarefa}/continuar`; operador ou admin).
 3. Antes de ligar a Squad em máquina nova, leia o [risco 21](seguranca.md#21-dockersock-montado-na-squadti-em-aberto-decisão-do-dono): o `docker.sock` do host está montado.
 
 ### Escalonamento
@@ -379,12 +380,12 @@ não exercitado
 
 ### Sintoma
 
-- `.\scripts\tudoia.ps1 backup` sai com código 1 e imprime `FALHOU n de 5 itens` e "rotação não executada"; o `manifesto.json` do backup lista `falhas`.
+- `.\scripts\tudoia.ps1 backup` sai com código 1 e imprime `FALHOU n de 4 itens` e "rotação não executada"; o `manifesto.json` do backup lista `falhas`.
 - É preciso restaurar: dado corrompido, volume perdido, máquina nova ou erro de operação.
 
 ### Impacto
 
-Sem backup válido, perde-se: os bancos (`litellm`: chaves virtuais, gastos; `keycloak`: realm e contas), a memória do Cérebro (`cerebro.db`), o n8n (fluxos e credenciais) e o Open WebUI (conversas). O backup **não inclui o `.env`**: sem ele (e sem a `N8N_ENCRYPTION_KEY`) as credenciais do n8n restauradas não decifram.
+Sem backup válido, perde-se: o banco do LiteLLM (chaves virtuais, gastos), a memória do Cérebro (`cerebro.db`), o n8n (fluxos e credenciais) e o Open WebUI (conversas). O backup **não inclui o `.env`** nem o banco do Keycloak (`keycloak-db`: realm e contas; reconstrua com `.\scripts\tudoia.ps1 keycloak`): sem ele (e sem a `N8N_ENCRYPTION_KEY`) as credenciais do n8n restauradas não decifram.
 
 ### Diagnóstico
 
@@ -393,15 +394,15 @@ Get-ChildItem dados\backups -Directory | Where-Object Name -match '^\d{8}-\d{6}$
 Get-Content dados\backups\<AAAAMMDD-HHMMSS>\manifesto.json        # itens (bytes, sha256) e falhas
 Get-FileHash -Algorithm SHA256 dados\backups\<AAAAMMDD-HHMMSS>\cerebro.db
 docker volume ls --filter name=<projeto>_
-docker ps --filter name=tudoia-postgres --format "{{.Names}}  {{.Status}}"
+docker ps --filter name=litellm-db --format "{{.Names}}  {{.Status}}"
 ```
 
-O backup tem cinco itens independentes (`scripts/backup/backup.py`): `postgres-litellm.sql.gz`, `postgres-keycloak.sql.gz`, `cerebro.db`, `n8n.tar.gz` e `open-webui.tar.gz`. Causas comuns de falha por item:
+O backup tem quatro itens independentes (`scripts/backup/backup.py`): `litellm-db.sql.gz`, `cerebro.db`, `n8n.tar.gz` e `open-webui.tar.gz`. Causas comuns de falha por item:
 
 | Falha no resumo | Causa | Ação |
 |---|---|---|
 | `docker não encontrado no PATH` / `docker volume inspect` sem resposta | Docker Desktop parado | Inicie o Docker e rode o backup de novo |
-| `postgres-*.sql.gz` com código ≠ 0 | Container `tudoia-postgres` parado | `docker compose ... up -d postgres` |
+| `litellm-db.sql.gz` com código ≠ 0 | Container `litellm-db` parado | `docker compose ... up -d litellm-db` |
 | `volume <projeto>_n8n não existe` (ou `open-webui`) | O perfil nunca foi ligado nesta instalação | O volume só nasce quando o perfil sobe. Enquanto o perfil estiver desligado o item falha e **a rotação nunca roda** (os backups antigos se acumulam em `dados\backups\`); apague os antigos à mão, depois de conferir |
 | `banco não encontrado: ...cerebro.db` | Perfil `cerebro` nunca ligado | Mesma observação |
 | `tempo limite de 7200 s excedido` | Docker travado | Reinicie o Docker Desktop |
@@ -421,9 +422,9 @@ Guarde também o `.env` em cofre; o backup não o copia (o painel mantém até 1
 
 1. Escolha o backup e confira a integridade: o `sha256` de cada arquivo precisa bater com o `manifesto.json`, e o item não pode estar em `falhas`.
 2. Se os serviços ainda funcionam, faça um backup **agora** do estado atual (reversão da restauração).
-3. Pare o container dono do dado antes de restaurar (`litellm`/`keycloak`, `cerebro`, `n8n`, `open-webui`); se continuar rodando, sobrescreve ou corrompe o que você restaurou.
+3. Pare o container dono do dado antes de restaurar (`litellm`, `cerebro`, `n8n`, `open-webui`); se continuar rodando, sobrescreve ou corrompe o que você restaurou.
 4. Restaure só o que precisa, nas seções do arquivo:
-   - Seção 1, Postgres: um dump por database. O `DROP DATABASE ... WITH (FORCE)` é **DESTRUTIVO** e só é necessário para sobrescrever um database que já tem dados. No PowerShell 5.1, não use pipe com o dump (recodifica o texto e o estraga): copie o arquivo para dentro do container, como o arquivo explica. Em máquina nova ou volume apagado, `.\scripts\tudoia.ps1 up` recria o Postgres e o init cria os databases vazios.
+   - Seção 1, Postgres do LiteLLM: o `DROP DATABASE ... WITH (FORCE)` é **DESTRUTIVO** e só é necessário para sobrescrever um database que já tem dados. No PowerShell 5.1, não use pipe com o dump (recodifica o texto e o estraga): copie o arquivo para dentro do container, como o arquivo explica. Em máquina nova ou volume apagado, `.\scripts\tudoia.ps1 up` recria o `litellm-db` com o database vazio.
    - Seção 2, `cerebro.db`: apague os `-wal` e `-shm` antigos antes de copiar, senão o SQLite os aplica sobre o banco restaurado. A cópia usa `-Force` (**DESTRUTIVO** para o `cerebro.db` atual).
    - Seção 3, volumes do n8n e do Open WebUI: o comando esvazia o volume (`find /v -mindepth 1 -delete`) antes de extrair: **DESTRUTIVO** para o volume inteiro.
 5. Antes de cada comando destrutivo, verifique o alvo: o nome do container (`docker ps --format "{{.Names}}"`), o do volume (`docker volume ls --filter name=<projeto>_`) e a pasta do backup (`$b`) impressa na tela. Os comandos de `restaurar.md` usam o projeto padrão (`tudoia_n8n`, `tudoia_open-webui`): com outro `TUDOIA_COMPOSE_PROJETO`, troque o prefixo.
@@ -439,7 +440,7 @@ Restaure o backup tirado no passo 2 do mesmo modo. Os `.env` anteriores estão e
 
 ### Confirmação de recuperação
 
-`.\scripts\tudoia.ps1 status` mostra os containers `healthy`; `docker exec tudoia-postgres psql -U tudoia_admin -d postgres -c "\l"` lista `litellm` e `keycloak`; `curl.exe -s http://127.0.0.1:8765/saude` mostra as contagens do Cérebro de volta; o login do painel funciona; os fluxos e as credenciais do n8n aparecem (com a mesma `N8N_ENCRYPTION_KEY`); as conversas do Open WebUI voltam.
+`.\scripts\tudoia.ps1 status` mostra os containers `healthy`; `docker exec litellm-db psql -U litellm -d litellm -c "\dt"` lista as tabelas do LiteLLM; `curl.exe -s http://127.0.0.1:8765/saude` mostra as contagens do Cérebro de volta; o login do painel funciona; os fluxos e as credenciais do n8n aparecem (com a mesma `N8N_ENCRYPTION_KEY`); as conversas do Open WebUI voltam.
 
 ### Último exercício
 
@@ -458,7 +459,7 @@ Alerta do provedor ou do GitHub; cobrança ou uso estranho na conta do provedor;
 ### Impacto
 
 Depende do segredo: chave de provedor (custo e acesso à conta); `LITELLM_MASTER_KEY` (gateway e criação de chaves virtuais); `CEREBRO_TOKEN_ESTATICO` (leitura e escrita na memória do Cérebro); `TUDOIA_MCP_CLIENT_SECRET` (token de operador no Cérebro);
-`TUDOIA_OIDC_CLIENT_SECRET` (cliente do painel); `POSTGRES_ADMIN_PASSWORD` (todos os bancos); `N8N_ENCRYPTION_KEY` (decifra as credenciais do n8n); `TUDOIA_SESSAO_SEGREDO` (assina o cookie; forjar a sessão ainda exigiria um `access_token` válido, que o painel reconfirma a cada 30 s); `TUDOIA_SQUADTI_TOKEN` e `SQUADTI_API_KEY` (disparar tarefas na Squad).
+`TUDOIA_OIDC_CLIENT_SECRET` (cliente do painel); `N8N_ENCRYPTION_KEY` (decifra as credenciais do n8n); `TUDOIA_SESSAO_SEGREDO` (assina o cookie; forjar a sessão ainda exigiria um `access_token` válido, que o painel reconfirma a cada 30 s); `TUDOIA_SQUADTI_TOKEN` e `SQUADTI_API_KEY` (disparar tarefas na Squad).
 
 ### Diagnóstico
 
@@ -483,7 +484,7 @@ Procure uso indevido em `dados\logs\auditoria.jsonl` (quem chamou `/api/segredos
 | `TUDOIA_OIDC_CLIENT_SECRET`, `TUDOIA_MCP_CLIENT_SECRET` | `.\scripts\tudoia.ps1 keycloak --rotacionar-secret` (novo segredo de `tudoia-painel` e `tudoia-mcp`, gravado no `.env`) | `.\scripts\tudoia.ps1 n8n-credencial`; `.\scripts\reiniciar.ps1 -SemNavegador` |
 | `TUDOIA_SESSAO_SEGREDO` | Esvazie e rode `segredos` | `.\scripts\reiniciar.ps1 -SemNavegador` (todas as sessões caem) |
 | `TUDOIA_KEYCLOAK_ADMIN_PASSWORD` | Troque a senha do admin do `master` no console do Keycloak e grave a nova no `.env` | Rode `keycloak --verificar` para confirmar |
-| `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Siga [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco): o banco precisa acompanhar | Recriar `litellm` e `keycloak` |
+| `LITELLM_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | Siga [Senha do Postgres](#senha-do-postgres-trocada-no-env-sem-mudar-no-banco): o banco precisa acompanhar | Recriar `litellm` e `keycloak` |
 | `WEBUI_SECRET_KEY`, `SEARXNG_SECRET` | Esvazie e rode `segredos` | Recriar `open-webui` / `searxng` (sessões do Open WebUI devem cair; inferido, não verificado) |
 | `N8N_ENCRYPTION_KEY` | **Não troque sem recifrar:** as credenciais salvas no n8n deixam de decifrar. Exporte as credenciais com o n8n (CLI `export:credentials`) antes, ou recrie-as à mão depois | Procedimento do n8n, não verificado nesta revisão; teste fora da produção |
 | Tokens de MCP (`CONTEXT7_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, `SUPABASE_*`) | Revogue no emissor, grave o novo | `.\scripts\tudoia.ps1 sync` (regrava `~\.claude.json` etc.); os backups em `~\.tudoia\backups\` ainda têm o valor antigo, já revogado |
@@ -516,7 +517,7 @@ não exercitado
 
 ### Sintoma
 
-Depois de editar `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env`, o `litellm` ou o `keycloak` não fica `healthy` ou reinicia em laço, e o log mostra `password authentication failed for user "litellm"` (ou `keycloak`). O `tudoia-postgres` continua `healthy` (o healthcheck `pg_isready` não autentica).
+Depois de editar `LITELLM_DB_PASSWORD` ou `KEYCLOAK_DB_PASSWORD` no `.env`, o `litellm` ou o `keycloak` não fica `healthy` ou reinicia em laço, e o log mostra `password authentication failed for user "litellm"` (ou `keycloak`). O `litellm-db` (ou o `keycloak-db`) continua `healthy` (o healthcheck `pg_isready` não autentica).
 
 ### Impacto
 
@@ -524,43 +525,41 @@ Depois de editar `POSTGRES_ADMIN_PASSWORD`, `LITELLM_DB_PASSWORD` ou `KEYCLOAK_D
 
 ### Diagnóstico
 
-O init (`runtime/postgres/init/01-bancos.sh`) só cria os roles na **primeira** subida do volume; a senha vive dentro do banco, e mudar o `.env` depois não a altera (comentário no `docker-compose.yml`, [configuracao.md](configuracao.md)).
+Cada banco é um container Postgres próprio: `litellm-db` (role e database `litellm`) e `keycloak-db` (role e database `keycloak`). A imagem lê `POSTGRES_PASSWORD` só ao criar o volume; a senha vive dentro do banco, e mudar o `.env` depois não a altera ([servicos-docker.md](componentes/servicos-docker.md#️-bancos-postgres)).
 
 ```powershell
-docker inspect --format '{{.State.Health.Status}}' tudoia-postgres litellm keycloak
+docker inspect --format '{{.State.Health.Status}}' litellm-db keycloak-db litellm keycloak
 docker logs --tail 40 litellm
 docker logs --tail 40 keycloak
-docker exec tudoia-postgres psql -U tudoia_admin -d postgres -c "\du"      # roles existentes (não mostra senhas)
 ```
 
-`\du` precisa listar `litellm` e `keycloak`. Se não listar, o volume veio de uma versão anterior (bancos separados `litellm-db` e `keycloak-db`) ou o init nunca rodou: não é este problema; veja `scripts/backup/restaurar.md`.
+O erro de senha aparece no log do `litellm` ou do `keycloak`, que conectam pela rede; o `docker exec ... psql` dentro do container do banco entra pelo socket local e não prova a senha.
 
 ### Mitigação
 
 Escolha **uma** direção. A mais segura é voltar o `.env` ao valor que o banco conhece.
 
-**A. Voltar o `.env` ao valor antigo.** Cada gravação do `.env` guarda a versão anterior em `dados\backups\env\`. Restaure a linha da variável a partir da cópia anterior à mudança (sem exibir o valor), recrie os consumidores (passo 3 abaixo).
+**A. Voltar o `.env` ao valor antigo.** Cada gravação do `.env` guarda a versão anterior em `dados\backups\env\`. Restaure a linha da variável a partir da cópia anterior à mudança (sem exibir o valor) e recrie os consumidores (passo 3 abaixo).
 
 **B. Fazer o banco acompanhar o `.env`** (o valor novo continua só no `.env`; a senha passa pelo stdin, não pela linha de comando):
 
-1. Confira o alvo: o container é `tudoia-postgres` e `\du` listou o role (diagnóstico acima).
-2. Altere o role, lendo o valor do `.env` sem exibi-lo (exemplo para o `litellm`; troque pela variável e pelo role de cada caso, `keycloak` ou `tudoia_admin`):
+1. Confira o alvo: o container é `litellm-db` (ou `keycloak-db`) e está `healthy`.
+2. Altere o role, lendo o valor do `.env` sem exibi-lo (exemplo do `litellm`; para o Keycloak troque a variável, o container e o role por `KEYCLOAK_DB_PASSWORD`, `keycloak-db` e `keycloak`):
 
    ```powershell
    $nova = (Select-String -Path .env -Pattern '^LITELLM_DB_PASSWORD=(.+)$').Matches[0].Groups[1].Value.Trim()
-   "ALTER ROLE litellm PASSWORD '$($nova.Replace("'","''"))';" | docker exec -i tudoia-postgres psql -U tudoia_admin -d postgres -v ON_ERROR_STOP=1
+   "ALTER ROLE litellm PASSWORD '$($nova.Replace("'","''"))';" | docker exec -i litellm-db psql -U litellm -d litellm -v ON_ERROR_STOP=1
    ```
 
-   Saída esperada: `ALTER ROLE`. A conexão local do `docker exec` dentro do container não pede a senha do superusuário.
+   Saída esperada: `ALTER ROLE`.
 3. Recrie quem usa a senha (a `DATABASE_URL` do `litellm` e a `KC_DB_PASSWORD` do `keycloak` são lidas na criação do container; um `restart` simples não basta):
    `docker compose -p <projeto> -f runtime\docker-compose.yml --env-file .env up -d --no-deps --force-recreate litellm` (e `keycloak`, se for o caso).
-4. `POSTGRES_ADMIN_PASSWORD`: só o próprio Postgres a conhece e nenhum serviço a usa; alterar com `ALTER ROLE tudoia_admin PASSWORD ...` da mesma forma e não há o que recriar.
 
-**C. Último recurso, recriar o volume.** Só se os bancos puderem ser reconstruídos ou restaurados.
+**C. Último recurso, recriar o volume.** Só se o banco puder ser reconstruído ou restaurado.
 
 > [!CAUTION]
-> **DESTRUTIVO e irreversível:** apaga **todos** os bancos (`litellm` e `keycloak`). Verificação do alvo: `docker volume ls --filter name=<projeto>_postgres` deve listar exatamente o volume esperado; confirme que existe um backup íntegro e recente dos dois dumps (`manifesto.json` sem `falhas`, sha256 conferido; veja [Backup e restauração](#backup-e-restauração)) e que o dono confirmou.
-> Sequência: pare os containers que usam o banco (`docker compose ... stop litellm keycloak postgres`), `docker compose ... rm -f postgres`, `docker volume rm <projeto>_postgres`, `.\scripts\tudoia.ps1 up` (o init recria roles e databases com as senhas do `.env`), e restaure os dumps.
+> **DESTRUTIVO e irreversível:** apaga o banco inteiro. No LiteLLM: chaves virtuais e gastos (restaurável só com o `litellm-db.sql.gz` do `backup`). No Keycloak: realm e contas (o `backup` **não** o cobre; reconstrua o realm com `keycloak`, perdendo contas e sessões). Verificação do alvo: `docker volume ls --filter name=<projeto>_litellm-db` (ou `<projeto>_keycloak-db`) deve listar exatamente o volume esperado; confirme que existe um backup íntegro (`manifesto.json` sem `falhas`, sha256 conferido; veja [Backup e restauração](#backup-e-restauração)) e que o dono confirmou.
+> Sequência (exemplo do LiteLLM): `docker compose ... stop litellm litellm-db`, `docker compose ... rm -f litellm-db`, `docker volume rm <projeto>_litellm-db`, `.\scripts\tudoia.ps1 up` (a imagem recria o banco com a senha do `.env`) e restaure o dump.
 
 ### Escalonamento
 

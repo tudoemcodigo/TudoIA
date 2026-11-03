@@ -18,6 +18,7 @@ verificado-em: 2026-11-03
 - [🧩 Produto e componentes](#-produto-e-componentes)
 - [🔀 Roteamento de modelos](#-roteamento-de-modelos)
 - [🏛️ Governança dos clientes de IA](#️-governança-dos-clientes-de-ia)
+- [🤖 SquadTI](#-squadti)
 - [🔐 Identidade e acesso](#-identidade-e-acesso)
 - [🐳 Execução e configuração](#-execução-e-configuração)
 - [🤝 Ecossistema TEC](#-ecossistema-tec)
@@ -31,14 +32,15 @@ Dentro de cada seção os termos seguem a ordem alfabética.
 | Termo | Definição | Evitar |
 |---|---|---|
 | Automação | Os fluxos do n8n versionados em `automacao/n8n/` (resumo de documentos, pesquisa, digest de notícias e ingestão no Cérebro). | workflow solto, robô |
-| Backup | Cópia datada em `dados\backups\<AAAAMMDD-HHMMSS>\` do Postgres (bancos `litellm` e `keycloak`), do `cerebro.db` e dos volumes do n8n e do Open WebUI, com manifesto de sha256; o `.env` não entra. | snapshot |
+| Backup | Cópia datada em `dados\backups\<AAAAMMDD-HHMMSS>\` do Postgres do LiteLLM (`litellm-db.sql.gz`), do `cerebro.db` e dos volumes do n8n e do Open WebUI, com manifesto de sha256; o `.env` e o banco do Keycloak não entram (`scripts/backup/backup.py`). | snapshot |
 | Cérebro | Servidor MCP local (`runtime/cerebro/`) com busca na web, leitura de páginas, busca nos documentos indexados e memória de fatos. | Cerebro (sem acento) em texto corrido, memória |
+| Ecossistema | O que `scripts\parar.ps1` desliga e `iniciar.ps1` liga: painel, SquadTI, serviços Docker de qualquer perfil, Ollama e ComfyUI. `reiniciar.ps1` sem `-Tudo` reinicia só o painel (e a SquadTI, se estava ligada). | stack inteira |
 | Estúdio | Parte do painel que gera imagens, vídeos e músicas pelo ComfyUI ou por provedores de nuvem (`rotas/estudio_*.py`). | Studio (só no nome de `scripts/studio`) |
 | Instalador | `TudoIA-Setup.exe`, assistente do Windows que prepara a máquina e instala o TudoIA (`instalador/`, `scripts/empacotar/`). | setup, wizard |
 | Painel | Interface web e API de controle (FastAPI e SPA, `painel/`), em `http://127.0.0.1:3100/app/`. | dashboard, console |
-| Payload | Zip reproduzível com o código do repositório que o instalador carrega (`instalador/dados/payload.zip`, manifesto em `payload.manifest.json`). | pacote do instalador |
+| Payload | Zip reproduzível com o código do repositório e o instantâneo da Doutrina (pasta `doutrina/`) que o instalador carrega (`instalador/dados/payload.zip`, manifesto em `payload.manifest.json`). | pacote do instalador |
 | Serviço do host | Processo do Windows fora do Docker, por causa da GPU: Ollama (porta 11434) e ComfyUI (porta 8188). | serviço nativo |
-| SquadTI | Equipe de agentes (LangGraph) que gera projetos novos seguindo a Doutrina; roda no container `squadti` (porta 8790) e aparece no menu SquadTI do painel. | Squad (só em texto corrido, depois de definida), esquadrão |
+| SquadTI | Equipe de agentes (LangGraph) que gera projetos novos seguindo a Doutrina; roda no container `squadti` (porta 8790) e aparece no menu SquadTI do painel. Os termos dela estão na seção [SquadTI](#-squadti). | Squad (só em texto corrido, depois de definida), esquadrão |
 | TudoIA | O produto inteiro: o painel, o roteador, o Cérebro, a governança e os serviços que sobem por Docker ou no host. | TudoAI, Tudo IA |
 
 ## 🔀 Roteamento de modelos
@@ -76,6 +78,39 @@ Dentro de cada seção os termos seguem a ordem alfabética.
 | Skill órfã | Pasta de skill que tem o marcador `.tudoia` mas saiu de `skills[]`; `verificar` aponta e `sincronizar` remove. Pasta sem marcador nunca é apagada. | skill velha |
 | Workspace | Raiz de um projeto do usuário listada em `workspaces[]` ou numa instância `cursor`/`workspace`; recebe `AGENTS.md` com `${VAR}` literal, nunca o valor do segredo. | pasta de projeto |
 
+## 🤖 SquadTI
+
+Os termos abaixo valem para `runtime/squadti/` e para o menu SquadTI do painel. A API e o fluxo estão em [SquadTI (componente)](componentes/squadti.md).
+
+| Termo | Definição | Evitar |
+|---|---|---|
+| Aprovação humana | Decisão explícita do usuário amarrada ao conteúdo aprovado (`aprovacao.py`): vale para a especificação (`BUSINESS_SPEC`, antes da arquitetura) e para o pacote do release; se o arquivo muda depois, a aprovação deixa de valer. | OK automático |
+| Briefing | A demanda que o usuário entrega ao CHEFE para iniciar uma tarefa; é dado, nunca instrução. | prompt |
+| Caso dourado | Briefing sintético com respostas fixas, limites e verificadores, em `runtime/squadti/evals/casos/*.json` (`a-crud-tarefas`, `b-catalogo`, `c-autenticada`, `d-pedidos`). | teste de aceitação |
+| Carga | Agente de DevOps/SRE que sobe usuários simultâneos em degraus (k6) até violar o SLO e aponta o gargalo; o número é capacidade relativa ao teto de CPU do sandbox, não de produção (`carga.py`). | teste de performance de produção |
+| CHEFE | Tech Lead e orquestrador da SquadTI (`chefe.py`): único canal entre o usuário e os demais agentes; planeja, confere os critérios de pronto entre as fases e escreve o relatório de escalada. | gerente, coordenador |
+| Cockpit | A tela da tarefa no painel (`static/squadti.js`): trilha dos nós, orçamento, log ao vivo, auditoria e conversa com o CHEFE. | dashboard |
+| Escalada | Parada que exige decisão humana: limite de três passagens de QA ou revisão, estagnação, orçamento esgotado, critério de pronto não atendido ou saída de modelo inválida. O CHEFE escreve `docs/chefe/ESCALADA.md`. | erro, falha |
+| Estagnação | A mesma falha duas vezes seguidas (mesma assinatura de erro): é tratada como loop sem progresso e escala antes de gastar o resto das tentativas (`auditoria.py`). | travamento |
+| Eval | Execução de um caso dourado com modelo real, pela API HTTP, conferida por verificadores em código; mede se a Squad entrega código bom. Roda por `python -m evals.run`, consome tokens e não faz parte do `pytest`. Ver [evals](squadti/evals.md). | benchmark, teste unitário |
+| Hacker | Agente de AppSec em execução: ataca o sistema gerado, já rodando no sandbox, com o kit de ataque (autenticação, injeção, vazamento de erro, CORS, atribuição em massa, limites, cabeçalhos). | pentest |
+| Kit | Script determinístico, só biblioteca padrão e semente fixa, copiado para um container na rede do sandbox: `kit_api.py` (modos `ataque` e `macaco`) e `kit_ui.py` (macaco de interface, com Playwright). Cada achado traz um ID (`AUTH-01`, `INJ-01`, `IDOR-01`, `MAC-01`...) e o comando de reprodução. | scanner |
+| Livro de Lições | Arquivo JSONL (`SQUADTI_LICOES_ARQUIVO`, padrão `licoes.jsonl`) em que os achados dos agentes viram lições com triagem de destino e aprovação humana (`licoes.py`). É uma API pura e **ainda não está ligada ao grafo, à API HTTP nem ao painel**. Ver [licoes](squadti/licoes.md). | base de conhecimento, memória |
+| Macaco | Agente de QA em execução: usa o sistema à força, com entrada errada de todo jeito, texto hostil, JSON malformado e, se há tela, cliques e digitação aleatórios. | fuzzer (só no sentido genérico) |
+| Mantenedor | Último portão antes do release (`qualidade.py`, "eu daqui a 1 ano"): lê o projeto como quem vai mantê-lo; se não se orienta, devolve à documentação (duas voltas, depois escala). | revisor de docs |
+| Orçamento | Teto da tarefa em `tokens` (padrão 2.000.000), `tempo_s` (7200) e `chamadas` (300), editável no painel (`agentes.py`); estourou, a execução para e escala. `null` em um eixo é sem limite. | quota, cota |
+| Papel | Função de um agente na Squad (requisitos, arquiteto, dba, backend, frontend, revisor...). Cada papel carrega o núcleo e as regras das famílias do perfil dele na Doutrina; sem perfil o papel não trabalha. | persona |
+| Perfil (da SquadTI) | Destino do modelo da tarefa: `local-estrito` (padrão, nunca sai da máquina), `local`, `hibrido`, `nuvem` e `max`. `hibrido`, `nuvem` e `max` exigem `consentimento_nuvem`; o `tudoia-auto` é recusado. | modo |
+| Portão | Verificação que bloqueia a fase seguinte: QA, revisor, Sênior Master, AppSec, validação em execução, DevOps, Mantenedor e as duas aprovações humanas. Nenhum nó aprova por omissão. | gate (em texto corrido) |
+| Proveniência | `docs/proveniencia.json` da entrega: versão e hash da Doutrina, modelo e hash do prompt de cada chamada, tokens, tempo, hashes das aprovações e de cada arquivo gerado. Não contém prompt, resposta nem segredo (`proveniencia.py`). | log de auditoria (a auditoria é o registro por nó, no estado da tarefa) |
+| Sandbox | Rede interna do Docker (`--internal`, sem rota para a internet nem porta publicada) onde o sistema gerado e o banco dele sobem para serem atacados, estressados e usados à força, com teto de CPU e memória, sem capabilities e desmontados sempre (`sandbox.py`). Com a validação em `auto` e sem Docker respondendo, a fase é pulada com o motivo registrado. | ambiente de teste |
+| Sênior Master | Portão de qualidade de código dentro do desenvolvimento (`qualidade.py`): mede complexidade, função longa, duplicação, API pública sem documentação e gambiarras (IDs `QC-*`) e pede ao modelo a crítica dos pontos suspeitos; só bloqueia o que dá para conferir. Três voltas, depois escala. | linter |
+| Stack | Adaptador de tecnologia do backend (`stacks.py`): `dotnet` (padrão) ou `python`. Define os comandos de build, teste e auditoria, as áreas onde cada papel escreve e as famílias da Doutrina que não se aplicam. O CHEFE grava o `stack_id`. Não confundir com perfil de compose. | tecnologia, linguagem |
+| Tarefa | Uma conversa da Squad a partir de um briefing, com checkpoint em SQLite e `workspace/<tarefa>` no volume `squadti-dados`. A API executa uma por vez. | job, ticket |
+| Validação em execução | Fase em que o sistema gerado roda no sandbox e Macaco, Hacker e Carga tentam quebrá-lo (`validacao.py`); modos `auto`, `sempre` e `nunca`. | teste de integração |
+| Verificador | Função pura `(workspace, api, caso)` dos evals que confere um resultado e falha fechado: relatório ausente ou adulterado reprova (`evals/verificadores.py`). | assert |
+| Workspace da tarefa | Pasta `workspace/<tarefa>` no volume da SquadTI onde o projeto gerado nasce. Diferente do workspace da governança (raiz de projeto do usuário). | workspace (sozinho) |
+
 ## 🔐 Identidade e acesso
 
 | Termo | Definição | Evitar |
@@ -91,7 +126,7 @@ Dentro de cada seção os termos seguem a ordem alfabética.
 | Termo | Definição | Evitar |
 |---|---|---|
 | `.env` | Arquivo único de configuração e de segredos na raiz do repositório; ignorado pelo git. O modelo versionado é o `.env.example`. | arquivo de ambiente |
-| Perfil de compose | Grupo opcional de serviços do `docker-compose.yml` ligado por `COMPOSE_PROFILES`: `cerebro`, `webui`, `n8n`, `keycloak` e `squadti`. LiteLLM e Postgres sobem sempre. | profile (em texto corrido) |
+| Perfil de compose | Grupo opcional de serviços do `docker-compose.yml` ligado por `COMPOSE_PROFILES`: `cerebro`, `webui`, `n8n`, `keycloak` e `squadti`. `litellm-db` e `litellm` sobem sempre; o `keycloak-db` sobe com o perfil `keycloak`. | profile (em texto corrido) |
 | Projeto compose | Prefixo dos volumes e dos recursos do Docker, `tudoia` por padrão, trocado por `TUDOIA_COMPOSE_PROJETO` para isolar instalações. | namespace |
 | Segredo interno | Valor que o TudoIA gera sozinho no `.env` quando está vazio (`tudoia segredos`), como `LITELLM_MASTER_KEY` e `TUDOIA_SESSAO_SEGREDO`. | senha automática |
 
@@ -100,7 +135,8 @@ Dentro de cada seção os termos seguem a ordem alfabética.
 | Termo | Definição | Evitar |
 |---|---|---|
 | Doutrina | A Doutrina TEC: o conjunto de regras de engenharia da Tudo em Código, em repositório próprio. O TudoIA a consome por `DOUTRINA_TEC` (skill, MCP `doutrina-tec` e SquadTI) e fixa o commit usado em `governanca/doutrina.json`. | padrão TEC (em texto corrido), guia de estilo |
-| Doutrina fixada | O par repositório e commit (`sha`) registrado em `governanca/doutrina.json`; o Dockerfile da SquadTI e o compose repetem esse commit e o painel mostra se divergem. | pin (em texto corrido) |
+| Doutrina fixada | O par repositório e commit (`sha`, 40 caracteres) registrado em `governanca/doutrina.json`; o Dockerfile da SquadTI e o compose repetem esse commit e o painel mostra se divergem. O empacotador leva um instantâneo dela no payload e o instalador baixa a mesma versão quando o código vem do GitHub. | pin (em texto corrido) |
+| Falha fechada | Sem a condição de segurança (Doutrina ilegível, login não configurado, nuvem sem consentimento) o componente se recusa a agir em vez de seguir sem proteção. | fail-open, degradar em silêncio |
 | TEC.* | As bibliotecas .NET da Tudo em Código; a SquadTI gera projetos que as usam, a partir de um feed NuGet opcional. | libs TEC |
 
 ---
