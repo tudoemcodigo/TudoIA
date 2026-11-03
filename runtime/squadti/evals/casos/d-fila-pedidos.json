@@ -1,0 +1,25 @@
+{
+  "id": "d-pedidos",
+  "titulo": "Fila de pedidos com idempotência por chave e máquina de estados",
+  "complexidade": 4,
+  "stack": "python",
+  "perfil": "auto",
+  "briefing": "Preciso de uma API REST para uma fila de pedidos de uma loja fictícia. Criar pedido é uma operação que o cliente pode repetir por causa de falha de rede, então precisa ser idempotente por chave enviada pelo cliente. O pedido segue uma máquina de estados rígida e transições inválidas devem ser recusadas. Todos os dados são fictícios e a API é interna (sem login nesta versão).",
+  "respostas_da_entrevista": [
+    "Pedido: id (UUID), cliente (texto 1 a 120), itens (lista de 1 a 50 itens com sku, quantidade inteira de 1 a 1000 e preco_unitario decimal maior que zero), total (calculado pelo servidor com Decimal), estado, criado_em e atualizado_em.",
+    "Idempotência: POST /pedidos exige o cabeçalho Idempotency-Key (texto de 8 a 64 caracteres, letras, números e hífen). A mesma chave com o mesmo corpo devolve o MESMO pedido já criado (200 na repetição, 201 na primeira vez), sem criar outro. A mesma chave com corpo diferente devolve 422. Sem o cabeçalho devolve 400. Duas requisições simultâneas com a mesma chave criam um único pedido. As chaves expiram após 24 horas.",
+    "Estados: CRIADO, PAGO, SEPARADO, ENVIADO, ENTREGUE e CANCELADO. Transições válidas: CRIADO para PAGO ou CANCELADO; PAGO para SEPARADO ou CANCELADO; SEPARADO para ENVIADO ou CANCELADO; ENVIADO para ENTREGUE. ENTREGUE e CANCELADO são finais. Qualquer outra transição devolve 409 com o estado atual e as transições permitidas.",
+    "Operações: POST /pedidos, GET /pedidos/{id}, GET /pedidos?estado= (paginado, máximo 100 por página) e POST /pedidos/{id}/transicoes com o corpo {\"para\": \"PAGO\"}. Cada transição é registrada com data e estado anterior (histórico consultável em GET /pedidos/{id}/historico).",
+    "A transição também deve ser segura sob concorrência: duas transições simultâneas do mesmo pedido não podem ambas vencer a partir do mesmo estado (controle otimista por versão ou bloqueio). Persistência em SQLite basta.",
+    "Critério de pronto: testes automatizados da tabela completa de transições (válidas e inválidas), idempotência (repetição, corpo diferente, ausência do cabeçalho, concorrência), validação de itens e total; OpenAPI declarando o cabeçalho Idempotency-Key e as respostas 200, 201, 400, 409 e 422; Dockerfile e README."
+  ],
+  "limites": {"tokens": 2500000, "tempo_s": 7200},
+  "orcamento": {"tokens": 3750000, "tempo_s": 10800, "chamadas": 500},
+  "timeout_s": 10800,
+  "cobertura_minima": 90,
+  "verificadores_extra": [
+    {"tipo": "conteudo_contem", "nome": "openapi_declara_idempotency_key", "glob": ["contracts/openapi.*"], "termos_todos": ["idempotency-key", "/pedidos"]},
+    {"tipo": "conteudo_contem", "nome": "openapi_declara_respostas_da_maquina_de_estados", "glob": ["contracts/openapi.*"], "termos_todos": ["409", "201"]},
+    {"tipo": "conteudo_contem", "nome": "testes_cobrem_idempotencia_e_transicao_invalida", "glob": ["tests/**/*.py"], "termos_todos": ["idempotency", "409"]}
+  ]
+}

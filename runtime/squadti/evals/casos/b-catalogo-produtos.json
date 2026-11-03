@@ -1,0 +1,25 @@
+{
+  "id": "b-catalogo",
+  "titulo": "Catálogo de produtos com regra de preço e paginação",
+  "complexidade": 2,
+  "stack": "python",
+  "perfil": "auto",
+  "briefing": "Preciso de uma API REST para o catálogo de produtos de uma loja fictícia. Cada produto tem SKU único, nome, preço e estoque. A regra de negócio central: o preço nunca pode ser zero nem negativo, e o preço promocional (opcional) precisa ser menor que o preço normal. A listagem precisa de paginação e de busca por nome. Todos os dados são fictícios e a API é interna (sem login nesta versão).",
+  "respostas_da_entrevista": [
+    "Atributos: id (UUID), sku (texto único, 3 a 40 caracteres, letras maiúsculas, números e hífen), nome (1 a 200 caracteres), preco (decimal com 2 casas, maior que zero), preco_promocional (opcional, decimal com 2 casas, maior que zero e estritamente menor que preco), estoque (inteiro maior ou igual a zero), criado_em e atualizado_em.",
+    "Usar Decimal para dinheiro, nunca float. Preço inválido ou promoção maior ou igual ao preço normal devolve 422 com mensagem clara no envelope de erro. SKU repetido devolve 409.",
+    "Operações: POST /produtos, GET /produtos/{id}, PUT /produtos/{id}, DELETE /produtos/{id} e GET /produtos com paginação.",
+    "Paginação por página e tamanho: ?pagina= (começa em 1) e ?tamanho= (padrão 20, máximo 100; acima disso 422). A resposta traz itens, pagina, tamanho e total. Ordenação estável por nome e depois por id. Busca opcional ?q= por parte do nome, sem diferenciar maiúsculas.",
+    "Fora de escopo: carrinho, pedidos, imagens, categorias e autenticação. Persistência em SQLite basta.",
+    "Critério de pronto: testes de unidade da regra de preço (incluindo limites: preço 0, 0.01, promoção igual ao preço), testes de API para paginação (página 1, última página, página além do fim, tamanho 0 e 101) e para SKU duplicado; OpenAPI, Dockerfile e README."
+  ],
+  "limites": {"tokens": 2000000, "tempo_s": 5400},
+  "orcamento": {"tokens": 3000000, "tempo_s": 8100, "chamadas": 400},
+  "timeout_s": 8100,
+  "cobertura_minima": 90,
+  "verificadores_extra": [
+    {"tipo": "conteudo_contem", "nome": "openapi_declara_paginacao", "glob": ["contracts/openapi.*"], "termos_todos": ["/produtos"], "termos_qualquer": ["pagina", "page", "tamanho", "limit"]},
+    {"tipo": "conteudo_contem", "nome": "codigo_usa_decimal_no_preco", "glob": ["app/**/*.py"], "termos_qualquer": ["decimal"]},
+    {"tipo": "conteudo_contem", "nome": "testes_cobrem_regra_de_preco_e_sku_duplicado", "glob": ["tests/**/*.py"], "termos_todos": ["preco_promocional", "409"]}
+  ]
+}

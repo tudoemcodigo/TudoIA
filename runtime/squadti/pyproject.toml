@@ -18,4 +18,4 @@ package = false   # são scripts em orquestrador/ (imports planos), não um paco
 
 [tool.pytest.ini_options]
 testpaths = ["orquestrador/tests"]
-pythonpath = ["orquestrador"]
+pythonpath = ["orquestrador", "."]  # "." = runtime/squadti: o pacote evals/ (importado como evals.*)

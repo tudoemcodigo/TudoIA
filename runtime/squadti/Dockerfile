@@ -34,6 +34,7 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/python UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1
 COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY orquestrador ./orquestrador
+COPY evals ./evals
 COPY --from=doutrina /doutrina /doutrina
 COPY entrypoint.sh /usr/local/bin/squadti-entrypoint
 RUN chmod 0555 /usr/local/bin/squadti-entrypoint

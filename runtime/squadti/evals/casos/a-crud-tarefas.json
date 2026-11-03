@@ -1,0 +1,23 @@
+{
+  "id": "a-crud-tarefas",
+  "titulo": "CRUD simples de tarefas com título obrigatório",
+  "complexidade": 1,
+  "stack": "python",
+  "perfil": "auto",
+  "briefing": "Preciso de uma API REST pequena para gerenciar uma lista de tarefas pessoais (to-do). Cada tarefa tem título (obrigatório, texto de 1 a 120 caracteres), descrição opcional e um indicador de concluída. A API deve permitir criar, listar, consultar, atualizar e remover tarefas. Não há usuários nem login nesta versão: é uma API interna. Todos os dados são fictícios.",
+  "respostas_da_entrevista": [
+    "Atributos da tarefa: id (UUID gerado pelo servidor), titulo (obrigatório, 1 a 120 caracteres, sem espaços só nas pontas), descricao (opcional, até 1000 caracteres), concluida (booleano, padrão false), criada_em e atualizada_em (UTC).",
+    "Operações: POST /tarefas, GET /tarefas, GET /tarefas/{id}, PUT /tarefas/{id} (substitui os campos editáveis), DELETE /tarefas/{id}. Título vazio ou ausente deve ser recusado com erro de validação (422) no envelope de erro da Doutrina.",
+    "A listagem aceita o filtro opcional ?concluida=true|false e devolve no máximo 100 itens por chamada.",
+    "Não há autenticação, multiusuário, anexos nem notificações. Persistência em SQLite basta.",
+    "Critério de pronto: testes automatizados cobrindo o caminho feliz e as entradas inválidas (título vazio, título longo demais, id inexistente, JSON malformado), OpenAPI atualizado, Dockerfile e README com instruções de execução."
+  ],
+  "limites": {"tokens": 1500000, "tempo_s": 3600},
+  "orcamento": {"tokens": 2250000, "tempo_s": 5400, "chamadas": 300},
+  "timeout_s": 5400,
+  "cobertura_minima": 90,
+  "verificadores_extra": [
+    {"tipo": "conteudo_contem", "nome": "openapi_declara_tarefas", "glob": ["contracts/openapi.*"], "termos_todos": ["/tarefas", "titulo"]},
+    {"tipo": "conteudo_contem", "nome": "testes_cobrem_titulo_invalido", "glob": ["tests/**/*.py"], "termos_qualquer": ["422"]}
+  ]
+}
