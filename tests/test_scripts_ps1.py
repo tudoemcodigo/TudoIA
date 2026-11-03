@@ -27,3 +27,10 @@ def test_parar_porta_ignora_pid_zero_e_confere_a_linha_de_comando():
     comum = (SCRIPTS / "_comum.ps1").read_text(encoding="ascii")
     corpo = comum[comum.index("function PararPorta"):comum.index("# ---------------------------------------------------------------- painel")]
     assert "OwningProcess -gt 0" in corpo and "$deveConter" in corpo
+
+
+def test_squadti_no_ar_confere_o_saude_e_nao_so_a_porta():
+    """O Docker publica a porta antes de o processo do container escutar: porta aberta nao e API pronta."""
+    comum = (SCRIPTS / "_comum.ps1").read_text(encoding="ascii")
+    corpo = comum[comum.index("function SquadtiNoAr"):comum.index("# `up -d --build squadti`")]
+    assert "/saude" in corpo and "PortaAberta" not in corpo
