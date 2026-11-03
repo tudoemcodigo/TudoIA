@@ -96,7 +96,11 @@ function SquadtiConfigurado {
     return ((ValorEnv 'TUDOIA_SQUADTI_TOKEN').Length -ge 32) -and [bool](ValorEnv 'SQUADTI_API_KEY')
 }
 
-function SquadtiNoAr { return (PortaAberta $script:PortaSquadti) }
+# "No ar" = a API responde /saude. So a porta aberta engana: o Docker publica a porta antes de o processo dentro do container escutar.
+function SquadtiNoAr {
+    try { return ((Invoke-WebRequest "http://127.0.0.1:$($script:PortaSquadti)/saude" -UseBasicParsing -TimeoutSec 3).StatusCode -eq 200) }
+    catch { return $false }
+}
 
 # `up -d --build squadti` ativa o perfil sozinho (servico nomeado), reconstroi se o codigo mudou e nao toca nos outros servicos.
 function IniciarSquadti {
