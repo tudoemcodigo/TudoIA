@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 CAMPOS = {
     "origem", "call_type", "grupo", "pontos", "motivos", "marcador", "modelo_pedido", "stream",
     "modelo", "provedor", "membro", "tentativa", "tokens_entrada", "tokens_saida", "tok_s", "ms",
-    "custo_usd", "erro", "ok", "finish_reason",
+    "custo_usd", "erro", "ok", "finish_reason", "perfil", "categoria", "destino",
 }
 INTERVALO_PROGRESSO = 0.5   # no máximo 2 eventos de progresso por segundo por pedido
 
@@ -26,10 +26,11 @@ def evento(tipo: str, id_pedido: str | None, **campos) -> dict:
     return ev
 
 
-def evento_inicio(data: dict, grupo=None, pontos=None, motivos=None, origem="", call_type="") -> dict:
+def evento_inicio(data: dict, grupo=None, pontos=None, motivos=None, origem="", call_type="", **perfil) -> dict:
+    """`perfil`: perfil, categoria e destino (local/nuvem/pago) quando o pedido veio por um perfil de destino."""
     return evento("inicio", data.get("litellm_call_id"), origem=str(origem)[:60], call_type=str(call_type),
                   grupo=grupo, pontos=pontos, motivos=motivos, modelo_pedido=data.get("model"),
-                  stream=bool(data.get("stream")))
+                  stream=bool(data.get("stream")), **perfil)
 
 
 class Progresso:

@@ -109,6 +109,7 @@ class Roteador(CustomLogger):
         self._tarefa_aquecer = None
         self._aquecido = False
         self._retomar_em = 0.0
+        self._rotulos: dict[str, dict] = {}    # call_id → perfil/categoria/destino, para o cabeçalho x-tudoia-*
 
     @staticmethod
     def _ler_config() -> dict | None:
@@ -278,6 +279,11 @@ class Roteador(CustomLogger):
                 and data.get("model") in ("tudoia-codigo", "tudoia-nuvem", "tudoia-local") and RR.VISAO in grupos_disponiveis:
             data["model"] = RR.VISAO
 
+        regras = self.regras()
+        nome_perfil = RR.perfil_do_modelo(regras, data.get("model"))
+        if nome_perfil:
+            return await self._rotear_perfil(data, nome_perfil, regras["perfis"][nome_perfil], call_type, headers)
+
         if data.get("model") != "tudoia-auto":
             self._preparar(data)
             self._evento(EV.evento_inicio(data, origem=headers.get("user-agent", ""), call_type=call_type))
@@ -319,6 +325,58 @@ class Roteador(CustomLogger):
         else:
             self._anexar("roteador.jsonl", dict(registro, call_id=None, ok=None))
         return data
+
+    # ── perfis de destino (tudoia-local-estrito, tudoia-hibrido): config em roteamento.yaml, `perfis` ──────────────
+    @staticmethod
+    def _erro_http(status: int, msg: str) -> Exception:
+        try:
+            from fastapi import HTTPException   # no container do LiteLLM; o cliente recebe o status e a mensagem
+            return HTTPException(status_code=status, detail={"error": msg})
+        except ImportError:
+            return RuntimeError(msg)
+
+    async def _rotear_perfil(self, data: dict, nome: str, perfil: dict, call_type, headers: dict) -> dict:
+        """Escolhe o grupo pelo perfil. Falha fechado: se o perfil não pode cumprir a garantia, devolve erro ao cliente
+        em vez de rotear (nada sai da máquina por engano). Perfil sem nuvem ou #local: disable_fallbacks no pedido."""
+        d = RR.decidir_perfil(data, nome, perfil, RR.info_grupos(self._cfg), ollama_ok=await self._ollama_no_ar(),
+                              gpu_ocupada=self.gpu_ocupada())
+        origem, call_id = headers.get("user-agent", ""), data.get("litellm_call_id")
+        etiquetas = {"perfil": nome, "categoria": d.categoria, "destino": d.destino}
+        if d.recusa:
+            status, msg = d.recusa
+            self._evento(EV.evento("erro", call_id, grupo=None, motivos=d.motivos, erro=msg[:200], ok=False, **etiquetas))
+            self._anexar("roteador.jsonl", {"ts": _agora(), "call_type": str(call_type), "origem": str(origem)[:40],
+                                            "grupo": None, "motivos": d.motivos, "marcador": d.marcador, "ok": False,
+                                            "erro": msg[:200], "call_id": call_id, **etiquetas})
+            raise self._erro_http(status, msg)
+        if d.fechado:
+            data["disable_fallbacks"] = True   # o router não troca o grupo (estouro de contexto, falha) por conta própria
+        self._evento(EV.evento_inicio(data, grupo=d.grupo, pontos=0, motivos=d.motivos, origem=origem,
+                                      call_type=call_type, **etiquetas))
+        data["model"] = d.grupo
+        self._preparar(data)
+        registro = {"ts": _agora(), "call_type": str(call_type), "origem": str(origem)[:40], "pontos": 0,
+                    "motivos": d.motivos, "grupo": d.grupo, "marcador": d.marcador, **etiquetas}
+        if call_id:
+            if len(self._pendentes) >= MAX_PENDENTES:
+                self._pendentes.pop(next(iter(self._pendentes)))
+            if len(self._rotulos) >= MAX_PENDENTES:
+                self._rotulos.pop(next(iter(self._rotulos)))
+            self._pendentes[call_id] = registro
+            self._rotulos[call_id] = dict(etiquetas, grupo=d.grupo)
+        else:
+            self._anexar("roteador.jsonl", dict(registro, call_id=None, ok=None))
+        return data
+
+    async def async_post_call_response_headers_hook(self, data, user_api_key_dict, response, request_headers=None):
+        """Cabeçalhos x-tudoia-* com o destino DECIDIDO (o membro real de cada tentativa está no evento "modelo")."""
+        try:
+            r = self._rotulos.get((data or {}).get("litellm_call_id"))
+            if r:
+                return {f"x-tudoia-{k}": str(v) for k, v in r.items() if v}
+        except Exception as e:
+            print(f"[roteador] cabeçalho x-tudoia: {type(e).__name__}", flush=True)
+        return None
 
     def _preparar(self, data: dict) -> None:
         """Ajusta o pedido ao destino final. Imagem: grupo com visão recebe tudo; sessão de agente (tools) em grupo

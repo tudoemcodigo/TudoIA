@@ -61,6 +61,7 @@ _TRADUCOES = {
     "missing": "campo obrigatório", "extra_forbidden": "campo desconhecido", "string_too_long": "texto longo demais",
     "string_too_short": "texto curto demais", "int_parsing": "precisa ser um número inteiro",
     "float_parsing": "precisa ser um número", "bool_parsing": "precisa ser verdadeiro ou falso",
+    "float_type": "precisa ser um número", "int_type": "precisa ser um número inteiro",
     "greater_than_equal": "valor abaixo do mínimo", "less_than_equal": "valor acima do máximo",
     "greater_than": "valor abaixo do mínimo", "less_than": "valor acima do máximo",
     "literal_error": "valor fora da lista permitida", "json_invalid": "JSON inválido", "dict_type": "precisa ser um objeto",

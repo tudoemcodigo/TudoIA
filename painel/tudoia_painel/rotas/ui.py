@@ -33,7 +33,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
     @router.get("/app/{arquivo}")
     def estatico(arquivo: str):
         alvo = ESTATICO / arquivo
-        permitidos = {"painel.js", "painel.css", "fontes.css", "logo.svg", "favicon.ico", "logo-512.png"}
+        permitidos = {"painel.js", "painel.css", "squadti.js", "squadti.css", "fontes.css", "logo.svg", "favicon.ico", "logo-512.png"}
         fonte = re.fullmatch(r"fonte-\d{1,2}\.woff2", arquivo)
         if (arquivo not in permitidos and not fonte) or not alvo.is_file():
             raise ErroApi(404, "nao_encontrado", "arquivo não encontrado")

@@ -86,7 +86,16 @@ def obter_detalhes_grupos_roteador(raiz: Path) -> dict[str, Any]:
         pass
 
     for mlocal in modelos_locais_nomes:
-        papeis_loc = ["codigo", "agente"] if ("agente" in mlocal or "coder" in mlocal) else ["chat"]
+        mlocal_lower = mlocal.lower()
+        papeis_loc = []
+        if any(t in mlocal_lower for t in ("agente", "coder", "code")):
+            papeis_loc.extend(["codigo", "agente"])
+        if any(t in mlocal_lower for t in ("vision", "-vl", "vlm")):
+            papeis_loc.append("visao")
+        if any(t in mlocal_lower for t in ("reason", "think", "-r1", "magistral")):
+            papeis_loc.append("raciocinio")
+        if not papeis_loc:
+            papeis_loc = ["chat"]
         todos_modelos[mlocal] = {
             "nome": mlocal,
             "id": mlocal.removeprefix("local/"),
@@ -221,6 +230,7 @@ def criar_grupo_roteador(
     descricao: str | None = None,
     modelos: list[str] | None = None,
     tier: str = "FREE",
+    papeis: list[str] | None = None,
     dados: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raiz = Path(raiz)
@@ -235,6 +245,8 @@ def criar_grupo_roteador(
         d["membros"] = modelos
     if tier:
         d.setdefault("tier", tier)
+    if papeis is not None:
+        d.setdefault("papeis", papeis)
 
     gid = str(d.get("id", "")).lower().strip()
     if not RE_GRUPO_ID.match(gid):
@@ -249,8 +261,8 @@ def criar_grupo_roteador(
     titulo_final = str(d.get("titulo", "")).strip() or gid
     descricao_final = str(d.get("descricao", "")).strip() or "Grupo customizado"
     tier_final = str(d.get("tier", "FREE")).upper().strip()
-    if tier_final not in ("FREE", "PAID"):
-        raise ValueError("Tier deve ser 'FREE' ou 'PAID'")
+    if tier_final not in ("FREE", "PAID", "LOCAL"):
+        raise ValueError("Tier deve ser 'FREE', 'PAID' ou 'LOCAL'")
 
     membros = d.get("membros") or []
     if not isinstance(membros, list):
@@ -258,12 +270,18 @@ def criar_grupo_roteador(
 
     ordem[gid] = [str(m).strip() for m in membros if str(m).strip()]
 
+    papeis_raw = d.get("papeis")
+    if papeis_raw is not None and isinstance(papeis_raw, list):
+        papeis_finais = [str(p).strip().lower() for p in papeis_raw if str(p).strip()]
+    else:
+        papeis_finais = ["chat", "codigo"]
+
     customizados = roteamento.setdefault("grupos_customizados", {})
     customizados[gid] = {
         "titulo": titulo_final,
         "descricao": descricao_final,
         "tier": tier_final,
-        "papeis": d.get("papeis") or ["chat", "codigo", "agente", "raciocinio", "rapido"]
+        "papeis": papeis_finais
     }
 
     regras_modulo = carregar_modulo_regras()
@@ -281,6 +299,8 @@ def atualizar_grupo_roteador(
     descricao: str | None = None,
     ativo: bool | None = None,
     modelos: list[str] | None = None,
+    tier: str | None = None,
+    papeis: list[str] | None = None,
     dados: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raiz = Path(raiz)
@@ -293,6 +313,10 @@ def atualizar_grupo_roteador(
         d["ativo"] = ativo
     if modelos is not None:
         d["membros"] = modelos
+    if tier is not None:
+        d["tier"] = tier
+    if papeis is not None:
+        d["papeis"] = papeis
 
     caminho_rot = raiz / "config" / "roteamento.yaml"
     roteamento = yaml.safe_load(caminho_rot.read_text(encoding="utf-8")) or {}
@@ -313,13 +337,20 @@ def atualizar_grupo_roteador(
     if "membros" in d and isinstance(d["membros"], list):
         ordem[grupo_id] = [str(m).strip() for m in d["membros"] if str(m).strip()]
 
-    # Título e Descrição
+    # Título, Descrição, Tier e Papéis
     customizados = roteamento.setdefault("grupos_customizados", {})
     info_meta = customizados.setdefault(grupo_id, {})
     if "titulo" in d and d["titulo"]:
         info_meta["titulo"] = str(d["titulo"]).strip()
     if "descricao" in d and d["descricao"] is not None:
         info_meta["descricao"] = str(d["descricao"]).strip()
+    if "tier" in d and d["tier"]:
+        tier_val = str(d["tier"]).upper().strip()
+        if tier_val not in ("FREE", "PAID", "LOCAL"):
+            raise ValueError("Tier deve ser 'FREE', 'PAID' ou 'LOCAL'")
+        info_meta["tier"] = tier_val
+    if "papeis" in d and isinstance(d["papeis"], list):
+        info_meta["papeis"] = [str(p).strip().lower() for p in d["papeis"] if str(p).strip()]
 
     regras_modulo = carregar_modulo_regras()
     regras_modulo.validar_regras(roteamento)
@@ -371,6 +402,7 @@ def auto_vincular_modelos_por_papeis(raiz: Path) -> dict[str, Any]:
 
     modelos_vinculados_count = 0
 
+    # 1. Modelos de provedores em nuvem ativos
     for prov in provs_ativos:
         for m in prov.modelos:
             if not m.ativo:
@@ -386,6 +418,41 @@ def auto_vincular_modelos_por_papeis(raiz: Path) -> dict[str, Any]:
                     if m.nome not in lista_membros:
                         lista_membros.append(m.nome)
                         modelos_vinculados_count += 1
+
+    # 2. Modelos locais reais do Ollama (para grupos com tier LOCAL ou tudoia-local)
+    modelos_locais_tags: list[tuple[str, set[str]]] = []
+    try:
+        ollama_url = env.get("OLLAMA_URL") or upstreams.OLLAMA
+        with httpx.Client(timeout=0.6) as cliente:
+            resp = cliente.get(f"{ollama_url}/api/tags")
+            if resp.status_code == 200:
+                for item in resp.json().get("models", []):
+                    tag_nome = item.get("name", "")
+                    if tag_nome:
+                        nome_com_prefixo = f"local/{tag_nome}"
+                        tag_lower = tag_nome.lower()
+                        papeis_loc = []
+                        if any(t in tag_lower for t in ("agente", "coder", "code")):
+                            papeis_loc.extend(["codigo", "agente"])
+                        if any(t in tag_lower for t in ("vision", "-vl", "vlm")):
+                            papeis_loc.append("visao")
+                        if any(t in tag_lower for t in ("reason", "think", "-r1", "magistral")):
+                            papeis_loc.append("raciocinio")
+                        if not papeis_loc:
+                            papeis_loc = ["chat"]
+                        modelos_locais_tags.append((nome_com_prefixo, set(papeis_loc)))
+    except Exception:
+        pass
+
+    for local_nome, local_papeis in modelos_locais_tags:
+        for gid, lista_membros in ordem.items():
+            gmeta = GRUPOS_CANONICOS.get(gid) or customizados.get(gid) or {}
+            tier_alvo = gmeta.get("tier", "FREE")
+            papeis_alvo = set(gmeta.get("papeis") or ["chat", "codigo"])
+            if (tier_alvo == "LOCAL" or gid == "tudoia-local") and (not papeis_alvo or local_papeis.intersection(papeis_alvo)):
+                if local_nome not in lista_membros:
+                    lista_membros.append(local_nome)
+                    modelos_vinculados_count += 1
 
     regras_modulo = carregar_modulo_regras()
     regras_modulo.validar_regras(roteamento)

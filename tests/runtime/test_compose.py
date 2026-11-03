@@ -24,6 +24,8 @@ def test_litellm_recebe_toda_chave_que_o_config_gerado_referencia():
     chaves |= set(re.findall(r"os\.environ/([A-Z][A-Z0-9_]+)", catalogo))
     gerador = (RAIZ / "painel" / "tudoia_painel" / "gerador.py").read_text(encoding="utf-8")
     chaves |= set(re.findall(r"os\.environ/([A-Z][A-Z0-9_]+)", gerador))
+    video = (RAIZ / "config" / "video-nuvem.yaml").read_text(encoding="utf-8")   # deployments video/* (video_nuvem.py)
+    chaves |= set(re.findall(r"^\s+chave:\s*([A-Z][A-Z0-9_]+)\s*$", video, re.M))
     assert chaves, "catálogo sem provedores: o regex parou de casar"
     assert chaves <= _nomes("litellm"), sorted(chaves - _nomes("litellm"))
 

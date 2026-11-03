@@ -9,6 +9,7 @@ from fastapi import APIRouter
 
 
 from ..catalogo import carregar_catalogo
+from ..video_nuvem import catalogo_video
 from ..envfile import gravar_valor, ler_env, mascarar
 from ..erros import ErroApi
 from ..ambiente import Contexto
@@ -30,18 +31,98 @@ CATEGORIAS_CHAVES = {
     "DEEPSEEK_API_KEY": ("PAID", "DeepSeek"),
     "XAI_API_KEY": ("PAID", "xAI Grok"),
     "HF_TOKEN": ("PAID", "Hugging Face"),
+    "MUAPI_API_KEY": ("PAID", "MuAPI (música e áudio)"),
+    "FAL_AI_API_KEY": ("PAID", "fal.ai (vídeo na nuvem pelo LiteLLM)"),
     "CONTEXT7_API_KEY": ("GOVERNANCA", "Context7 MCP"),
     "SUPABASE_ACCESS_TOKEN": ("GOVERNANCA", "Supabase Access Token"),
     "SUPABASE_SERVICE_ROLE_KEY": ("GOVERNANCA", "Supabase Service Role"),
     "SUPABASE_URL": ("GOVERNANCA", "Supabase Project URL"),
     "GITHUB_PERSONAL_ACCESS_TOKEN": ("GOVERNANCA", "GitHub MCP Token"),
-    "LITELLM_MASTER_KEY": ("SISTEMA", "LiteLLM Master Key"),
-    "LITELLM_DB_PASSWORD": ("SISTEMA", "LiteLLM DB Password"),
-    "WEBUI_SECRET_KEY": ("SISTEMA", "Open WebUI Secret"),
-    "SEARXNG_SECRET": ("SISTEMA", "SearXNG Secret"),
-    "N8N_ENCRYPTION_KEY": ("SISTEMA", "n8n Encryption Key"),
-    "TZ": ("SISTEMA", "Fuso Horário"),
-    "OLLAMA_URL": ("SISTEMA", "Ollama Container URL"),
+    "CEREBRO_TOKEN_ESTATICO": ("GOVERNANCA", "MCP: cerebro"),
+    "LITELLM_MASTER_KEY": ("SISTEMA", "Chave mestra do LiteLLM"),
+    "LITELLM_DB_PASSWORD": ("SISTEMA", "Senha do banco do LiteLLM"),
+    "WEBUI_SECRET_KEY": ("SISTEMA", "Segredo do Open WebUI"),
+    "SEARXNG_SECRET": ("SISTEMA", "Segredo do SearXNG"),
+    "N8N_ENCRYPTION_KEY": ("SISTEMA", "Chave de criptografia do n8n"),
+    "KEYCLOAK_DB_PASSWORD": ("SISTEMA", "Senha do banco do Keycloak"),
+    "TZ": ("SISTEMA", "Fuso horário"),
+    "OLLAMA_URL": ("SISTEMA", "Endereço do Ollama (containers)"),
+    "COMPOSE_PROFILES": ("SISTEMA", "Perfis do Docker Compose"),
+    "TUDOIA_COMPOSE_PROJETO": ("SISTEMA", "Nome do projeto no Docker Compose"),
+    "TUDOIA_COMFYUI_PORTABLE": ("SISTEMA", "Pasta do ComfyUI portátil"),
+    "TUDOIA_OLLAMA_MODELS": ("SISTEMA", "Pasta dos modelos do Ollama"),
+    "TUDOIA_ESTUDIO_POLLINATIONS": ("SISTEMA", "Estúdio: usar Pollinations na nuvem"),
+    "TUDOIA_OIDC_ISSUER": ("SISTEMA", "Login: endereço do emissor (Keycloak)"),
+    "TUDOIA_OIDC_CLIENT_ID": ("SISTEMA", "Login: cliente do painel"),
+    "TUDOIA_OIDC_CLIENT_SECRET": ("SISTEMA", "Login: segredo do cliente do painel"),
+    "TUDOIA_OIDC_SCOPE": ("SISTEMA", "Login: escopos pedidos"),
+    "TUDOIA_SESSAO_SEGREDO": ("SISTEMA", "Login: segredo das sessões do painel"),
+    "TUDOIA_COOKIE_SEGURO": ("SISTEMA", "Login: cookie só em HTTPS"),
+    "TUDOIA_KEYCLOAK_URL": ("SISTEMA", "Keycloak: endereço"),
+    "TUDOIA_KEYCLOAK_ADMIN": ("SISTEMA", "Keycloak: usuário administrador"),
+    "TUDOIA_KEYCLOAK_ADMIN_PASSWORD": ("SISTEMA", "Keycloak: senha do administrador"),
+    "TUDOIA_MCP_CLIENT_ID": ("SISTEMA", "Login do Cérebro: cliente"),
+    "TUDOIA_MCP_CLIENT_SECRET": ("SISTEMA", "Login do Cérebro: segredo do cliente"),
+    "TUDOIA_CAPTURAS_CLIENT_ID": ("SISTEMA", "Capturas de tela: cliente"),
+    "TUDOIA_CAPTURAS_CLIENT_SECRET": ("SISTEMA", "Capturas de tela: segredo do cliente"),
+}
+
+# Grupo de exibição das chaves de SISTEMA (a categoria continua a mesma, para não quebrar quem lê a API).
+GRUPO_SISTEMA = {
+    **dict.fromkeys(("TUDOIA_OIDC_ISSUER", "TUDOIA_OIDC_CLIENT_ID", "TUDOIA_OIDC_CLIENT_SECRET", "TUDOIA_OIDC_SCOPE",
+                     "TUDOIA_SESSAO_SEGREDO", "TUDOIA_COOKIE_SEGURO", "TUDOIA_KEYCLOAK_URL", "TUDOIA_KEYCLOAK_ADMIN",
+                     "TUDOIA_KEYCLOAK_ADMIN_PASSWORD", "TUDOIA_MCP_CLIENT_ID", "TUDOIA_MCP_CLIENT_SECRET",
+                     "TUDOIA_CAPTURAS_CLIENT_ID", "TUDOIA_CAPTURAS_CLIENT_SECRET"), "acesso"),
+    **dict.fromkeys(("TZ", "OLLAMA_URL", "COMPOSE_PROFILES", "TUDOIA_COMPOSE_PROJETO", "TUDOIA_COMFYUI_PORTABLE",
+                     "TUDOIA_OLLAMA_MODELS", "TUDOIA_ESTUDIO_POLLINATIONS"), "configuracao"),
+}
+GRUPO_DA_CATEGORIA = {"FREE": "gratuitos", "PAID": "pagos", "GOVERNANCA": "mcp"}
+# Valores que não são segredo (endereços, ids, pastas, opções). Continuam mascarados na listagem por precaução.
+NAO_SECRETAS = {
+    "TZ", "OLLAMA_URL", "COMPOSE_PROFILES", "TUDOIA_COMPOSE_PROJETO", "TUDOIA_COMFYUI_PORTABLE", "TUDOIA_OLLAMA_MODELS",
+    "TUDOIA_ESTUDIO_POLLINATIONS", "TUDOIA_OIDC_ISSUER", "TUDOIA_OIDC_CLIENT_ID", "TUDOIA_OIDC_SCOPE",
+    "TUDOIA_COOKIE_SEGURO", "TUDOIA_KEYCLOAK_URL", "TUDOIA_KEYCLOAK_ADMIN", "TUDOIA_MCP_CLIENT_ID",
+    "TUDOIA_CAPTURAS_CLIENT_ID", "NVIDIA_NIM_API_BASE", "SUPABASE_URL", "CLOUDFLARE_ACCOUNT_ID",
+}
+
+
+def grupo_da_chave(chave: str, categoria: str) -> str:
+    if categoria in GRUPO_DA_CATEGORIA:
+        return GRUPO_DA_CATEGORIA[categoria]
+    return GRUPO_SISTEMA.get(chave, "servicos")
+
+LINKS_PROVEDORES: dict[str, str] = {
+    # Provedores de Modelos LLM / Difusão
+    "NVIDIA_NIM_API_KEY": "https://build.nvidia.com",
+    "NVIDIA_NIM_API_BASE": "https://build.nvidia.com",
+    "OPENROUTER_API_KEY": "https://openrouter.ai/keys",
+    "GROQ_API_KEY": "https://console.groq.com/keys",
+    "GEMINI_API_KEY": "https://aistudio.google.com/apikey",
+    "CLOUDFLARE_API_KEY": "https://dash.cloudflare.com/profile/api-tokens",
+    "CLOUDFLARE_ACCOUNT_ID": "https://dash.cloudflare.com",
+    "ANTHROPIC_API_KEY": "https://console.anthropic.com/settings/keys",
+    "OPENAI_API_KEY": "https://platform.openai.com/api-keys",
+    "DEEPSEEK_API_KEY": "https://platform.deepseek.com/api_keys",
+    "XAI_API_KEY": "https://console.x.ai",
+    "HF_TOKEN": "https://huggingface.co/settings/tokens",
+    "MUAPI_API_KEY": "https://muapi.ai",
+    "FAL_AI_API_KEY": "https://fal.ai/dashboard/keys",
+    # Governança, MCP e Serviços em Nuvem
+    "CONTEXT7_API_KEY": "https://context7.com",
+    "SUPABASE_ACCESS_TOKEN": "https://supabase.com/dashboard/account/tokens",
+    "SUPABASE_SERVICE_ROLE_KEY": "https://supabase.com/dashboard/project/_/settings/api",
+    "SUPABASE_URL": "https://supabase.com/dashboard",
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "https://github.com/settings/tokens",
+    "BRAVE_API_KEY": "https://api.search.brave.com/app/keys",
+    "TAVILY_API_KEY": "https://app.tavily.com/home",
+    # Serviços Locais e Upstreams
+    "OLLAMA_URL": "https://ollama.com",
+    "CEREBRO_TOKEN_ESTATICO": "http://127.0.0.1:8765",
+    "LITELLM_MASTER_KEY": "http://127.0.0.1:4000",
+    "LITELLM_DB_PASSWORD": "http://127.0.0.1:4000",
+    "WEBUI_SECRET_KEY": "http://127.0.0.1:3000",
+    "SEARXNG_SECRET": "http://127.0.0.1:8080",
+    "N8N_ENCRYPTION_KEY": "http://127.0.0.1:5678",
 }
 
 
@@ -62,6 +143,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
         for p in catalogo.provedores:
             chaves.add(p.chave)
             chaves.update(p.chaves_extras)
+        chaves.update(m.chave for m in catalogo_video(raiz))   # vídeo na nuvem (config/video-nuvem.yaml)
 
         # Inspeciona dinamicamente servidores MCP em governanca/mcp.json
         chaves_mcp: dict[str, str] = {}
@@ -82,6 +164,14 @@ def criar_router(ctx: Contexto) -> APIRouter:
             except Exception as e:   # mcp.json ilegível: as chaves dos MCP só deixam de aparecer na lista
                 log.warning("mcp.json ilegível ao listar segredos (%s)", type(e).__name__)
 
+        # Mescla links canônicos com links dinâmicos do catálogo de modelos
+        mapa_links = dict(LINKS_PROVEDORES)
+        for p in catalogo.provedores:
+            if p.site_chave:
+                mapa_links[p.chave] = p.site_chave
+                for extra in p.chaves_extras:
+                    mapa_links.setdefault(extra, p.site_chave)
+
         saida = []
         for k in sorted(chaves):
             cat, nome_prov = CATEGORIAS_CHAVES.get(k, ("SISTEMA", k))
@@ -94,7 +184,7 @@ def criar_router(ctx: Contexto) -> APIRouter:
                 "NVIDIA_NIM_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY",
                 "CLOUDFLARE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY",
                 "XAI_API_KEY", "HF_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN", "SUPABASE_ACCESS_TOKEN",
-                "LITELLM_MASTER_KEY"
+                "LITELLM_MASTER_KEY", "FAL_AI_API_KEY"
             )
             saida.append({
                 "chave": k,
@@ -102,7 +192,10 @@ def criar_router(ctx: Contexto) -> APIRouter:
                 "nome_provedor": nome_prov,
                 "definido": bool(env.get(k)),
                 "mascarado": mascarar(env.get(k, "")),
-                "testavel": testavel
+                "testavel": testavel,
+                "link": mapa_links.get(k),
+                "grupo": grupo_da_chave(k, cat),
+                "secreto": k not in NAO_SECRETAS,
             })
         return saida
 
@@ -169,6 +262,11 @@ def criar_router(ctx: Contexto) -> APIRouter:
         elif chave == "SUPABASE_ACCESS_TOKEN":
             url = "https://api.supabase.com/v1/projects"
             headers = {"Authorization": f"Bearer {valor}"}
+        elif chave == "FAL_AI_API_KEY":
+            # consulta de preço exige chave e não gera nada (não cobra)
+            url = "https://api.fal.ai/v1/models/pricing"
+            headers = {"Authorization": f"Key {valor}"}
+            params = {"endpoint_id": "alibaba/wan-3.0/text-to-video"}
         elif chave == "LITELLM_MASTER_KEY":
             url = f"{upstreams.LITELLM}/v1/models"
             headers = {"Authorization": f"Bearer {valor}"}

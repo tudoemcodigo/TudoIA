@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from .ambiente import Contexto
 from .autenticacao import _AUTO, carregar_config_auth, registrar_autenticacao
 from .erros import instalar_tratadores
-from .rotas import chat, estudio_arquivos, estudio_catalogo, estudio_imagem, estudio_musica, estudio_video, governanca, hardware, modelos, provedores, roteador, segredos, servicos, telemetria, ui
+from .rotas import chat, estudio_arquivos, estudio_catalogo, estudio_imagem, estudio_musica, estudio_video, estudio_video_longo, governanca, hardware, modelos, provedores, roteador, segredos, servicos, squadti, telemetria, ui
 from .seguranca import GuardaApi
 from .servicos import ServicosDocker
 
 ROTAS = (servicos, segredos, governanca, modelos, roteador, telemetria, provedores, hardware, estudio_catalogo, estudio_arquivos,
-         estudio_imagem, estudio_video, estudio_musica, chat, ui)
+         estudio_imagem, estudio_video, estudio_video_longo, estudio_musica, squadti, chat, ui)
 
 
 def criar_app(raiz: Path, servicos=None, home: Path | None = None, autenticacao=_AUTO) -> FastAPI:

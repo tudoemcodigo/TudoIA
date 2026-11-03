@@ -242,6 +242,58 @@ modelos:
     usado_por: "Estudio ComfyUI: TUDOIA_Video_Cinematografico, video-wan5b (unet_name)"
     sha256: null
     notas: "Modelo Wan 2.2 TI2V 5B FP16 para geração de vídeo Texto-para-Vídeo e Imagem-para-Vídeo."
+  # LTX-2.3 distilled em GGUF: clipes longos (até 20 s) com áudio na GPU de 8 GB. O fp8 oficial (29 GB) não cabe
+  # em 32 GB de RAM. Exige os custom nodes ComfyUI-GGUF e ComfyUI-KJNodes (docs/componentes/estudio.md).
+  - id: "comfy-ltx23-distilled-q4ks-gguf"
+    tipo: "comfyui-node-asset"
+    destino: "ComfyUI/ComfyUI/models/unet/ltx-2.3-22b-distilled-1.1-Q4_K_S.gguf"
+    origem: "https://huggingface.co/unsloth/LTX-2.3-GGUF/resolve/96e8ed4925ead3db9ff4d0084f165ef6a74f28d0/distilled-1.1/ltx-2.3-22b-distilled-1.1-Q4_K_S.gguf"
+    tamanho_aprox_gb: 12.96
+    licenca: {nome: "LTX-2 Community License", url: "https://github.com/Lightricks/LTX-2/blob/main/LICENSE"}
+    obrigatorio: false
+    usado_por: "Estudio ComfyUI: video-ltx23 (UnetLoaderGGUF)"
+    sha256: null
+    notas: "LTX-2.3 22B distilled 1.1, Q4_K_S (unsloth). 8 passos, CFG 1."
+  - id: "comfy-ltx23-distilled-connectors"
+    tipo: "comfyui-node-asset"
+    destino: "ComfyUI/ComfyUI/models/text_encoders/ltx-2.3-22b-distilled_embeddings_connectors.safetensors"
+    origem: "https://huggingface.co/unsloth/LTX-2.3-GGUF/resolve/96e8ed4925ead3db9ff4d0084f165ef6a74f28d0/text_encoders/ltx-2.3-22b-distilled_embeddings_connectors.safetensors"
+    tamanho_aprox_gb: 2.31
+    licenca: {nome: "LTX-2 Community License", url: "https://github.com/Lightricks/LTX-2/blob/main/LICENSE"}
+    obrigatorio: false
+    usado_por: "Estudio ComfyUI: video-ltx23 (DualCLIPLoaderGGUF clip_name2)"
+    sha256: null
+    notas: "Conectores de embeddings do LTX-2.3 distilled."
+  - id: "comfy-ltx23-distilled-video-vae"
+    tipo: "comfyui-node-asset"
+    destino: "ComfyUI/ComfyUI/models/vae/ltx-2.3-22b-distilled_video_vae.safetensors"
+    origem: "https://huggingface.co/unsloth/LTX-2.3-GGUF/resolve/96e8ed4925ead3db9ff4d0084f165ef6a74f28d0/vae/ltx-2.3-22b-distilled_video_vae.safetensors"
+    tamanho_aprox_gb: 1.45
+    licenca: {nome: "LTX-2 Community License", url: "https://github.com/Lightricks/LTX-2/blob/main/LICENSE"}
+    obrigatorio: false
+    usado_por: "Estudio ComfyUI: video-ltx23 (VAELoaderKJ)"
+    sha256: null
+    notas: "VAE de vídeo do LTX-2.3 distilled."
+  - id: "comfy-ltx23-distilled-audio-vae"
+    tipo: "comfyui-node-asset"
+    destino: "ComfyUI/ComfyUI/models/vae/ltx-2.3-22b-distilled_audio_vae.safetensors"
+    origem: "https://huggingface.co/unsloth/LTX-2.3-GGUF/resolve/96e8ed4925ead3db9ff4d0084f165ef6a74f28d0/vae/ltx-2.3-22b-distilled_audio_vae.safetensors"
+    tamanho_aprox_gb: 0.36
+    licenca: {nome: "LTX-2 Community License", url: "https://github.com/Lightricks/LTX-2/blob/main/LICENSE"}
+    obrigatorio: false
+    usado_por: "Estudio ComfyUI: video-ltx23 (VAELoaderKJ)"
+    sha256: null
+    notas: "VAE de áudio do LTX-2.3 distilled."
+  - id: "comfy-gemma3-12b-qat-q4kxl-gguf"
+    tipo: "comfyui-node-asset"
+    destino: "ComfyUI/ComfyUI/models/text_encoders/gemma-3-12b-it-qat-UD-Q4_K_XL.gguf"
+    origem: "https://huggingface.co/unsloth/gemma-3-12b-it-qat-GGUF/resolve/858acec7ec0541a46c39985c95d3b52d8f3ab183/gemma-3-12b-it-qat-UD-Q4_K_XL.gguf"
+    tamanho_aprox_gb: 7.43
+    licenca: {nome: "Gemma Terms of Use", url: "https://ai.google.dev/gemma/terms"}
+    obrigatorio: false
+    usado_por: "Estudio ComfyUI: video-ltx23 (DualCLIPLoaderGGUF clip_name1)"
+    sha256: null
+    notas: "Text encoder Gemma 3 12B QAT Q4_K_XL para o LTX-2.3."
   - id: "comfy-z-image-turbo-int8"
     tipo: "comfyui-node-asset"
     destino: "ComfyUI/ComfyUI/models/diffusion_models/z_image_turbo_int8_convrot.safetensors"

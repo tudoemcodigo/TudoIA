@@ -261,6 +261,16 @@ com `--rotacionar-secret`, ou quando outro campo daquele IdP também mudar.
 - **Login funciona, mas os grupos não aparecem no token:** confira se o client scope
   `tudoia-groups` está em `defaultClientScopes` do client e se o mapper `groups` existe.
   O `--verificar` aponta os dois casos.
+- **`ERR_TOO_MANY_REDIRECTS` ou página "O login não foi concluído":** antes, o estado do
+  OAuth ia no cookie de sessão; abas abertas quando a sessão vencia sobrescreviam o cookie
+  umas das outras e giravam com o SSO do Keycloak, e os dois tokens juntos passavam de 4 KB.
+  Agora o estado de cada login fica no servidor, amarrado ao navegador por um cookie próprio
+  (`tudoia_login_<state>`, só em `/auth/callback`), e o `id_token` também fica no servidor
+  (o cookie guarda só o access token). Se o callback falhar, há uma nova tentativa
+  automática; na segunda falha aparece a página de erro em vez de laço. Reiniciar o painel
+  no meio de um login só causa essa nova tentativa; depois do reinício, sair pede
+  confirmação no Keycloak (o `id_token` guardado se perdeu). Se a página aparecer, apague
+  os cookies de `localhost` e `127.0.0.1` e entre de novo.
 
 ## Segurança
 

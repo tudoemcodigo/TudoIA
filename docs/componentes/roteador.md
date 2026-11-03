@@ -4,7 +4,7 @@ O roteador é o gateway do TudoIA. Todos os clientes falam com um único endere�
 OpenAI (`/v1/chat/completions`) ou a API Anthropic (`/v1/messages`, usada pelo Claude Code). O gateway é o LiteLLM,
 rodando em container. Por cima dele, um hook em Python escolhe, para cada pedido, o grupo de modelos que vai atendê-lo.
 
-Este documento cobre o modelo `tudoia-auto`, os grupos, o algoritmo de decisão, a resiliência (cooldown, quarentena,
+Este documento cobre os perfis de destino (`tudoia-local-estrito`, `tudoia-hibrido`), o modelo `tudoia-auto`, os grupos, o algoritmo de decisão, a resiliência (cooldown, quarentena,
 novas tentativas), os logs e a configuração.
 
 ## Arquivos
@@ -14,7 +14,7 @@ novas tentativas), os logs e a configuração.
 | `runtime/litellm/roteador.py` | Hook do LiteLLM (`Roteador`, herdado de `CustomLogger`). Ponto de entrada: `proxy_handler_instance`. Trata pré-chamada, escolha de membro, streaming, sucesso, erro e logs. |
 | `runtime/litellm/roteador_regras.py` | Funções puras: marcadores, pontuação, kNN, decisão, limites e quarentena lidos de arquivo, validação de `roteamento.yaml`. |
 | `runtime/litellm/roteador_resiliente.py` | Para `/v1/messages`: segura o stream até estar completo, detecta laço e corte por `max_tokens`, refaz em outro membro. |
-| `runtime/litellm/roteador_eventos.py` | Eventos da aba "Ao vivo" (lista branca de campos), gravador em thread separada, corte por idade e tamanho. |
+| `runtime/litellm/roteador_eventos.py` | Eventos da aba "Ao vivo" (lista branca de campos, com `perfil`, `categoria` e `destino`), gravador em thread separada, corte por idade e tamanho. |
 | `config/roteamento.yaml` | Pesos, limiar, palavras, ordem dos membros por grupo. Relido quando muda. |
 | `config/catalogo-modelos.yaml` | Provedores, modelos, tier (FREE ou PAID), papéis, limites. Fonte do `config.yaml` gerado. |
 | `config/exemplos-roteamento.yaml` | Exemplos rotulados `local` e `nuvem` para o classificador semântico. |
@@ -43,6 +43,7 @@ O cliente escolhe um nome de modelo. Esse nome é um grupo do LiteLLM. Os grupos
 | `tudoia-visao` | Membros FREE com visão. Sem membros, o grupo não existe e o hook ignora a imagem. | Pedidos com imagem |
 | `tudoia-max` | Membros PAID. Só entra por marcador `#max` ou pelo nome. Nunca é escolhido sozinho. | Pedidos caros e importantes |
 | `tudoia-local` | `ollama_chat/tudoia-chat` (Ollama local) | Fallback local e pedidos com `#local` |
+| `tudoia-local-estrito`, `tudoia-local-estrito-agente` | Só membros locais, sem nenhum fallback | Destinos do perfil `local-estrito` (ver [Perfis de destino](#perfis-de-destino)) |
 | `tudoia-local-agente` | `ollama_chat/tudoia-agente` (Ollama local) | Fallback local para ferramentas |
 
 Grupos extras podem ser criados pelo painel (aba Roteador). Eles entram no `ordem` de `roteamento.yaml` e viram grupos do LiteLLM.
@@ -54,6 +55,143 @@ automático, porque esse nome não é um grupo.
 Cada membro tem um nome do catálogo (ex.: `nim/glm-5.3`, `groq/gpt-oss-120b`, `or/free`). O nome aparece na
 `ordem` de `roteamento.yaml`. Um membro só entra no `config.yaml` se o provedor estiver com todas as chaves preenchidas
 e o modelo estiver `ativo` no catálogo.
+
+## Perfis de destino
+
+O cliente escolhe **onde** o pedido pode ir pelo nome do modelo (clientes como o Claude Code só escolhem o modelo) e,
+se quiser, **que tipo de tarefa** é, por um marcador. Os perfis são configuração (`perfis` em `config/roteamento.yaml`),
+não código: o hook (`roteador.py`, `_rotear_perfil`) e as funções puras (`roteador_regras.py`, `decidir_perfil`) só
+leem o que está lá. O gerador (`painel/tudoia_painel/gerador.py`, `grupos_dos_perfis`) cria no `config.yaml` os grupos
+que os perfis pedem.
+
+### Nomes, por perfil
+
+| Nome do modelo | Perfil | Para onde vai | Pago? |
+|---|---|---|---|
+| `tudoia-local-estrito` | `local-estrito` | Só Ollama local. Nunca a nuvem, nem por estouro de contexto, nem com o Ollama fora (falha com erro). | Nunca |
+| `tudoia-hibrido` | `hibrido` | Local primeiro. Nuvem **gratuita** como apoio (ver abaixo). | Nunca |
+| `tudoia-nuvem`, `tudoia-codigo`, `tudoia-visao` | nuvem | Grupos gratuitos de sempre, escolhidos pelo nome. Não passam pelos perfis. | Nunca |
+| `tudoia-max` | max | Pago. Só pelo nome ou por `#max` em `tudoia-auto`. | Sim, por escolha explícita |
+| `tudoia-auto` | (automático) | Decide por pontuação, como sempre. Marcadores `#local`, `#nuvem`, `#max` inalterados. | Só com `#max` |
+
+Os perfis `nuvem` e `max` já existiam como grupos e continuam assim: o nome do grupo é o perfil. Os dois perfis novos
+são modelos virtuais que o hook resolve para um grupo.
+
+### Categorias
+
+A categoria diz que tipo de tarefa é. Os nomes são os papéis do catálogo: `chat`, `codigo`, `agente`, `raciocinio`,
+`rapido`, `visao`. Para cada perfil, `categorias` (e `nuvem_categorias`, no híbrido) mapeia categoria para grupo. Sem
+marcador, o hook infere nesta ordem: `tools` no pedido = `agente`; imagem na última mensagem = `visao`; bloco de código,
+stack trace ou diff = `codigo`; o resto = `chat`.
+
+Marcador de categoria: `#chat`, `#codigo`, `#agente`, `#raciocinio`, `#rapido`, `#visao`, na última mensagem do usuário, com
+espaço ou início antes do `#`, sem diferenciar maiúsculas. Vale só nos perfis novos (em `tudoia-auto` o `#codigo` é texto
+comum). Todos os marcadores de categoria saem do texto enviado ao modelo. Com marcadores diferentes no mesmo pedido vale o
+primeiro, e o motivo `categorias em conflito` aparece no registro.
+
+Padrão atual de `config/roteamento.yaml`:
+
+| Categoria | `local-estrito` | `hibrido`, local | `hibrido`, apoio da nuvem |
+|---|---|---|---|
+| `chat`, `rapido`, `raciocinio` | `tudoia-local-estrito` | `tudoia-local` | `tudoia-nuvem` |
+| `codigo`, `agente` | `tudoia-local-estrito-agente` | `tudoia-local-agente` | `tudoia-codigo` |
+| `visao` | sem destino: erro 400 | `tudoia-visao` (nuvem gratuita, não há visão local) | `tudoia-visao` |
+
+`raciocinio` e `rapido` hoje caem no mesmo grupo de `chat`: o catálogo tem esses papéis nos modelos, mas ainda não há
+grupo próprio. Para separar, crie o grupo no painel e aponte a categoria para ele no YAML.
+
+### Como escolher no cliente
+
+- **Claude Code / Open WebUI / n8n**: escolha o modelo `tudoia-local-estrito` ou `tudoia-hibrido`.
+- **Marcador na mensagem** (qualquer cliente): `#local` ou `#nuvem` (conforme o perfil aceita) e/ou uma categoria, por
+  exemplo `#local #codigo refatore isto`.
+- Quando o dado não pode sair da máquina, **o nome do modelo é a garantia**; o marcador é conveniência.
+
+### `local-estrito`: o que garante
+
+1. Os grupos `tudoia-local-estrito` e `tudoia-local-estrito-agente` só têm membros locais (o gerador descarta membro de
+   nuvem posto na `ordem` desses grupos) e **não aparecem** em `fallbacks`, `context_window_fallbacks` nem
+   `content_policy_fallbacks`. Teste: `tests/runtime/test_perfis.py::test_gerador_cria_grupos_locais_sem_saida`.
+2. O hook marca o pedido com `disable_fallbacks: true`, que desliga todo fallback do router para aquele pedido
+   ([doc do LiteLLM](https://docs.litellm.ai/docs/proxy/reliability)).
+3. O contexto local é limitado a 30000 tokens (`max_input_tokens` + `enable_pre_call_checks`). Um pedido maior não
+   encontra membro e falha, em vez de ir à nuvem.
+4. A cada pedido o hook confere no `config.yaml` gerado que o grupo é só local, sem pago e sem fallback (`info_grupos`).
+   Se algo contradisser isso, responde erro 500 e não roteia.
+5. Ollama fora (`GET /api/version`, resultado de 10 s): erro 503 com a mensagem "Nada foi enviado". GPU ocupada não desvia.
+6. `#nuvem` e `#max` **não têm efeito** e ficam no texto (o perfil só aceita `#local`). Sem destino para a categoria
+   (por exemplo `visao`): erro 400.
+7. `config.yaml` ilegível ou grupo ausente: erro 503.
+
+Se o `roteamento.yaml` estiver inválido quando o hook sobe, o hook não conhece os perfis e não altera o pedido. Mesmo assim
+o pedido a `tudoia-local-estrito` cai em um grupo local sem fallback: a segurança não depende do hook ter lido o YAML
+(`test_hook_roteamento_invalido_no_inicio_nao_abre_caminho_para_nuvem`).
+
+### `hibrido`: o que faz
+
+Começa pelo grupo local da categoria. Troca para o grupo gratuito de `nuvem_categorias` quando, nesta ordem: o Ollama está
+fora (`ollama fora`); há job de vídeo na GPU (`gpu ocupada`); o pedido estimado (4 caracteres por token, mais as
+definições de `tools`) passa do `max_input_tokens` do grupo local (`excede contexto local`). `#nuvem` vai direto à nuvem.
+`#local` fica no grupo local, **sem** desvio do hook e com `disable_fallbacks`: nem o estouro de contexto leva `#local`
+à nuvem (diferente de `tudoia-auto`, onde o fallback do router ainda vale). Com `#local` e `#nuvem` no mesmo pedido, vale
+`#local`. `#max` não é aceito: pago só pelo nome `tudoia-max`.
+
+Sem provedor de nuvem ativo: `#nuvem` e o desvio por Ollama fora ou contexto grande dão erro 503. GPU ocupada segue no local.
+Categoria `visao` sem o grupo `tudoia-visao` degrada para `chat`, com o motivo no registro. O tipo do destino
+(`local`, `nuvem`, `pago`) vem do `model_info.plano` dos membros no `config.yaml`, não do nome: `tudoia-nuvem` sem
+provedor ativo é, no gerador, um grupo local, e o perfil o trata como local.
+
+### Onde ver o destino real
+
+- **Aba "Ao vivo" e `dados\logs\eventos.jsonl`**: o evento `inicio` traz `perfil`, `categoria`, `destino`, `grupo` e `motivos`;
+  o evento `modelo` (um por tentativa) traz `provedor` e `membro` do modelo que atendeu de fato (`local` = Ollama).
+  Recusas viram evento `erro` com a mensagem do perfil. `roteador.jsonl` tem os mesmos campos, uma linha por pedido.
+- **Cabeçalhos de resposta** `x-tudoia-perfil`, `x-tudoia-categoria`, `x-tudoia-destino`, `x-tudoia-grupo`: o destino
+  *decidido*. O LiteLLM também manda `x-litellm-model-group`. O cabeçalho usa o gancho
+  `async_post_call_response_headers_hook` da documentação do LiteLLM; **não foi exercitado numa instância real** (só nos
+  testes, com um LiteLLM de mentira). Se a versão em uso não chamar o gancho, o log continua valendo.
+
+### Limites e o que NÃO é fronteira de segurança
+
+- **Não é controle de acesso.** O perfil é escolhido pelo próprio cliente. Qualquer cliente com a chave do gateway pode
+  pedir `tudoia-nuvem`, `tudoia-max` ou `tudoia-auto`. O perfil `local-estrito` impede o *roteador* de enviar à nuvem
+  quem o pediu; não impede um cliente de pedir outro modelo. Para restringir um cliente, veja "Chaves virtuais" abaixo.
+- Os marcadores vêm do texto do usuário. Texto colado que contenha `#nuvem` não muda o destino no `local-estrito` (ele
+  ignora), mas muda no `hibrido` e no `tudoia-auto`. Use `local-estrito` quando o conteúdo é de terceiros.
+- A estimativa de tokens do híbrido é grosseira. Se subestimar, o pedido vai ao grupo local e o router o recusa pelo contexto
+  (erro, não vazamento; no `hibrido` sem `#local` o fallback do router ainda pode levá-lo à nuvem para `tudoia-local`).
+- `disable_fallbacks`, as saídas de contexto e a recusa por `max_input_tokens` seguem a documentação do LiteLLM, mas **não
+  foram exercitados contra um LiteLLM em execução** nesta entrega (regra do projeto: não reiniciar o gateway). Os testes
+  cobrem o `config.yaml` gerado, as decisões e o hook com LiteLLM simulado.
+- O Ollama é consultado por `GET /api/version`. Um Ollama que responde mas não tem o modelo carregado ou instalado falha
+  na chamada (erro do Ollama), sem ir à nuvem no `local-estrito`.
+- Dado de **GPU** e de limites (`gpu.json`, `limites.json`) segue sem escritor no repositório (ver [Quarentena](#quarentena-e-falhas)).
+- Vale para o painel: a aba Roteador ainda não edita `perfis`; mexa no YAML. Uma edição do painel em outras chaves preserva
+  o bloco `perfis` (lê e regrava o arquivo inteiro), mas perde os comentários.
+
+### Chaves virtuais do LiteLLM: restringir grupos por cliente
+
+Confirmado na documentação do LiteLLM ([model_access](https://docs.litellm.ai/docs/proxy/model_access)): ao gerar uma chave
+com `POST /key/generate` e `"models": ["tudoia-local-estrito", "tudoia-local-estrito-agente"]`, a chave só enxerga e só
+chama esses modelos; os demais são bloqueados. Isso seria o controle de acesso que falta, por cliente (por exemplo, uma
+chave só local para o Claude Code de um projeto confidencial).
+
+**Verificado em instância real (2026-11-01)**: uma chave gerada com `models: ["tudoia-local-estrito",
+"tudoia-local-estrito-agente"]` e `duration: "90d"` (alias `squadti-local-estrito`) lista só esses dois em `/v1/models`, e
+um pedido a outro modelo (`tudoia-local-agente`) volta `403 key_model_access_denied` antes de qualquer roteamento. Com a
+chave nova, o hook respondeu 503 "grupo(s) não existem no config.yaml gerado" enquanto os perfis não estavam ativos: a
+chave passa a autenticação e o hook falha fechado.
+
+**Ainda não verificado**: o pedido completo depois de gerar o `config.yaml` e reiniciar o LiteLLM, ou seja, que a
+checagem de acesso olha o nome pedido (`tudoia-local-estrito`) e aceita o grupo para onde o hook o reescreve
+(`tudoia-local-estrito-agente`, por isso está na lista). A chave fica na variável de ambiente `TUDOIA_API_KEY` do
+usuário (a criação não está no painel nem num script do repositório). A chave mestra continua sendo irrestrita; a
+chave vence em 2027-01-31 e deve ser regerada antes.
+
+### Roteamento por tags do LiteLLM
+
+Não usado. O [tag routing](https://docs.litellm.ai/docs/proxy/tag_routing) escolhe deployment por `tags` enviadas pelo
+cliente no corpo ou em cabeçalho; o Claude Code não manda tags. O nome do modelo cobre o mesmo caso sem depender do cliente.
 
 ## Como o `tudoia-auto` decide
 
@@ -174,8 +312,9 @@ Para pedidos sem streaming (`/v1/chat/completions` sem `stream`), a nova tentati
 
 O gerador grava `context_window_fallbacks: [{"tudoia-local": ["tudoia-nuvem"]}]` em `router_settings`
 (`painel/tudoia_painel/gerador.py`). Um pedido que não cabe no contexto do modelo local vai para `tudoia-nuvem`, inclusive
-um pedido com `#local`. O hook não roda nessa troca. É um risco de privacidade em aberto: ver o risco 16 em
-[seguranca.md](../seguranca.md#riscos-residuais).
+um pedido com `#local` em `tudoia-auto` ou direto em `tudoia-local`. O hook não roda nessa troca. É um risco de
+privacidade em aberto: ver o risco 16 em [seguranca.md](../seguranca.md#riscos-residuais). **Quem não pode correr esse
+risco usa `tudoia-local-estrito`**, que não tem essa saída (ver [Perfis de destino](#perfis-de-destino)).
 
 ## Imagens e `cache_control` no pedido
 
@@ -226,6 +365,7 @@ A aba "Ao vivo" e a telemetria do painel leem `eventos.jsonl` e `/spend/logs` do
   palavra (`(?<!\w)`): o termo funciona como prefixo (`revis` casa "revisão"), mas não no meio de palavra ("previsão"
   não casa). As triviais casam só como palavra inteira. Na lista atual, o antigo `prove` deu lugar a `provar` e `prove que`.
 - `ordem`: por grupo, a lista de membros (nome do catálogo), na ordem de tentativa.
+- `perfis`: perfis de destino (ver [Perfis de destino](#perfis-de-destino)). Campo opcional; sem ele nada muda.
 
 O hook relê o arquivo quando o `mtime` muda. Se o novo arquivo for inválido (`validar_regras`), o hook mantém a última
 versão válida e registra no log. Pesos e palavras entram sem reiniciar. A `ordem` dos membros só vale depois de regerar

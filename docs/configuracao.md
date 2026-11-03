@@ -119,7 +119,9 @@ Só entram no roteamento por nome (por exemplo, no grupo `tudoia-max`). Não sub
 
 | Variável | Uso |
 |---|---|
-| `MUAPI_KEY`, `MUAPI_API_KEY` | Presentes no `.env.example` com o nome "Muapi / TudoEstudio". Nenhum código versionado lê essas variáveis. A integração a confirmar; pode ser removida do template. |
+| `FAL_AI_API_KEY` | fal.ai, vídeo na nuvem do Estúdio pelo LiteLLM (fal.ai/dashboard/keys). PAGO por segundo gerado. Vai para o container do LiteLLM pelo compose; o teste em Chaves e segredos consulta preço, sem gerar nada. Ver [componentes/estudio.md](componentes/estudio.md). |
+| `TUDOIA_VIDEO_NUVEM_TETO_USD` | Opcional: teto em US$ por vídeo longo na nuvem. Vazio, sem teto. Aceita vírgula ou ponto. |
+| `MUAPI_API_KEY` | Chave da MuAPI (estúdio multimídia), listada em Chaves e segredos. Nenhum código versionado lê essa variável ainda. A antiga `MUAPI_KEY`, duplicada, foi removida em 30/10/2026. |
 
 O Estúdio de imagem e vídeo usa o ComfyUI em `127.0.0.1:8188` (variável de caminho abaixo) e o Ollama em
 `127.0.0.1:11434`. A geração em nuvem usa as chaves de provedores acima.

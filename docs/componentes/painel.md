@@ -37,6 +37,7 @@ A navegação está em `painel/tudoia_painel/static/index.html`:
 | Plataforma | `hardware` | Uso de GPU, VRAM e fila do ComfyUI. Permite descarregar modelos da VRAM. |
 | Roteamento e modelos | `modelos` | Catálogo de modelos, testes de chave e modelos locais (Ollama). |
 | Roteamento e modelos | `roteador` | Grupos do roteador `tudoia-auto`, membros de cada grupo e geração do `config.yaml`. |
+| Agentes | `squadti` | Squad de agentes (SquadTI): inicia tarefas, responde à entrevista, aprova a especificação e o release, lê os arquivos gerados. Ver [squadti.md](squadti.md). |
 | Governança e segurança | `governanca` | Regras, skills, MCP e instâncias dos clientes. Dispara o `sync`. |
 | Governança e segurança | `segredos` | Chaves do `.env`, mascaradas, com teste e edição. |
 | Governança e segurança | `limites` | Limites e consumo de tokens por provedor (`/api/limites-tokens`). |
@@ -124,11 +125,21 @@ o código para a assinatura de cada rota. A OpenAPI está desligada (`openapi_ur
 | `/api/roteador` | operador | Detalhes dos grupos, `POST /api/roteador/gerar`, `POST /api/roteador/testar`, edição de grupos e auto-vínculo |
 | `/api/telemetria` | leitor | Eventos ao vivo e totais do LiteLLM |
 | `/api/limites-tokens` | leitor | Uso por provedor. `periodo` aceita `24h`, `7d`, `total` etc. |
-| `/api/provedores` | admin | Cadastro de provedor, descoberta de modelos (`/api/provedores/{id}/descobrir-modelos`) |
+| `/api/provedores` | admin (inclusive leitura) | CRUD do catálogo: listar (`GET`), cadastrar (`POST`), editar (`PATCH /api/provedores/{id}`) e excluir (`DELETE`, recusado com 409 se um modelo dele estiver em grupo do roteador; a chave fica no `.env`). Modelos: `PATCH`/`DELETE /api/provedores/{id}/modelos/{nome}` (ligar, papéis, contexto, remover). Descoberta (`/descobrir-modelos`), novos (`/novos`), sincronização e inclusão em lote |
 | `/api/segredos` | admin | Listar (mascarado), gravar (`PUT /api/segredos/{chave}`), revelar, testar |
 | `/api/governanca` | admin (leitura: qualquer papel, exceto `/api/governanca/mcp`, só admin) | Estado, `sincronizar`, instâncias, regras, skills, MCP e edição de arquivos |
+| `/api/squadti` | operador (leitor vê) | Repasse validado à API local da Squad: tarefas, responder, aprovar, aprovar-release, arquivos. Ver [squadti.md](squadti.md) |
 | `/api/estudio` | operador | Geração (imagem, vídeo, música, inpaint), otimização de prompt, galeria, cancelamento e upload |
 | `/api/chat/completions` | operador | Chat pelo LiteLLM (usa `LITELLM_MASTER_KEY`) |
+
+### Telas
+
+O menu agrupa as telas por contexto: **Início** (saúde e pendências, montada a partir das APIs acima); **Criar** (Chat,
+Imagens, Vídeos, Músicas); **IA** (Modelos, agrupados por origem e tipo; Provedores, a manutenção dos provedores de
+nuvem com links para obter a chave e para a página de limites; Roteador); **Uso** (Atividade, Custos e cotas);
+**Sistema** (Serviços, Hardware); **Segurança** (Chaves e segredos, em tabela agrupada pelo campo `grupo` de
+`GET /api/segredos`; Agentes e regras). Os ícones são os do mapa `ICONES` em `static/painel.js` (Lucide, ver
+[terceiros](../terceiros.md)).
 
 O `POST /api/roteador/gerar` grava `runtime/litellm/config.yaml` e não reinicia o LiteLLM. O LiteLLM lê esse arquivo na
 inicialização. Para aplicar, reinicie o serviço `litellm` (pela aba Serviços ou com `docker compose restart litellm`).

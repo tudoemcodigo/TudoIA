@@ -16,7 +16,7 @@ from .. import servicos as infra
 from ..ambiente import Contexto
 from ..erros import ErroApi
 from ..schemas import GerarImagemReq, InpaintImagemReq, OtimizarPromptReq
-from ..estudio_servico import _arbitrar_vram_para_estudio, _registrar_historico_visual, dimensoes_png, executar_comfyui_imagem, otimizar_prompt_visual
+from ..estudio_servico import _arbitrar_vram_para_estudio, _registrar_historico_visual, dimensoes_png, erro_do_historico, executar_comfyui_imagem, otimizar_prompt_visual
 from .. import upstreams
 
 
@@ -38,10 +38,12 @@ def criar_router(ctx: Contexto) -> APIRouter:
             "3:4": (864, 1152),
         }
         largura, altura = dimensoes.get(corpo.aspect_ratio, (1024, 1024))
-        seed_final = corpo.seed or int(time.time() * 1000) % 1_000_000_000
+        seed_final = corpo.seed if corpo.seed is not None else int(time.time() * 1000) % 1_000_000_000
 
         # Tradução e enriquecimento visual automático para o motor de difusão
-        prompt_efetivo, foi_otimizado, msg_otimizado = otimizar_prompt_visual(corpo.prompt, raiz)
+        prompt_efetivo, foi_otimizado, msg_otimizado = (
+            otimizar_prompt_visual(corpo.prompt, raiz) if corpo.otimizar_prompt else (corpo.prompt, False, "")
+        )
 
         comfy_online = infra.porta_aberta(8188)
         is_modelo_local = corpo.modelo.startswith("local:")
@@ -283,10 +285,12 @@ def criar_router(ctx: Contexto) -> APIRouter:
         (comfy_input / nome_mask_comfy).write_bytes(mascara_bytes)
 
         # 4. Monta o grafo de inpainting e otimiza o prompt para difusão
-        seed_final = corpo.seed or int(time.time() * 1000) % 1_000_000_000
+        seed_final = corpo.seed if corpo.seed is not None else int(time.time() * 1000) % 1_000_000_000
 
         # Tradução e enriquecimento visual automático para o motor de difusão
-        prompt_efetivo, foi_otimizado, msg_otimizado = otimizar_prompt_visual(corpo.prompt, raiz)
+        prompt_efetivo, foi_otimizado, msg_otimizado = (
+            otimizar_prompt_visual(corpo.prompt, raiz) if corpo.otimizar_prompt else (corpo.prompt, False, "")
+        )
 
         neg = corpo.prompt_negativo or "blurry, deformed, ugly, distorted, bad architecture"
         ckpt_inpaint = "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors"
@@ -299,7 +303,9 @@ def criar_router(ctx: Contexto) -> APIRouter:
             "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt_inpaint}},
             "2": {"class_type": "LoadImage", "inputs": {"image": nome_base_comfy}},
             "3": {"class_type": "LoadImageMask", "inputs": {"image": nome_mask_comfy, "channel": "red"}},
-            "4": {"class_type": "VAEEncodeForInpaint", "inputs": {"pixels": ["2", 0], "vae": ["1", 2], "mask": ["3", 0], "grow_mask_by": 6}},
+            "10": {"class_type": "GrowMask", "inputs": {"mask": ["3", 0], "expand": 6, "tapered_corners": True}},
+            "11": {"class_type": "VAEEncode", "inputs": {"pixels": ["2", 0], "vae": ["1", 2]}},
+            "4": {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["11", 0], "mask": ["10", 0]}},
             "5": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt_efetivo, "clip": ["1", 1]}},
             "6": {"class_type": "CLIPTextEncode", "inputs": {"text": neg, "clip": ["1", 1]}},
             "7": {
@@ -345,6 +351,10 @@ def criar_router(ctx: Contexto) -> APIRouter:
                     if h_resp.status_code == 200:
                         h_data = h_resp.json()
                         if prompt_id in h_data:
+                            falha = erro_do_historico(h_data[prompt_id])
+                            if falha:
+                                _registrar_historico_visual("inpaint", "comfyui", corpo.modelo, corpo.prompt, "auto", time.perf_counter() - inicio, "falha")
+                                raise ErroApi(502, "falha_motor", f"Falha no ComfyUI: {falha}")
                             outputs = h_data[prompt_id].get("outputs", {})
                             for _nid, nout in outputs.items():
                                 if "images" in nout and len(nout["images"]) > 0:
@@ -378,11 +388,13 @@ def criar_router(ctx: Contexto) -> APIRouter:
                                             "imagem_url": url_inpaint,
                                             "mensagem": f"Inpainting concluído com sucesso ({corpo.denoise} denoise)!"
                                         }
+                except ErroApi:
+                    raise
                 except Exception:
                     pass
                 time.sleep(1)
 
         _registrar_historico_visual("inpaint", "comfyui", corpo.modelo, corpo.prompt, "auto", time.perf_counter() - inicio, "falha")
-        raise ErroApi(504, "tempo_esgotado", "Tempo limite de 90s excedido aguardando inpainting do ComfyUI.")
+        raise ErroApi(504, "tempo_esgotado", "O ComfyUI não terminou a edição a tempo.")
 
     return router

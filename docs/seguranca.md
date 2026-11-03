@@ -181,7 +181,7 @@ Arquivo: `runtime/docker-compose.yml`.
 - O LiteLLM não recebe mais o `.env` inteiro (não há `env_file`). Recebe uma lista explícita: `DATABASE_URL`,
   `LITELLM_MASTER_KEY`, `OLLAMA_URL`, `TZ` e as chaves de provedor (`NVIDIA_NIM_API_KEY`, `NVIDIA_NIM_API_BASE`,
   `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`,
-  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `HF_TOKEN`). Token do GitHub, senha do
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, `FAL_AI_API_KEY`, `HF_TOKEN`). Token do GitHub, senha do
   Keycloak e chaves do n8n ficam fora. `tests/runtime/test_compose.py` garante que toda chave do catálogo está na lista
   e que segredos que o LiteLLM não usa (por exemplo `TUDOIA_MCP_CLIENT_SECRET`) não estão.
 - O n8n roda com `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`: nenhum nó Code ou expressão lê variáveis do container (nem a

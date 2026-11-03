@@ -57,6 +57,47 @@ ordem:
   - local/qwen3.5:latest
   - local/DeepSeek-R1:latest
   - local/qwen3.8:latest
+  tudoia-nuvem:
+  - groq/gpt-oss-120b
+  - groq/qwen3.8-27b
+  - groq/allam-2-7b
+  - groq/gpt-oss-20b
+  - openrouter/flint-v1.0
+  - openrouter/xing4.0-29b-a4b
+  - openrouter/dots-3-note-preview
+  - openrouter/lfm-2.5-2.6b
+  - openrouter/nvidia/nemotron-3.5-lightning:free
+  - openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+  - openrouter/nemotron-3-nano-omni-30b-a3b-reasoning
+  - openrouter/google/gemma-4-26b-a4b-it:free
+  - openrouter/google/gemma-4-31b-it:free
+  - nvidia/diffusiongemma-26b-a4b-it
+  - nvidia/muse-glimmer-30b
+  - nvidia/minimax-m3.1-flash
+  - nvidia/mistral-large-4-1t-a52b
+  - nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+  - nvidia/nemotron-3-ultra-550b-a55b
+  - nvidia/nemotron-3.5-lightning-30b-a3b
+  - gemini/gemma-4-26b-a4b-it
+  - gemini/gemini-flash-lite-latest
+  - gemini/gemini-3-flash-preview
+  - gemini/gemini-3.1-flash-lite-preview
+  - gemini/gemini-3.1-flash-lite
+  - gemini/gemini-3.5-flash
+  - gemini/gemini-3.5-flash-lite
+  - gemini/gemini-3.6-flash
+  tudoia-codigo:
+  - openrouter/north-mini-code
+  - groq/gpt-oss-120b
+  - nvidia/mistral-large-4-1t-a52b
+  - nvidia/nemotron-3-ultra-550b-a55b
+  tudoia-visao:
+  - openrouter/nvidia/nemotron-3.5-super-vl:free
+  - nvidia/llama-3.2-90b-vision-instruct
+  - nvidia/nemotron-3.5-super-vl-120b-a12b
+  tudoia-max:
+  - anthropic/claude-haiku-5-5
+  - anthropic/claude-sonnet-5-5
 grupos_desativados: []
 grupos_customizados:
   tudoia-local:
@@ -69,3 +110,36 @@ grupos_customizados:
     - agente
     - raciocinio
     - rapido
+perfis:
+  # Perfil = nome de modelo que o cliente escolhe (Claude Code, Open WebUI...). Detalhes em docs/componentes/roteador.md.
+  # nuvem: false = nunca sai da máquina: grupos só locais, sem fallback, e o hook falha alto se algo contradisser isso.
+  local-estrito:
+    modelo: tudoia-local-estrito
+    nuvem: false
+    marcadores: [local]
+    categorias:
+      chat: tudoia-local-estrito
+      rapido: tudoia-local-estrito
+      raciocinio: tudoia-local-estrito
+      codigo: tudoia-local-estrito-agente
+      agente: tudoia-local-estrito-agente
+  # hibrido = local primeiro; nuvem GRATUITA como apoio (Ollama fora, GPU ocupada, pedido maior que o contexto local,
+  # imagem, #nuvem). Pago nunca: só pelo nome tudoia-max.
+  hibrido:
+    modelo: tudoia-hibrido
+    nuvem: true
+    marcadores: [local, nuvem]
+    categorias:
+      chat: tudoia-local
+      rapido: tudoia-local
+      raciocinio: tudoia-local
+      codigo: tudoia-local-agente
+      agente: tudoia-local-agente
+      visao: tudoia-visao
+    nuvem_categorias:
+      chat: tudoia-nuvem
+      rapido: tudoia-nuvem
+      raciocinio: tudoia-nuvem
+      codigo: tudoia-codigo
+      agente: tudoia-codigo
+      visao: tudoia-visao

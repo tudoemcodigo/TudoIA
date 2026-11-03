@@ -1,0 +1,88 @@
+# Modelos de vídeo na NUVEM do Estúdio (vídeo longo). Todos PAGOS, por segundo gerado, via LiteLLM (/v1/videos).
+# O painel gera um deployment "video/<nome>" (e "video/<nome>-i2v") no config do LiteLLM só quando a chave existe no
+# .env; o pedido vai FIXADO nesse nome (nunca pelo tudoia-auto) e só sai da máquina com a confirmação da pessoa.
+#
+# Campos: t2v/i2v = endpoint do provedor (i2v null = sem quadro inicial, a continuidade vem só do texto);
+#   campo_imagem = nome do parâmetro do quadro inicial no provedor (vai como data URI JPEG);
+#   duracao = {min, max} ou {valores: [...]}, tipo int|str (o provedor recusa o outro tipo);
+#   resolucoes = 480p/720p do painel -> valor do provedor (vazio: o provedor não tem o parâmetro);
+#   preco_usd_s = US$ por segundo por resolução ("padrao" quando não depende dela). É ESTIMATIVA: confira fonte_preco.
+#   parametros = fixos em todo pedido; parametros_t2v = só sem quadro inicial.
+#
+# Esquemas lidos da API pública de modelos da fal.ai (https://api.fal.ai/v1/models?endpoint_id=...&expand=openapi-3.0)
+# e preços das páginas de cada modelo em 2026-10-30. Preços mudam: atualize `data` quando editar.
+data: "2026-10-30"
+
+modelos:
+  - nome: wan-3
+    rotulo: "Wan 3.0 (Alibaba) · até 30 s por clipe, com áudio"
+    provedor: fal
+    chave: FAL_AI_API_KEY
+    t2v: alibaba/wan-3.0/text-to-video
+    i2v: alibaba/wan-3.0/image-to-video
+    campo_imagem: start_image_url
+    duracao: {min: 2, max: 30, tipo: int}
+    resolucoes: {480p: "480p", 720p: "720p"}
+    preco_usd_s: {480p: 0.05, 720p: 0.10}
+    parametros: {audio: true, enable_prompt_expansion: false}
+    parametros_t2v: {aspect_ratio: "16:9"}
+    fonte_preco: https://fal.ai/models/alibaba/wan-3.0/text-to-video
+
+  - nome: minimax-h3
+    rotulo: "MiniMax H3 · 5 a 15 s por clipe, com áudio"
+    provedor: fal
+    chave: FAL_AI_API_KEY
+    t2v: minimax/h3/text-to-video
+    i2v: minimax/h3/image-to-video
+    campo_imagem: image_url
+    duracao: {min: 5, max: 15, tipo: int}
+    resolucoes: {480p: "480P", 720p: "768P"}
+    preco_usd_s: {480p: 0.05, 720p: 0.06}
+    parametros: {}
+    parametros_t2v: {aspect_ratio: "16:9"}
+    fonte_preco: https://fal.ai/models/minimax/h3/text-to-video
+
+  - nome: kling-3
+    rotulo: "Kling 3.0 Standard · 3 a 15 s por clipe, com áudio"
+    provedor: fal
+    chave: FAL_AI_API_KEY
+    t2v: fal-ai/kling-video/v3/standard/text-to-video
+    i2v: fal-ai/kling-video/v3/standard/image-to-video
+    campo_imagem: start_image_url
+    duracao: {min: 3, max: 15, tipo: str}
+    resolucoes: {}
+    preco_usd_s: {padrao: 0.126}
+    parametros: {generate_audio: true}
+    parametros_t2v: {aspect_ratio: "16:9"}
+    fonte_preco: https://fal.ai/models/fal-ai/kling-video/v3/standard/text-to-video
+
+  - nome: seedance-2-fast
+    rotulo: "Seedance 2.0 Fast (ByteDance) · 4 a 15 s por clipe, com áudio"
+    provedor: fal
+    chave: FAL_AI_API_KEY
+    t2v: bytedance/seedance-2.0/fast/text-to-video
+    i2v: bytedance/seedance-2.0/fast/image-to-video
+    campo_imagem: image_url
+    duracao: {min: 4, max: 15, tipo: str}
+    resolucoes: {480p: "480p", 720p: "720p"}
+    # a página só publica o preço de 720p; o de 480p fica igual (estimativa para cima)
+    preco_usd_s: {480p: 0.2419, 720p: 0.2419}
+    parametros: {generate_audio: true}
+    parametros_t2v: {aspect_ratio: "16:9"}
+    fonte_preco: https://fal.ai/models/bytedance/seedance-2.0/fast/text-to-video
+
+  - nome: ltx-23-fast
+    rotulo: "LTX-2.3 Fast (Lightricks) · 6 a 20 s por clipe, 1080p, com áudio"
+    provedor: fal
+    chave: FAL_AI_API_KEY
+    t2v: fal-ai/ltx-2.3/text-to-video/fast
+    i2v: fal-ai/ltx-2.3/image-to-video/fast
+    campo_imagem: image_url
+    duracao: {valores: [6, 8, 10, 12, 14, 16, 18, 20], tipo: int}
+    # o menor que o endpoint aceita é 1080p
+    resolucoes: {480p: "1080p", 720p: "1080p"}
+    # a página traz US$ 0,04 na tabela e US$ 0,06 no texto: fica o maior
+    preco_usd_s: {padrao: 0.06}
+    parametros: {generate_audio: true, fps: 24}
+    parametros_t2v: {aspect_ratio: "16:9"}
+    fonte_preco: https://fal.ai/models/fal-ai/ltx-2.3/text-to-video/fast

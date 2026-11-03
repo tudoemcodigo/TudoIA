@@ -15,6 +15,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -25,9 +26,9 @@ import httpx
 from authlib.integrations.base_client.errors import OAuthError
 from joserfc import jwt as jose_jwt
 from joserfc.jwk import KeySet
-from authlib.integrations.starlette_client import OAuth
+from authlib.integrations.starlette_client import OAuth, StarletteIntegration
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from starlette.datastructures import Headers
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -74,6 +75,17 @@ ALGORITMOS_JWT = ["RS256"]
 TTL_JWKS_S = 600
 # kid desconhecido (rotação de chaves no Keycloak) só dispara nova busca a cada 30 s: um token forjado não martela o IdP.
 INTERVALO_MIN_RECARGA_JWKS_S = 30
+# 1ª falha no callback: nova tentativa automática. 2ª: página de erro, nunca laço com o SSO do Keycloak.
+MAX_TENTATIVAS_LOGIN = 2
+PAGINA_LOGIN_FALHOU = """<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>TudoIA: login não concluído</title></head>
+<body style="font-family:system-ui,sans-serif;background:#13151b;color:#e6e8ee;max-width:36rem;margin:15vh auto;padding:0 1rem">
+<h1 style="font-size:1.4rem">O login não foi concluído</h1>
+<p>O Keycloak respondeu, mas o painel não conseguiu confirmar o login duas vezes seguidas.
+Isso costuma acontecer com cookies antigos deste endereço.</p>
+<p><a href="/auth/login" style="color:#a99bff">Entrar de novo</a>. Se voltar a esta página, apague os cookies de
+localhost e 127.0.0.1 e tente outra vez.</p>
+</body></html>"""
 
 
 @dataclass(frozen=True)
@@ -129,6 +141,63 @@ def retorno_seguro(valor: str | None) -> str:
     if not valor or not valor.startswith("/app") or valor.startswith("//") or "\\" in valor:
         return "/app/"
     return valor
+
+
+# Login em andamento: o estado do OAuth (nonce, code_verifier, retorno) fica no servidor, não no cookie de sessão.
+# Com o estado no cookie, abas abertas quando a sessão venceu iam ao login juntas, uma sobrescrevia o cookie da outra
+# e, com o SSO do Keycloak respondendo na hora, giravam em laço (ERR_TOO_MANY_REDIRECTS).
+TTL_LOGIN_PENDENTE_S = 600
+MAX_LOGINS_PENDENTES = 500
+# Cada login amarra o estado a ESTE navegador com um cookie próprio (nome = prefixo + state): abas não se sobrescrevem
+# e um callback com o state de outro navegador é recusado (CSRF de login, RFC 6749 §10.12).
+PREFIXO_COOKIE_LOGIN = "tudoia_login_"
+FORMATO_STATE = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
+
+
+class MemoriaComValidade:
+    """Valores em memória com validade e teto: estados de login pendentes e id_tokens (usados no logout).
+    Reiniciar o painel no meio de um login só faz o callback falhar uma vez; a nova tentativa automática resolve."""
+
+    def __init__(self, ttl_s: float = TTL_LOGIN_PENDENTE_S, maximo: int = MAX_LOGINS_PENDENTES):
+        self.ttl_s = ttl_s
+        self.maximo = maximo
+        self._itens: dict[str, tuple[float, dict]] = {}
+
+    def guardar(self, state: str, dados: dict) -> None:
+        agora = time.time()
+        for chave in [k for k, (exp, _) in self._itens.items() if exp < agora]:
+            del self._itens[chave]
+        while len(self._itens) >= self.maximo:
+            del self._itens[min(self._itens, key=lambda k: self._itens[k][0])]
+        self._itens[state] = (agora + self.ttl_s, dados)
+
+    def ler(self, state: str | None) -> dict | None:
+        item = self._itens.get(state or "")
+        if item is None or item[0] < time.time():
+            return None
+        return item[1]
+
+    def descartar(self, state: str | None) -> None:
+        self._itens.pop(state or "", None)
+
+
+def _integracao_no_servidor(pendentes: MemoriaComValidade):
+    class IntegracaoNoServidor(StarletteIntegration):
+        """Igual à do authlib, mas guarda o estado em `pendentes` e nunca mexe na sessão."""
+
+        async def set_state_data(self, session, state, data):
+            pendentes.guardar(state, {**(pendentes.ler(state) or {}), "data": data})
+
+        async def get_state_data(self, session, state):
+            return (pendentes.ler(state) or {}).get("data")
+
+        async def clear_state_data(self, session, state):
+            pendentes.descartar(state)
+
+    class OAuthNoServidor(OAuth):
+        framework_integration_cls = IntegracaoNoServidor
+
+    return OAuthNoServidor()
 
 
 def _usuario(claims: dict) -> dict:
@@ -363,7 +432,9 @@ def registrar_autenticacao(app: FastAPI, config: ConfigAuth | None, arquivo_audi
         same_site="lax",
         https_only=bool(config and config.cookie_seguro),
     )
-    oauth = OAuth()
+    pendentes = MemoriaComValidade()
+    tokens_de_saida = MemoriaComValidade(ttl_s=IDADE_MAXIMA_SESSAO)
+    oauth = _integracao_no_servidor(pendentes)
     if config is not None:
         oauth.register(
             name="tudoia",
@@ -380,37 +451,67 @@ def registrar_autenticacao(app: FastAPI, config: ConfigAuth | None, arquivo_audi
     def _sem_config() -> JSONResponse:
         return JSONResponse(corpo_erro("auth_nao_configurada", "autenticação não configurada no .env"), status_code=503)
 
+    def _cookie_do_login(resposta, state: str, ligar: bool):
+        if ligar:
+            resposta.set_cookie(f"{PREFIXO_COOKIE_LOGIN}{state}", "1", max_age=TTL_LOGIN_PENDENTE_S,
+                                path="/auth/callback", httponly=True, samesite="lax",
+                                secure=bool(config and config.cookie_seguro))
+        elif FORMATO_STATE.match(state):
+            resposta.delete_cookie(f"{PREFIXO_COOKIE_LOGIN}{state}", path="/auth/callback")
+        return resposta
+
     @app.get("/auth/login")
-    async def login(request: Request, retorno: str = "/app/"):
+    async def login(request: Request, retorno: str = "/app/", tentativa: int = 1):
         if config is None:
             return _sem_config()
-        request.session["retorno"] = retorno_seguro(retorno)
-        return await oauth.tudoia.authorize_redirect(request, f"{_base(request)}/auth/callback")
+        if _papeis_validos(request.session):
+            return RedirectResponse(retorno_seguro(retorno), status_code=303)
+        # A tentativa vai no próprio state, que volta do Keycloak na URL: o limite vale mesmo sem cookie nenhum.
+        tentativa = min(max(tentativa, 1), MAX_TENTATIVAS_LOGIN)
+        state = f"{tentativa}{secrets.token_urlsafe(24)}"
+        pendentes.guardar(state, {"retorno": retorno_seguro(retorno)})
+        resposta = await oauth.tudoia.authorize_redirect(request, f"{_base(request)}/auth/callback", state=state)
+        return _cookie_do_login(resposta, state, True)
 
     @app.get("/auth/callback")
     async def callback(request: Request):
         if config is None:
             return _sem_config()
+        state = request.query_params.get("state") or ""
+        state_valido = bool(FORMATO_STATE.match(state))
+        destino = retorno_seguro((pendentes.ler(state) or {}).get("retorno") if state_valido else None)
         if _papeis_validos(request.session):
-            destino = request.session.get("retorno") or "/app/"
-            return RedirectResponse(destino, status_code=303)
+            # F5 no callback, volta pelo histórico ou outra aba que terminou o login antes: já está dentro.
+            pendentes.descartar(state)
+            return _cookie_do_login(RedirectResponse(destino, status_code=303), state, False)
         try:
+            if not state_valido or request.cookies.get(f"{PREFIXO_COOKIE_LOGIN}{state}") != "1":
+                raise OAuthError("state_de_outro_navegador")
             token = await oauth.tudoia.authorize_access_token(request)
         except OAuthError:
-            aceita = request.headers.get("accept", "")
-            if "text/html" in aceita:
-                destino = request.session.get("retorno") or "/app/"
-                return RedirectResponse(f"/auth/login?retorno={quote(destino, safe='/')}", status_code=303)
-            # Não devolvemos a descrição do erro: ela pode ecoar parâmetros do IdP.
-            return JSONResponse(corpo_erro("login_recusado", "o login foi recusado ou expirou; tente de novo"),
-                                status_code=401)
+            pendentes.descartar(state)
+            if "text/html" not in request.headers.get("accept", ""):
+                # Não devolvemos a descrição do erro: ela pode ecoar parâmetros do IdP.
+                return JSONResponse(corpo_erro("login_recusado", "o login foi recusado ou expirou; tente de novo"),
+                                    status_code=401)
+            tentativa = int(state[0]) if state_valido and state[0].isdigit() else 1
+            if tentativa >= MAX_TENTATIVAS_LOGIN:
+                # Falhou de novo logo depois: para aqui em vez de girar com o SSO do Keycloak.
+                return _cookie_do_login(HTMLResponse(PAGINA_LOGIN_FALHOU, status_code=400), state, False)
+            alvo = f"/auth/login?retorno={quote(destino, safe='/')}&tentativa={tentativa + 1}"
+            return _cookie_do_login(RedirectResponse(alvo, status_code=303), state, False)
+        pendentes.descartar(state)
         claims = token.get("userinfo") or {}
         papeis = papeis_do_token(claims)
         if not papeis:
             return JSONResponse(corpo_erro("sem_papel",
                                            f"sua conta não tem nenhum papel do painel ({', '.join(PAPEIS)})"),
                                 status_code=403)
-        destino = request.session.get("retorno") or "/app/"
+        # O id_token (só usado no logout) fica no servidor: com ele, o cookie passava de 4 KB e o navegador o
+        # descartava sem aviso. Reiniciar o painel o perde; aí o Keycloak só pede confirmação ao sair.
+        sid = secrets.token_urlsafe(16)
+        if token.get("id_token"):
+            tokens_de_saida.guardar(sid, {"id_token": token["id_token"]})
         request.session.clear()
         request.session.update({
             "usuario": _usuario(claims),
@@ -419,9 +520,9 @@ def registrar_autenticacao(app: FastAPI, config: ConfigAuth | None, arquivo_audi
             "expira_em": time.time() + IDADE_MAXIMA_SESSAO,
             "verificado_em": time.time(),
             "access_token": token.get("access_token"),
-            "id_token": token.get("id_token"),
+            "sid": sid,
         })
-        return RedirectResponse(destino, status_code=303)
+        return _cookie_do_login(RedirectResponse(destino, status_code=303), state, False)
 
     @app.post("/auth/logout")
     async def logout(request: Request):
@@ -430,7 +531,9 @@ def registrar_autenticacao(app: FastAPI, config: ConfigAuth | None, arquivo_audi
         if recusa:
             status, codigo, mensagem = recusa
             return JSONResponse(corpo_erro(codigo, mensagem), status_code=status)
-        id_token = request.session.get("id_token")
+        sid = request.session.get("sid")
+        id_token = (tokens_de_saida.ler(sid) or {}).get("id_token") if isinstance(sid, str) else None
+        tokens_de_saida.descartar(sid if isinstance(sid, str) else None)
         request.session.clear()
         pos_saida = f"{_base(request)}/app/"
         url_idp = None

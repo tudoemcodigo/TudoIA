@@ -20,6 +20,7 @@ from ..roteador_service import (
 from ..ambiente import Contexto
 from ..schemas import CorpoCriarGrupo, CorpoEditarGrupo, CorpoOrdemGrupos, TesteRoteador
 from .. import upstreams
+from ..video_nuvem import catalogo_video, deployments_video
 
 
 def criar_router(ctx: Contexto) -> APIRouter:
@@ -81,8 +82,10 @@ def criar_router(ctx: Contexto) -> APIRouter:
     def gerar():
         with trava:
             try:
+                env = ler_env(raiz / ".env")
                 cfg = gerar_config(carregar_catalogo(raiz / "config" / "catalogo-modelos.yaml"),
-                                   ler_env(raiz / ".env"), carregar_roteamento(raiz / "config" / "roteamento.yaml"))
+                                   env, carregar_roteamento(raiz / "config" / "roteamento.yaml"),
+                                   deployments_video(catalogo_video(raiz), env))
                 gravar_config(cfg, raiz / "runtime" / "litellm" / "config.yaml")
             except (OSError, ValueError, RuntimeError) as e:
                 raise ErroApi(422, "validacao", f"não foi possível gerar o config ({type(e).__name__})") from e
@@ -112,7 +115,15 @@ def criar_router(ctx: Contexto) -> APIRouter:
     def novo_grupo_roteador(corpo: CorpoCriarGrupo):
         with trava:
             try:
-                res = criar_grupo_roteador(raiz, corpo.id, corpo.titulo, corpo.descricao, corpo.modelos)
+                res = criar_grupo_roteador(
+                    raiz,
+                    corpo.id,
+                    corpo.titulo,
+                    corpo.descricao,
+                    corpo.modelos,
+                    tier=corpo.tier,
+                    papeis=corpo.papeis,
+                )
                 regenerar_config_litellm(raiz)
                 return res
             except ValueError as e:
@@ -128,7 +139,9 @@ def criar_router(ctx: Contexto) -> APIRouter:
                     titulo=corpo.titulo,
                     descricao=corpo.descricao,
                     ativo=corpo.ativo,
-                    modelos=corpo.modelos
+                    modelos=corpo.modelos,
+                    tier=corpo.tier,
+                    papeis=corpo.papeis,
                 )
                 regenerar_config_litellm(raiz)
                 return res

@@ -198,7 +198,7 @@ mostra a origem como o repositório informa. Os detalhes de licença estão a se
 | `spec-driven-development` | addyosmani/agent-skills (MIT) | |
 | `planning-and-task-breakdown` | addyosmani/agent-skills (MIT) | |
 | `incremental-implementation` | addyosmani/agent-skills (MIT) | |
-| `disciplined-tdd` | addyosmani/agent-skills (MIT) | Modificada: título "Canonical TudoHaS TDD Standard" |
+| `disciplined-tdd` | addyosmani/agent-skills (MIT) | Modificada: título "Canonical TudoIA TDD Standard" |
 | `debugging-and-error-recovery` | addyosmani/agent-skills (MIT) | |
 | `code-review-and-quality` | addyosmani/agent-skills (MIT) | |
 | `security-and-hardening` | addyosmani/agent-skills (MIT) | Inclui `references/hardening-patterns.md` |

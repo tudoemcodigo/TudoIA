@@ -8,7 +8,7 @@ O projeto é licenciado sob a Apache License 2.0 (`LICENSE`, com o aviso em `NOT
 
 A origem está em `governanca/ORIGEM.md`, que descreve as 22 skills desta pasta (14 originais e 8 adicionadas em 27/10/2026). O próprio arquivo é inconsistente: o título diz "As 10 skills desta pasta são cópias sem alteração de addyosmani/agent-skills", sem dizer quais são, e a tabela lista 14. Por isso a atribuição por skill abaixo é a que a tabela sugere, e precisa ser confirmada.
 
-A tabela atribui três skills a um "protocolo canônico TudoHaS", uma à Anthropic (`frontend-design`) e marca `humanize-text` como criação própria do autor (não é cópia). As outras nove aparecem sem origem própria, dentro das "cópias" do título. A licença MIT só vale para as cópias de addyosmani, e o arquivo `LICENSE-agent-skills` é o texto dessa licença.
+A tabela atribui três skills a um "protocolo canônico TudoIA", uma à Anthropic (`frontend-design`) e marca `humanize-text` como criação própria do autor (não é cópia). As outras nove aparecem sem origem própria, dentro das "cópias" do título. A licença MIT só vale para as cópias de addyosmani, e o arquivo `LICENSE-agent-skills` é o texto dessa licença.
 
 | Componente | Versão | Licença | Onde está no repositório |
 |---|---|---|---|
@@ -21,9 +21,9 @@ A tabela atribui três skills a um "protocolo canônico TudoHaS", uma à Anthrop
 | `security-and-hardening` (com `references/hardening-patterns.md`) | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/security-and-hardening/` |
 | `spec-driven-development` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/spec-driven-development/` |
 | `using-agent-skills` | commit `aeac41d4` (a confirmar) | MIT, se for cópia de addyosmani | `governanca/skills/using-agent-skills/` |
-| `disciplined-tdd` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/disciplined-tdd/` |
-| `grill-me` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/grill-me/` |
-| `improve-codebase-architecture` | a confirmar (`ORIGEM.md`: "canônico TudoHaS") | a confirmar | `governanca/skills/improve-codebase-architecture/` |
+| `disciplined-tdd` | a confirmar (`ORIGEM.md`: "canônico TudoIA") | a confirmar | `governanca/skills/disciplined-tdd/` |
+| `grill-me` | a confirmar (`ORIGEM.md`: "canônico TudoIA") | a confirmar | `governanca/skills/grill-me/` |
+| `improve-codebase-architecture` | a confirmar (`ORIGEM.md`: "canônico TudoIA") | a confirmar | `governanca/skills/improve-codebase-architecture/` |
 | `frontend-design` | a confirmar (`ORIGEM.md`: Anthropic) | Apache License 2.0 (`LICENSE.txt` na própria pasta; o `SKILL.md` diz "Complete terms in LICENSE.txt") | `governanca/skills/frontend-design/` |
 | `humanize-text` | Criação própria do autor (não é cópia) | Apache License 2.0, licença do projeto (`LICENSE`) | `governanca/skills/humanize-text/` |
 | `lgpd-compliance` | Criação própria (27/10/2026), com referências listadas em `ORIGEM.md` | Apache License 2.0, licença do projeto (`LICENSE`) | `governanca/skills/lgpd-compliance/` |
@@ -134,9 +134,18 @@ Não são redistribuídos. Listados porque recebem dados do TudoIA. Os termos de
 | Groq | otimização de prompt (imagem, vídeo e música), quando `GROQ_API_KEY` existe | texto do prompt | `painel/tudoia_painel/estudio_servico.py` |
 | Cloudflare Workers AI | geração de imagem, quando as chaves `CLOUDFLARE_*` existem | texto do prompt | `painel/tudoia_painel/rotas/estudio_imagem.py` |
 | Pollinations | geração de imagem sem chave (fallback), só com `TUDOIA_ESTUDIO_POLLINATIONS=1` (desligado por padrão) | texto do prompt, na URL | `painel/tudoia_painel/rotas/estudio_imagem.py` |
+| fal.ai (pelo LiteLLM) | vídeo longo na nuvem, só com `FAL_AI_API_KEY` e confirmação a cada pedido; pago por segundo | descrição de cada clipe e quadros de referência (imagem enviada e último quadro de cada clipe), em data URI | `painel/tudoia_painel/video_nuvem.py`, `video_longo.py` |
 | Feed RSS do G1 (tecnologia) | digest de notícias (n8n) | nenhum dado do usuário, só a requisição de leitura | `automacao/n8n/03-digest-noticias.json` |
 
 Os provedores de modelo de texto (OpenAI, Anthropic, NVIDIA NIM, OpenRouter, Gemini, DeepSeek e outros) são configurados no LiteLLM. Os nomes das chaves estão em `.env.example`. A lista de provedores e os seus termos ficam fora do escopo desta página; consulte [componentes/roteador.md](componentes/roteador.md) para o roteamento.
+
+## 9. Ícones do painel
+
+| Componente | Versão | Licença | Onde está no repositório |
+|---|---|---|---|
+| Lucide (desenho dos ícones, sem o pacote) | `lucide-static` 1.64.0, baixado de unpkg em 30/10/2026 | ISC (Copyright (c) 2026 Lucide Icons and Contributors) | mapa `ICONES` em `painel/tudoia_painel/static/painel.js` |
+
+Só os elementos de desenho (`path`, `circle`, `rect` etc.) foram copiados para o mapa, depois de conferidos: nenhum script, nenhuma URL. Para incluir um ícone, baixe o SVG da mesma versão numa pasta temporária, confira que só há elementos de desenho e acrescente a entrada no mapa.
 
 ## Veja também
 
