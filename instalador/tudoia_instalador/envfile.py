@@ -6,6 +6,7 @@ estão. Numa reinstalação parte do `.env` que já existe e só mexe nas chaves
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from .opcoes import Opcoes
 
@@ -39,6 +40,8 @@ def montar(base: str, o: Opcoes) -> str:
         ("COMPOSE_PROFILES", ",".join(o.perfis)),
         ("TUDOIA_COMPOSE_PROJETO", o.projeto_compose),
         ("TZ", o.fuso),
+        ("DOUTRINA_TEC", str(Path(o.pasta_instalacao) / "doutrina")),                         # usada pelo MCP doutrina-tec
+        ("TUDOIA_PYTHON", str(Path(o.pasta_instalacao) / ".venv" / "Scripts" / "python.exe")),   # idem: interpretador do MCP
         ("TUDOIA_OLLAMA_MODELS", str(o.pesos_ollama) if o.usa("ollama") else ""),
         ("TUDOIA_COMFYUI_PORTABLE", str(o.comfyui) if o.usa("comfyui") else ""),
     ):

@@ -156,6 +156,35 @@ def obter_codigo(c: Contexto) -> None:
         raise ErroInstalacao("o pacote não parece ser o TudoIA (faltam runtime/docker-compose.yml ou .env.example)")
     _normalizar_acls_docker(c)
     c.log(f"{n} arquivos instalados em {c.raiz}")
+    garantir_doutrina(c)
+
+
+def garantir_doutrina(c: Contexto) -> None:
+    """A Doutrina TEC tem de estar em <raiz>/doutrina (a skill, o MCP e a SquadTI falham fechado sem ela, ECO-CON-01).
+    O pacote embutido já a leva. No código vindo do GitHub ela é baixada na versão fixada em governanca/doutrina.json."""
+    destino = c.raiz / "doutrina"
+    if not (destino / "gerado" / "manifesto.json").is_file():
+        try:
+            pin = json.loads((c.raiz / "governanca" / "doutrina.json").read_text(encoding="utf-8"))
+            repo, sha = pin["repositorio"], pin["sha"]
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            raise ErroInstalacao(f"o pacote não traz a Doutrina TEC nem governanca/doutrina.json legível: {e}") from e
+        if not (re.fullmatch(r"[0-9a-f]{40}", str(sha)) and re.fullmatch(r"(?!\.+/)[A-Za-z0-9_.\-]+/(?!\.+$)[A-Za-z0-9_.\-]+", str(repo))):
+            raise ErroInstalacao("governanca/doutrina.json inválido: use 'repositorio' (dono/nome) e 'sha' com 40 caracteres")
+        zip_path = c.raiz / ".doutrina-github.zip"
+        c.log(f"baixando a Doutrina TEC {repo}@{sha[:12]} do GitHub")
+        try:
+            codigo.baixar_github(repo, sha, zip_path)
+            codigo.instalar(zip_path, destino, remover_prefixo=True)
+        except (codigo.ErroCodigo, zipfile.BadZipFile) as e:
+            raise ErroInstalacao(f"não consegui obter a Doutrina TEC: {e}") from e
+        finally:
+            _remover_arquivo_seguro(zip_path, log=c.log)
+    try:
+        versao = json.loads((destino / "gerado" / "manifesto.json").read_text(encoding="utf-8"))["versao"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise ErroInstalacao(f"a Doutrina TEC instalada não tem gerado/manifesto.json legível: {e}") from e
+    c.log(f"Doutrina TEC {versao} em {destino}")
 
 
 # ───────────────────────────────────────────────────────────── 3. pastas

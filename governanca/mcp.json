@@ -94,6 +94,13 @@
         "false"
       ],
       "description": "Busca e edição de código por símbolo via language servers (Serena 2.1.0, uv tool). Contexto ide + interface tools: sem shell, sem arquivo genérico e sem REPL."
+    },
+    "doutrina-tec": {
+      "command": "${TUDOIA_PYTHON}",
+      "args": [
+        "${DOUTRINA_TEC}/tools/mcp_doutrina.py"
+      ],
+      "description": "Doutrina TEC (somente leitura, stdio, só biblioteca padrão): manifesto, índice, núcleo e regras por ID. Script local da Doutrina fixada em governanca/doutrina.json; não baixa código."
     }
   }
 }

@@ -126,7 +126,7 @@ services:
     build:
       context: ./squadti
       args:
-        DOUTRINA_SHA: ${SQUADTI_DOUTRINA_SHA:-80877ed7e68e87458b17dc2d5b9e6d03e456ea4b}
+        DOUTRINA_SHA: ${SQUADTI_DOUTRINA_SHA:-ef605faffa7e2e96127cfdee2daee71e9831d848}
     container_name: squadti
     restart: unless-stopped
     ports: ["127.0.0.1:8790:8790"]

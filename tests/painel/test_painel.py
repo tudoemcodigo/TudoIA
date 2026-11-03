@@ -2127,3 +2127,17 @@ provedores:
     assert "openrouter" in res_especifico["erros"]
     assert "sem chave" in res_especifico["erros"]["openrouter"]
 
+
+
+def test_governanca_informa_o_estado_da_doutrina(cenario):
+    d = cenario.get("/api/governanca").json()["doutrina"]
+    assert d["estado"] == "sem_pasta"                                    # o .env do cenário não tem DOUTRINA_TEC
+    assert d["fixada"]["sha"] == json.loads((REPO / "governanca" / "doutrina.json").read_text(encoding="utf-8"))["sha"]
+    assert "sk-super-secreto" not in json.dumps(d) and "--sincronizar-pin" in d["comandos"]["atualizar"]
+
+
+def test_a_tela_mostra_a_doutrina_e_explica_a_sincronizacao():
+    estaticos = REPO / "painel" / "tudoia_painel" / "static"
+    html, js = (estaticos / "index.html").read_text(encoding="utf-8"), (estaticos / "painel.js").read_text(encoding="utf-8")
+    assert 'id="card-doutrina"' in html and "Não muda a versão da Doutrina" in html
+    assert "renderDoutrina(g.doutrina)" in js and "--sincronizar-pin" not in js     # o comando vem da API, não fica duplicado na tela

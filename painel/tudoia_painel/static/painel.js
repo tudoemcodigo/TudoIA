@@ -1379,11 +1379,61 @@ $("btn-executar-teste-roteador").addEventListener("click", async () => {
 });
 
 // ------------------------------------------------ 4. GOVERNANÇA
+// Cartão da Doutrina TEC: só leitura. Texto sempre via textContent (el), nunca innerHTML.
+function doutrinaComPendencia(d) {
+  return Boolean(d) && (d.estado !== "ok" || (d.derivados_divergentes || []).length > 0 || Boolean(d.aviso_fixacao));
+}
+
+function renderDoutrina(d) {
+  const alvo = $("card-doutrina");
+  if (!alvo) return;
+  alvo.replaceChildren();
+  if (!d) return;
+  const linhas = [
+    el("div", { className: "info-callout-title", textContent: "Doutrina TEC" }),
+    el("div", { className: "info-callout-text", textContent: d.mensagem || "" }),
+  ];
+  if (d.em_uso) {
+    linhas.push(el("div", { className: "info-callout-text" }, [
+      el("strong", { textContent: "Em uso: " }), `versão ${d.em_uso.versao} · hash ${String(d.em_uso.hash).slice(0, 12)}`,
+      d.pasta ? el("span", { className: "suave", textContent: `  (${d.pasta})` }) : null,
+    ]));
+  }
+  if (d.fixada) {
+    linhas.push(el("div", { className: "info-callout-text" }, [
+      el("strong", { textContent: "Fixada para o pacote e a SquadTI: " }),
+      `${d.fixada.repositorio} @ ${String(d.fixada.sha).slice(0, 12)}`,
+    ]));
+  }
+  if (d.aviso_fixacao) {
+    linhas.push(el("div", { className: "info-callout-text", textContent: `Atenção: ${d.aviso_fixacao}` }));
+  }
+  if ((d.derivados_divergentes || []).length) {
+    linhas.push(el("div", { className: "info-callout-text", textContent:
+      `Atenção: o commit fixado não está em ${d.derivados_divergentes.join(", ")}. Rode: ${d.comandos.derivar}` }));
+  }
+  const c = d.comandos || {};
+  linhas.push(el("details", {}, [
+    el("summary", { className: "info-callout-text", textContent: "Como atualizar a Doutrina" }),
+    el("div", { className: "info-callout-text" }, [
+      "1. Publique a mudança na main da Doutrina. ", el("br"),
+      "2. Busque o commit mais novo, grave em governanca/doutrina.json e propague para o Dockerfile e o compose da SquadTI: ",
+      el("code", { textContent: c.atualizar || "" }), el("br"),
+      "3. Gere o pacote com a Doutrina nesse commit (precisa de DOUTRINA_TEC apontando para um clone): ",
+      el("code", { textContent: c.empacotar || "" }), el("br"),
+      "4. Reconstrua a SquadTI para usar a versão nova. Depois, \"Sincronizar com os clientes\" só reaplica o caminho do MCP. ", el("br"),
+      "Só propagar o commit já fixado, sem consultar o GitHub: ", el("code", { textContent: c.derivar || "" }),
+    ]),
+  ]));
+  alvo.appendChild(el("div", { className: "info-callout" }, linhas));
+}
+
 async function carregarGovernanca() {
   const grid = $("grid-governanca");
   grid.replaceChildren(el("div", { className: "suave", textContent: "Carregando governança..." }));
   try {
     const g = await api("GET", "/api/governanca");
+    renderDoutrina(g.doutrina);
     const badgeDrift = $("badge-drift");
     const totalAlertasMcp = g.alertas_mcp ? Object.keys(g.alertas_mcp).length : 0;
     if (totalAlertasMcp > 0) {
@@ -1392,6 +1442,9 @@ async function carregarGovernanca() {
     } else if (g.drift && g.drift.length > 0) {
       badgeDrift.className = "badge badge-paid";
       badgeDrift.textContent = `${g.drift.length} arquivo(s) fora de sincronia`;
+    } else if (doutrinaComPendencia(g.doutrina)) {
+      badgeDrift.className = "badge badge-paid";
+      badgeDrift.textContent = "Doutrina TEC com pendência";
     } else {
       badgeDrift.className = "badge badge-free";
       badgeDrift.textContent = "✓ Sincronizado (Zero Drift)";

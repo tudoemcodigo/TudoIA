@@ -3,10 +3,10 @@
 # sistema de arquivos somente leitura (ver o serviço `squadti` no docker-compose.yml). O compose monta o docker.sock do host para os
 # testes de integração (decisão do dono): isso devolve ao código gerado o poder de root no host; leia o aviso no compose.
 
-# --- Doutrina TEC: clonada numa versão (SHA) fixada, sem histórico. Trocar a Doutrina = trocar o SHA aqui (e o hash no estado
+# --- Doutrina TEC: clonada numa versão (SHA) fixada, sem histórico. Trocar a Doutrina = trocar governanca/doutrina.json e rodar `python -m scripts.empacotar.payload --derivar-pin` (este SHA é derivado; o hash no estado
 # de cada tarefa, ECO-CON-02, acusa a mudança no meio de uma tarefa).
 FROM alpine/git:2.49.1@sha256:c0280cf9572316299b08544065d3bf35db65043d5e3963982ec50647d2746e26 AS doutrina
-ARG DOUTRINA_SHA=80877ed7e68e87458b17dc2d5b9e6d03e456ea4b
+ARG DOUTRINA_SHA=ef605faffa7e2e96127cfdee2daee71e9831d848
 RUN git init -q /doutrina \
  && git -C /doutrina fetch -q --depth 1 https://github.com/tudoemcodigo/Doutrina.git "$DOUTRINA_SHA" \
  && git -C /doutrina checkout -q FETCH_HEAD \

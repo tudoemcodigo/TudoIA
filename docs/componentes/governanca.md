@@ -289,6 +289,20 @@ A Serena cria `.serena\` na raiz de cada projeto (cache e memórias que os agent
 `.gitignore`. A primeira consulta num projeto demora (download e indexação do language server); as seguintes são
 rápidas. Para atualizar: troque a versão no `uv tool install` e revise os contextos de novo.
 
+### Doutrina TEC (`doutrina-tec`)
+
+Servidor MCP local (stdio, somente leitura, só biblioteca padrão) que consulta a Doutrina: manifesto, índice, núcleo e regras
+por ID. Não usa `npx` nem baixa código: roda `tools/mcp_doutrina.py` da pasta `DOUTRINA_TEC` com o Python de
+`TUDOIA_PYTHON`, as duas variáveis do `.env` (o instalador as preenche; numa cópia de desenvolvimento aponte para o clone
+da Doutrina e para o `.venv` do TudoIA). Nos destinos sob a home o `sync` grava o caminho já resolvido, então a skill `doutrina-tec` funciona sem que
+`DOUTRINA_TEC` exista no ambiente do cliente (em workspace o `${VAR}` fica literal, como nos demais MCP). Versão da Doutrina e empacotamento: [instalador.md](../instalador.md#a-doutrina-tec-dentro-do-pacote).
+Registrar ou mudar este servidor faz `python tools/distribuicao.py fontes` da Doutrina acusar `alterada` até alguém revisar.
+
+Não confunda as duas sincronizações: o botão **Sincronizar com os clientes** (`tudoia sync`) só regrava a configuração dos
+clientes, inclusive o caminho deste MCP, e **não muda a versão da Doutrina**. Quem muda a versão é
+`python -m scripts.empacotar.payload --sincronizar-pin` (busca o commit mais novo; ver [instalador.md](../instalador.md#a-doutrina-tec-dentro-do-pacote)).
+O painel mostra o estado no cartão "Doutrina TEC" da aba Regras, skills e MCP.
+
 ## Instâncias de cliente
 
 Cada entrada de `instancias` diz onde um cliente mora na sua máquina:

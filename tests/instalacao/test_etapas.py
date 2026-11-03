@@ -93,11 +93,101 @@ def test_obter_codigo_instala_o_pacote(ctx, tmp_path, monkeypatch):
     with zipfile.ZipFile(z, "w") as f:
         f.writestr("runtime/docker-compose.yml", "services: {}")
         f.writestr(".env.example", "TZ=\n")
-    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 2}))
+        f.writestr("doutrina/gerado/manifesto.json", '{"versao": "0.0.1"}')
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 3}))
     ex = _executor(ctx)
     etapas.obter_codigo(ctx)
     assert (ctx.raiz / ".env.example").is_file()
+    assert any("Doutrina TEC 0.0.1" in x for x in ctx.logs)
     assert any(c[0] == "icacls" and "/reset" in c for c, _ in ex.chamadas)
+
+
+SHA_DOUTRINA = "c" * 40
+
+
+def _zip_sem_doutrina(tmp_path, pin=None):
+    import zipfile
+    z = tmp_path / "p.zip"
+    with zipfile.ZipFile(z, "w") as f:
+        f.writestr("runtime/docker-compose.yml", "services: {}")
+        f.writestr(".env.example", "TZ=\n")
+        if pin is not None:
+            f.writestr("governanca/doutrina.json", pin if isinstance(pin, str) else json.dumps(pin))
+    return z
+
+
+def _sem_rede(monkeypatch):
+    monkeypatch.setattr(etapas.codigo, "baixar_github", lambda *a, **k: pytest.fail("não deveria baixar nada"))
+
+
+def test_obter_codigo_sem_doutrina_e_sem_pin_falha_fechado(ctx, tmp_path, monkeypatch):
+    z = _zip_sem_doutrina(tmp_path)
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 2}))
+    _sem_rede(monkeypatch)
+    _executor(ctx)
+    with pytest.raises(ErroInstalacao, match="Doutrina TEC"):
+        etapas.obter_codigo(ctx)
+
+
+@pytest.mark.parametrize("pin", [{"repositorio": "o/r", "sha": "main"}, {"repositorio": "o/r", "sha": "abc"},
+                                 {"repositorio": "https://x/y", "sha": SHA_DOUTRINA}, {"repositorio": "../r", "sha": SHA_DOUTRINA},
+                                 {"repositorio": "o/..", "sha": SHA_DOUTRINA}, "{nao e json", "[]"])
+def test_obter_codigo_recusa_pin_da_doutrina_invalido_sem_baixar_nada(ctx, tmp_path, monkeypatch, pin):
+    z = _zip_sem_doutrina(tmp_path, pin)
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 3}))
+    _sem_rede(monkeypatch)
+    _executor(ctx)
+    with pytest.raises(ErroInstalacao):
+        etapas.obter_codigo(ctx)
+
+
+def _zip_do_github(conteudo: dict):
+    import zipfile
+
+    def baixar(repo, ref, destino, *a, **k):
+        baixar.pedidos.append((repo, ref))
+        with zipfile.ZipFile(destino, "w") as f:   # o GitHub zipa dentro de uma pasta <repo>-<sha>
+            for nome, texto in conteudo.items():
+                f.writestr(f"Doutrina-{ref}/{nome}", texto)
+        return destino
+
+    baixar.pedidos = []
+    return baixar
+
+
+def test_obter_codigo_baixa_a_doutrina_na_versao_fixada_quando_o_pacote_nao_a_traz(ctx, tmp_path, monkeypatch):
+    z = _zip_sem_doutrina(tmp_path, {"repositorio": "tudoemcodigo/Doutrina", "sha": SHA_DOUTRINA})
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 3}))
+    baixar = _zip_do_github({"gerado/manifesto.json": '{"versao": "9.9.9"}'})
+    monkeypatch.setattr(etapas.codigo, "baixar_github", baixar)
+    _executor(ctx)
+    etapas.obter_codigo(ctx)
+    assert baixar.pedidos == [("tudoemcodigo/Doutrina", SHA_DOUTRINA)]
+    assert (ctx.raiz / "doutrina" / "gerado" / "manifesto.json").is_file()
+    assert not (ctx.raiz / ".doutrina-github.zip").exists()
+    assert any("Doutrina TEC 9.9.9" in x for x in ctx.logs)
+
+
+def test_obter_codigo_falha_se_a_doutrina_baixada_nao_tem_manifesto(ctx, tmp_path, monkeypatch):
+    z = _zip_sem_doutrina(tmp_path, {"repositorio": "tudoemcodigo/Doutrina", "sha": SHA_DOUTRINA})
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 3}))
+    monkeypatch.setattr(etapas.codigo, "baixar_github", _zip_do_github({"README.md": "sem gerado/"}))
+    _executor(ctx)
+    with pytest.raises(ErroInstalacao, match="manifesto"):
+        etapas.obter_codigo(ctx)
+
+
+def test_obter_codigo_traduz_falha_de_rede_ao_baixar_a_doutrina(ctx, tmp_path, monkeypatch):
+    z = _zip_sem_doutrina(tmp_path, {"repositorio": "tudoemcodigo/Doutrina", "sha": SHA_DOUTRINA})
+    monkeypatch.setattr(etapas.codigo, "payload_embutido", lambda: (z, {"versao": "1", "arquivos": 3}))
+
+    def baixar(*a, **k):
+        raise etapas.codigo.ErroCodigo("sem rede")
+
+    monkeypatch.setattr(etapas.codigo, "baixar_github", baixar)
+    _executor(ctx)
+    with pytest.raises(ErroInstalacao, match="sem rede"):
+        etapas.obter_codigo(ctx)
 
 
 def test_pastas_cria_estrutura_e_marca(ctx):
@@ -138,6 +228,15 @@ def test_escrever_env_aplica_opcoes_mascara_segredos_e_restringe_acesso(ctx):
     assert ctx.redator.limpar("a gsk_segredo_longo_123 b") == "a *** b"
     assert any(c[0] == "icacls" and "/inheritance:r" in c for c, _ in ex.chamadas)
     assert "gsk_segredo_longo_123" not in "\n".join(ctx.logs)
+
+
+def test_escrever_env_aponta_o_mcp_da_doutrina_para_a_instalacao(ctx):
+    _falso_payload(ctx)
+    _executor(ctx)
+    etapas.escrever_env(ctx)
+    v = envfile.ler((ctx.raiz / ".env").read_text(encoding="utf-8"))
+    assert v["DOUTRINA_TEC"] == str(ctx.raiz / "doutrina")
+    assert v["TUDOIA_PYTHON"] == str(ctx.raiz / ".venv" / "Scripts" / "python.exe")
 
 
 def test_escrever_env_nao_apaga_segredos_de_instalacao_anterior(ctx):
