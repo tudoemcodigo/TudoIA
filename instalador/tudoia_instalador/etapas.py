@@ -410,6 +410,14 @@ def keycloak(c: Contexto) -> None:
     c.log("Keycloak provisionado (realm tudoia, clientes e papéis)")
 
 
+def squadti_chave(c: Contexto) -> None:
+    """Cria a chave virtual da Squad no LiteLLM (já no ar) e recria o container para ele ler a chave nova."""
+    c.executor.rodar([c.python, "-m", "scripts.squadti.chave"], cwd=c.raiz, env=c.env_projeto, timeout=120, sensivel=True)
+    c.executor.rodar([*_compose(c), "up", "-d", "--no-deps", "--wait", "--wait-timeout", "300", "squadti"],
+                     cwd=c.raiz, timeout=900)
+    c.log("SquadTI pronta (chave virtual própria no LiteLLM, container isolado)")
+
+
 def n8n_credencial(c: Contexto) -> None:
     c.executor.rodar([c.python, "-m", "scripts.n8n.credencial_cerebro"], cwd=c.raiz, env=c.env_projeto, mostrar=False)
 
@@ -519,6 +527,7 @@ def montar_etapas() -> list[Etapa]:
         Etapa("keycloak", "Configurando o login (Keycloak)", keycloak,
               lambda o: o.usa("keycloak") or o.keycloak_existente),
         Etapa("n8n", "Ligando o n8n ao Cérebro", n8n_credencial, lambda o: o.usa("n8n") and o.usa("cerebro")),
+        Etapa("squadti", "Configurando a SquadTI (chave do gateway)", squadti_chave, lambda o: o.usa("squadti")),
         Etapa("comfyui", "Instalando o ComfyUI portable", comfyui, lambda o: o.usa("comfyui")),
         Etapa("sync", "Configurando os clientes de IA", sincronizar_clientes, lambda o: o.configurar_clientes_ia),
         Etapa("atalhos", "Criando os atalhos", atalhos, lambda o: o.criar_atalhos),

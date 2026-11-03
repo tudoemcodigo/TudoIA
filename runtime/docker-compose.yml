@@ -114,6 +114,49 @@ services:
       retries: 3
       start_period: 30s
 
+  # SquadTI: squad de agentes (LangGraph) que gera projetos novos. Compila e testa código escrito por modelo, então roda isolada:
+  # sem root, rootfs somente leitura, sem capabilities, com teto de CPU/memória/processos e SEM docker.sock. Escreve só no volume
+  # squadti-dados (checkpoint, workspace/<tarefa>, caches NuGet/npm). A porta fica só em loopback; o painel a usa em /api/squadti.
+  squadti:
+    profiles: [squadti]
+    build:
+      context: ./squadti
+      args:
+        DOUTRINA_SHA: ${SQUADTI_DOUTRINA_SHA:-80877ed7e68e87458b17dc2d5b9e6d03e456ea4b}
+    container_name: squadti
+    restart: unless-stopped
+    ports: ["127.0.0.1:8790:8790"]
+    environment:
+      - TUDOIA_SQUADTI_TOKEN=${TUDOIA_SQUADTI_TOKEN:-}
+      # Chave virtual do LiteLLM só da Squad (alias e tag squadti). O modelo padrão é local-estrito: nunca sai da máquina.
+      - TUDOIA_API_KEY=${SQUADTI_API_KEY:-}
+      - TUDOIA_GATEWAY_URL=http://litellm:4000/v1
+      - TUDOIA_TIMEOUT_S=${SQUADTI_TIMEOUT_S:-300}
+      - TUDOIA_CONTEXTO_TOKENS=${SQUADTI_CONTEXTO_TOKENS:-32768}
+      # Feed privado tec-interno (GitHub Packages exige PAT read:packages): opcional, só por ambiente.
+      - TUDOIA_NUGET_USER=${TUDOIA_NUGET_USER:-}
+      - TUDOIA_NUGET_PAT=${TUDOIA_NUGET_PAT:-}
+    volumes:
+      - squadti-dados:/dados
+      # Template TEC (dotnet new tec-project): copie a pasta do TemplateTEC para cá enquanto ele não estiver publicado.
+      - ${SQUADTI_TEMPLATE_DIR:-../dados/squadti-template}:/template:ro
+    read_only: true
+    tmpfs: ["/tmp:size=1g"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 1024
+    mem_limit: ${SQUADTI_MEMORIA:-6g}
+    cpus: ${SQUADTI_CPUS:-4}
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8790/saude', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   kokoro:
     profiles: [webui]
     image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c   # CPU de propósito: deixa a VRAM para LLM e imagem
@@ -229,3 +272,4 @@ volumes:
   n8n:
   litellm-db:
   keycloak-db:
+  squadti-dados:

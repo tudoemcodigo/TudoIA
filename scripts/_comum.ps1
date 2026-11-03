@@ -84,45 +84,28 @@ function PararPainel {
     return $n
 }
 
-# ---------------------------------------------------------------- SquadTI (API da Squad, porta 8790)
-# Mesma regra do painel (painel/tudoia_painel/servicos.py, _start_squadti): sem a configuracao completa nao sobe.
+# ---------------------------------------------------------------- SquadTI (container "squadti", perfil de compose "squadti", porta 8790)
+function ComposeSquadti([string[]]$argumentos) {
+    $projeto = ValorEnv 'TUDOIA_COMPOSE_PROJETO' 'tudoia'
+    & docker compose -p $projeto -f (Join-Path $raiz 'runtime\docker-compose.yml') --env-file (Join-Path $raiz '.env') @argumentos
+    return ($LASTEXITCODE -eq 0)
+}
+
+# Sem token (32+ caracteres) e sem a chave virtual do LiteLLM a API da Squad nao funciona: nao sobe.
 function SquadtiConfigurado {
-    foreach ($c in 'TUDOIA_SQUADTI_DIR', 'TUDOIA_SQUADTI_TOKEN', 'SQUADTI_API_KEY', 'DOUTRINA_TEC') {
-        if (-not (ValorEnv $c)) { return $false }
-    }
-    return $true
+    return ((ValorEnv 'TUDOIA_SQUADTI_TOKEN').Length -ge 32) -and [bool](ValorEnv 'SQUADTI_API_KEY')
 }
 
 function SquadtiNoAr { return (PortaAberta $script:PortaSquadti) }
 
+# `up -d --build squadti` ativa o perfil sozinho (servico nomeado), reconstroi se o codigo mudou e nao toca nos outros servicos.
 function IniciarSquadti {
-    if (SquadtiNoAr) { return $true }
-    if (-not (SquadtiConfigurado)) { Write-Warning 'SquadTI nao configurado: defina TUDOIA_SQUADTI_DIR, TUDOIA_SQUADTI_TOKEN, SQUADTI_API_KEY e DOUTRINA_TEC no .env.'; return $false }
-    $token = ValorEnv 'TUDOIA_SQUADTI_TOKEN'
-    if ($token.Length -lt 32) { Write-Warning 'TUDOIA_SQUADTI_TOKEN precisa ter 32 caracteres ou mais.'; return $false }
-    $base = ValorEnv 'TUDOIA_SQUADTI_DIR'
-    $api = Join-Path $base 'orquestrador\api.py'
-    $pyEnv = ValorEnv 'TUDOIA_SQUADTI_PYTHON'
-    $python = if ($pyEnv) { $pyEnv } else { Join-Path $base '.venv\Scripts\python.exe' }
-    if (-not ((Test-Path $api) -and (Test-Path $python))) { Write-Warning "SquadTI nao encontrada: preciso de $api e do Python do ambiente ($python)."; return $false }
-    $trabalho = Join-Path $raiz 'dados\squadti'
-    New-Item -ItemType Directory -Force $trabalho | Out-Null
-    $cfg = ValorEnv 'TUDOIA_SQUADTI_CONFIG' (Join-Path $base 'orquestrador\stack_config.example.json')
-    # Segredos so por variavel de ambiente do processo, nunca na linha de comando.
-    $env:TUDOIA_SQUADTI_TOKEN = $token
-    $env:TUDOIA_API_KEY = ValorEnv 'SQUADTI_API_KEY'
-    $env:DOUTRINA_TEC = ValorEnv 'DOUTRINA_TEC'
-    $env:TUDOIA_GATEWAY_URL = ValorEnv 'TUDOIA_SQUADTI_GATEWAY' 'http://127.0.0.1:4000/v1'
-    $env:TUDOIA_MODEL = 'tudoia-local-estrito'
-    $logs = Logs
-    Start-Process $python -ArgumentList $api, '--porta', $script:PortaSquadti, '--db', (Join-Path $trabalho 'squad_state.db'), '--config', $cfg `
-        -WorkingDirectory $trabalho -WindowStyle Hidden `
-        -RedirectStandardOutput (Join-Path $logs 'squadti.log') -RedirectStandardError (Join-Path $logs 'squadti.err.log')
-    return (Esperar { SquadtiNoAr } 30 1)
+    if (-not (SquadtiConfigurado)) { Write-Warning 'SquadTI nao configurada: defina TUDOIA_SQUADTI_TOKEN (32+ caracteres) e SQUADTI_API_KEY no .env (ou rode: tudoia squadti-chave).'; return $false }
+    if (-not (ComposeSquadti @('up', '-d', '--build', 'squadti'))) { Write-Warning 'docker compose up squadti falhou.'; return $false }
+    return (Esperar { SquadtiNoAr } 90 2)
 }
 
 function PararSquadti {
-    $n = PararPorta $script:PortaSquadti 'orquestrador\api.py'
-    [void](Esperar { -not (SquadtiNoAr) } 10 1)
-    return $n
+    [void](ComposeSquadti @('stop', 'squadti'))
+    return 1
 }
