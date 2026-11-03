@@ -113,7 +113,7 @@ No instalador, marque **SquadTI**; ou, numa instalação existente:
 
 Depois use o menu **SquadTI** do painel (`http://127.0.0.1:3100/app/#squadti`) para iniciar tarefas, responder, aprovar a especificação e o release.
 
-O container: usuário sem root, sistema de arquivos somente leitura, sem capabilities, com teto de CPU, memória e processos, **sem `docker.sock`**,
+O container: usuário sem root, sistema de arquivos somente leitura, sem capabilities, com teto de CPU, memória e processos,
 porta só em `127.0.0.1:8790`. Escreve apenas no volume `squadti-dados` (checkpoint, `workspace/<tarefa>`, caches NuGet e npm). A Doutrina TEC vai na imagem,
 numa versão (SHA) fixada no `Dockerfile` (`SQUADTI_DOUTRINA_SHA` troca). O modelo padrão é `tudoia-local-estrito`; nuvem só com consentimento por tarefa.
 
@@ -134,7 +134,9 @@ uv run python orquestrador/main.py iniciar --tarefa TASK-001 --briefing "Cadastr
 > precisa (`tudoia squadti-chave` cria a certa). A chave fica no `.env` (ignorado pelo git), nunca em arquivo versionado.
 
 > [!NOTE]
-> Limites do container: testes de integração que sobem containers (Testcontainers) não rodam dentro dele, porque o `docker.sock` não é montado.
+> **Atenção:** o `docker.sock` do host está montado para os testes de integração (Testcontainers): isso equivale a root no host para o código gerado. Veja o aviso em
+> [`docs/componentes/squadti.md`](../../docs/componentes/squadti.md) e como desfazer.
+>
 > O template `dotnet new tec-project` entra se a pasta do TemplateTEC for copiada para `dados/squadti-template` (ou `SQUADTI_TEMPLATE_DIR`);
 > o feed privado `tec-interno` exige `TUDOIA_NUGET_USER` e `TUDOIA_NUGET_PAT` (read:packages) no `.env`.
 
