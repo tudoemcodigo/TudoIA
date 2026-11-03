@@ -10,6 +10,23 @@ import httpx
 from . import mcp_stdio
 
 VARIAVEL = re.compile(r"^\$\{([A-Z0-9_]+)(?::-.*)?\}$")
+EM_TEXTO = re.compile(r"\$\{([A-Z0-9_]+)(?::-([^}]*))?\}")   # ${VAR} ou ${VAR:-padrão} no meio de um texto
+
+
+class _VariavelAusente(Exception):
+    """${VAR} obrigatória sem valor no .env; guarda só o nome (nunca valor)."""
+
+
+def _resolver(texto: str, env_local: dict[str, str]) -> str:
+    """Mesma regra do `sync` (governanca._interpolar): vazio cai no padrão `:-`; sem padrão é erro."""
+    def trocar(m: re.Match) -> str:
+        valor = env_local.get(m.group(1), "").strip()
+        if valor:
+            return valor
+        if m.group(2) is not None:
+            return m.group(2)
+        raise _VariavelAusente(m.group(1))
+    return EM_TEXTO.sub(trocar, str(texto))
 HOSTS_DO_CEREBRO = ("localhost", "127.0.0.1", "host.docker.internal", "cerebro")
 SAUDE_DO_CEREBRO = "http://127.0.0.1:8765/saude"
 
@@ -82,6 +99,10 @@ def testar_stdio(id: str, cfg: dict, env_local: dict[str, str]) -> dict:
 
     if not cmd:
         return _falha_stdio(id, "Configuração sem comando executável")
+    try:   # command e args também levam ${VAR} (ex.: doutrina-tec); o sync as resolve, então o teste também
+        cmd, args = _resolver(cmd, env_local), [_resolver(x, env_local) for x in args]
+    except _VariavelAusente as e:
+        return _falha_stdio(id, f"Variável obrigatória '{e.args[0]}' não configurada no .env")
     cmd_exec = f"{cmd}.cmd" if os.name == "nt" and cmd in ("npx", "npm", "uvx") else cmd
     if not shutil.which(cmd_exec):
         return _falha_stdio(id, f"Comando '{cmd}' não encontrado no PATH")

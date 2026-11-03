@@ -43,3 +43,46 @@ def test_variavel_obrigatoria_ausente_nao_faz_requisicao(monkeypatch):
 def test_stdio_sem_comando_e_comando_inexistente():
     assert mt.testar("x", {"args": []}, {})["mensagem"] == "Configuração sem comando executável"
     assert "não encontrado" in mt.testar("x", {"command": "comando-que-nao-existe-xyz"}, {})["mensagem"]
+
+
+# ───────── ${VAR} no command e nos args (MCP doutrina-tec: ${TUDOIA_PYTHON} ${DOUTRINA_TEC}/tools/...)
+def _stdio_falso(monkeypatch, achados=None):
+    vistos = {}
+    monkeypatch.setattr(mt.shutil, "which", lambda c: achados.get(c) if achados is not None else c)
+
+    def handshake(argv, env):
+        vistos["argv"] = argv
+        return {"result": {"serverInfo": {"name": "doutrina-tec", "version": "0.0.1"}, "capabilities": {"tools": {}}}}
+
+    monkeypatch.setattr(mt.mcp_stdio, "handshake", handshake)
+    return vistos
+
+
+def test_command_e_args_com_variavel_sao_resolvidos_pelo_env(monkeypatch):
+    py = r"D:\TudoIA\.venv\Scripts\python.exe"
+    vistos = _stdio_falso(monkeypatch, {py: py})
+    cfg = {"command": "${TUDOIA_PYTHON}", "args": ["${DOUTRINA_TEC}/tools/mcp_doutrina.py", "--x=${OPC:-padrao}"]}
+    r = mt.testar("doutrina-tec", cfg, {"TUDOIA_PYTHON": py, "DOUTRINA_TEC": r"D:\Projetos\Doutrina"})
+    assert r["ok"] is True and "operacional" in r["mensagem"]
+    assert vistos["argv"] == [py, r"D:\Projetos\Doutrina/tools/mcp_doutrina.py", "--x=padrao"]
+
+
+@pytest.mark.parametrize("env,faltando", [({}, "TUDOIA_PYTHON"), ({"TUDOIA_PYTHON": "  "}, "TUDOIA_PYTHON"),
+                                          ({"TUDOIA_PYTHON": "py"}, "DOUTRINA_TEC")])
+def test_variavel_ausente_no_command_ou_args_nomeia_a_variavel_e_nao_executa(monkeypatch, env, faltando):
+    monkeypatch.setattr(mt.shutil, "which", lambda c: pytest.fail("não deveria procurar o comando"))
+    monkeypatch.setattr(mt.mcp_stdio, "handshake", lambda *a: pytest.fail("não deveria executar"))
+    r = mt.testar("x", {"command": "${TUDOIA_PYTHON}", "args": ["${DOUTRINA_TEC}/s.py"]}, env)
+    assert r["ok"] is False and faltando in r["mensagem"] and "${" not in r["mensagem"]
+
+
+def test_comando_resolvido_que_nao_existe_mostra_o_resolvido_e_nao_o_placeholder(monkeypatch):
+    _stdio_falso(monkeypatch, {})
+    r = mt.testar("x", {"command": "${TUDOIA_PYTHON}"}, {"TUDOIA_PYTHON": r"D:\sumiu\python.exe"})
+    assert r["ok"] is False and r["mensagem"] == r"Comando 'D:\sumiu\python.exe' não encontrado no PATH"
+
+
+def test_comando_sem_variavel_continua_igual(monkeypatch):
+    vistos = _stdio_falso(monkeypatch)
+    assert mt.testar("x", {"command": "serena", "args": ["start"]}, {})["ok"] is True
+    assert vistos["argv"] == ["serena", "start"]
