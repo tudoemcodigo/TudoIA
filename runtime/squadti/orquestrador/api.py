@@ -29,8 +29,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import agentes
+import auditoria
+import chefe
+import proveniencia
+from execucao import workspace
+from state import RESET
 from perfis import PERFIS, modelo_e_local
-from servico import ErroUso, cfg_da_tarefa, montar_entrada, situacao, tarefa_valida
+from servico import ErroUso, aprovar_release, aprovar_spec, cfg_da_tarefa, montar_entrada, situacao, tarefa_valida
 
 PORTA_PADRAO = 8790
 TOKEN_MIN = 32
@@ -38,6 +44,8 @@ MAX_CORPO = 64 * 1024
 MAX_ARQUIVO = 200_000
 MAX_LISTA = 200
 MAX_ERRO = 500
+MAX_EVENTOS = 500
+MAX_MENSAGEM = 4000
 PERFIL_PADRAO = "local-estrito"
 HOSTS_DE_BIND = ("127.0.0.1", "0.0.0.0")  # nada além disso: a API nunca escuta numa interface escolhida por texto livre
 RE_TAREFA_ROTA = r"(?P<id>[A-Za-z0-9][A-Za-z0-9._-]{0,63})"
@@ -61,18 +69,28 @@ class Execucoes:
         if not self._trava.acquire(blocking=False):
             ocupada = next((t for t, r in self.registros.items() if r["estado"] == "rodando"), "outra tarefa")
             raise ErroHttp(409, "ocupado", f"já há uma execução em andamento ({ocupada}); aguarde terminar")
-        registro = {"estado": "rodando", "acao": acao, "inicio": time.time(), "fim": None, "nos": [], "erro": None}
+        registro = {"estado": "rodando", "acao": acao, "inicio": time.time(), "fim": None, "nos": [], "erro": None,
+                    "eventos": []}
         self.registros[tarefa] = registro
 
+        def evento(texto):
+            registro["eventos"].append({"em": time.time(), "texto": texto})
+            del registro["eventos"][:-MAX_EVENTOS]  # só os últimos: o log ao vivo não cresce sem limite
+
         def corpo():
+            auditoria.registrar_sink(tarefa, evento)
             try:
-                trabalho(lambda no: registro["nos"].append(no))
-                registro["estado"] = "ok"
+                resultado = trabalho(lambda no: registro["nos"].append(no))
+                if isinstance(resultado, tuple) and resultado and resultado[0] == "escalada":
+                    registro["estado"], registro["erro"] = "escalada", str(resultado[1])[:MAX_ERRO]
+                else:
+                    registro["estado"] = "ok"
             except Exception as e:  # falha fechada e visível: doutrina ilegível, modelo sem consentimento, saída inválida
                 from main import explicar_falha
                 registro["estado"] = "erro"
                 registro["erro"] = (explicar_falha(e) or f"{type(e).__name__}: {e}")[:MAX_ERRO]
             finally:
+                auditoria.registrar_sink(tarefa, None)
                 registro["fim"] = time.time()
                 self._trava.release()
 
@@ -80,7 +98,11 @@ class Execucoes:
 
     def de(self, tarefa: str):
         r = self.registros.get(tarefa)
-        return None if r is None else {**r, "nos": list(r["nos"])}
+        return None if r is None else {**{k: v for k, v in r.items() if k != "eventos"}, "nos": list(r["nos"])}
+
+    def eventos(self, tarefa: str, desde: int = 0) -> list:
+        r = self.registros.get(tarefa)
+        return [] if r is None else list(r["eventos"])[max(0, desde):]
 
 
 class Servico:
@@ -151,6 +173,25 @@ class Servico:
                            f"o perfil '{perfil}' pode enviar código e esquema para a nuvem; envie consentimento_nuvem: true")
         return modelo, consentimento is True
 
+    def _consentimento_dos_agentes(self, cfg_agentes: dict, consentimento: bool) -> None:
+        """Agente configurado com perfil que pode sair da máquina só vale se a tarefa trouxe o consentimento explícito."""
+        fora = agentes.modelos_que_saem_da_maquina(cfg_agentes)
+        if fora and not consentimento:
+            raise ErroHttp(422, "consentimento_nuvem", f"os agentes {fora} usam perfil que pode sair da máquina; "
+                                                       "envie consentimento_nuvem: true")
+
+    def agentes_cfg(self) -> dict:
+        try:
+            return agentes.carregar()
+        except agentes.ConfigInvalida as e:
+            raise ErroHttp(500, "config_invalida", str(e)) from e
+
+    def salvar_agentes(self, corpo: dict) -> dict:
+        try:
+            return agentes.salvar(corpo)
+        except agentes.ConfigInvalida as e:
+            raise ErroHttp(422, "validacao", str(e)) from e
+
     def iniciar(self, corpo: dict) -> dict:
         tarefa = tarefa_valida(str(corpo.get("tarefa", "")))
         briefing = corpo.get("briefing")
@@ -160,7 +201,12 @@ class Servico:
         cfg = cfg_da_tarefa(tarefa)
         if self.app.get_state(cfg).values:
             raise ErroHttp(409, "conflito", f"a tarefa {tarefa} já existe")
-        entrada = montar_entrada(tarefa, briefing, self.config_stack, modelo, consentimento)
+        cfg_agentes = self.agentes_cfg()
+        if isinstance(corpo.get("orcamento"), dict):  # teto desta tarefa (substitui o padrão da configuração)
+            cfg_agentes = {**cfg_agentes, "orcamento": agentes.validar({"orcamento": corpo["orcamento"]})["orcamento"]}
+        self._consentimento_dos_agentes(cfg_agentes, consentimento)
+        stack = corpo.get("stack")
+        entrada = montar_entrada(tarefa, briefing, self.config_stack, modelo, consentimento, stack, cfg_agentes)
         self._rodar(tarefa, "iniciar", entrada, cfg)
         # o primeiro checkpoint ainda não existe: o que se sabe agora vem da entrada
         return {"tarefa": tarefa, "projeto": entrada["project_name"], "modelo": modelo,
@@ -187,19 +233,103 @@ class Servico:
             raise ErroHttp(409, "estado_invalido", f"nada a aprovar: a tarefa não está pausada antes de {no}")
 
         def antes():
-            self.app.update_state(cfg, {campo: True})
+            # o sim vale para o CONTEÚDO que o usuário viu: grava o hash junto (aprovacao.py)
+            (aprovar_spec if no == "arquiteto" else aprovar_release)(self.app, cfg)
         self._rodar(tarefa, acao, None, cfg, antes)
         return self.resumo(tarefa)
 
+    def continuar(self, tarefa: str, corpo: dict) -> dict:
+        """Retoma uma tarefa escalada (orçamento, estagnação, saída inválida) depois de o humano decidir: limpa a parada, opcionalmente
+        sobe o orçamento e re-executa a partir do checkpoint. Não passa por cima de aprovação nem de portão."""
+        cfg = cfg_da_tarefa(tarefa)
+        v = self.app.get_state(cfg).values
+        if not v:
+            raise ErroHttp(404, "nao_encontrado", f"tarefa inexistente: {tarefa}")
+        if not v.get("escalada"):
+            raise ErroHttp(409, "estado_invalido", "a tarefa não está escalada")
+        mudancas = {"escalada": None, "assinaturas_erro": [RESET]}
+        if isinstance(corpo.get("orcamento"), dict):
+            mudancas["orcamento"] = agentes.validar({"orcamento": corpo["orcamento"]})["orcamento"]
+
+        def antes():
+            self.app.update_state(cfg, mudancas)
+        self._rodar(tarefa, "continuar", None, cfg, antes)
+        return self.resumo(tarefa)
+
+    # ------------------------------------------------------------ CHEFE (canal único), auditoria, proveniência, log
+    def mensagens(self, tarefa: str) -> dict:
+        cfg = cfg_da_tarefa(tarefa)
+        v = self.app.get_state(cfg).values or {}
+        if not v:
+            raise ErroHttp(404, "nao_encontrado", f"tarefa inexistente: {tarefa}")
+        return {"mensagens": v.get("mensagens") or [], "observacoes": v.get("observacoes_usuario") or []}
+
+    def mensagem(self, tarefa: str, corpo: dict) -> dict:
+        """O usuário fala com o CHEFE. Resposta à entrevista segue ao analista; `/ajuste` vira instrução; o resto o CHEFE responde.
+        Nunca altera aprovação, portão nem configuração."""
+        texto = corpo.get("texto")
+        if not isinstance(texto, str) or not texto.strip() or len(texto) > MAX_MENSAGEM:
+            raise ErroHttp(422, "validacao", f"texto obrigatório, de até {MAX_MENSAGEM} caracteres")
+        cfg = cfg_da_tarefa(tarefa)
+        v = self.app.get_state(cfg).values
+        if not v:
+            raise ErroHttp(404, "nao_encontrado", f"tarefa inexistente: {tarefa}")
+        aguarda = situacao(self.app, cfg)["estado"] == "aguardando_respostas"
+        try:
+            atualizacao = chefe.responder(v, texto, aguarda)
+        except auditoria.EscaladaHumana as e:
+            raise ErroHttp(503, "indisponivel", f"o CHEFE não conseguiu responder: {e.motivo}") from e
+        self.app.update_state(cfg, atualizacao)
+        if aguarda:
+            limpo = atualizacao["mensagens"][0]["texto"]
+            self._rodar(tarefa, "responder", {"interview_answers": [*v.get("interview_answers", []), limpo]}, cfg)
+        return {"mensagens": atualizacao["mensagens"]}
+
+    def auditoria(self, tarefa: str) -> dict:
+        cfg = cfg_da_tarefa(tarefa)
+        v = self.app.get_state(cfg).values or {}
+        if not v:
+            raise ErroHttp(404, "nao_encontrado", f"tarefa inexistente: {tarefa}")
+        nos = [{k: r.get(k) for k in ("no", "papel", "inicio", "duracao_s", "chamadas", "tokens_entrada", "tokens_saida", "modelos")}
+               for r in v.get("auditoria") or []]
+        return {"totais": auditoria.totais(v), "orcamento": v.get("orcamento") or {}, "nos": nos,
+                "chamadas": [{"no": r.get("no"), **{k: c.get(k) for k in ("agente", "modelo", "tentativa", "tokens_entrada",
+                                                                          "tokens_saida", "duracao_s", "prompt_sha")}}
+                             for r in v.get("auditoria") or [] for c in r.get("detalhe") or []]}
+
+    def proveniencia(self, tarefa: str) -> dict:
+        cfg = cfg_da_tarefa(tarefa)
+        v = self.app.get_state(cfg).values or {}
+        if not v:
+            raise ErroHttp(404, "nao_encontrado", f"tarefa inexistente: {tarefa}")
+        return proveniencia.gerar(v, workspace(v))
+
+    def log(self, tarefa: str, desde: int) -> dict:
+        tarefa_valida(tarefa)
+        eventos = self.execucoes.eventos(tarefa, 0)
+        return {"eventos": eventos[desde:], "proximo": len(eventos)}
+
     def _rodar(self, tarefa, acao, entrada, cfg, antes=None) -> None:
         def trabalho(registrar):
-            if antes:
-                antes()
-            for evento in self.app.stream(entrada, cfg):
-                for no in evento:
-                    if not no.startswith("__"):
-                        registrar({"no": no, "em": time.time()})
+            try:
+                if antes:
+                    antes()
+                for evento in self.app.stream(entrada, cfg):
+                    for no in evento:
+                        if not no.startswith("__"):
+                            registrar({"no": no, "em": time.time()})
+            except auditoria.EscaladaHumana as e:
+                # o nó não terminou: o checkpoint fica antes dele; o estado marca a parada e `continuar` retoma
+                self.app.update_state(cfg, {"escalada": e.motivo})
+                return ("escalada", e.motivo)
         self.execucoes.iniciar(tarefa, acao, trabalho)
+
+
+def _inteiro(texto: str) -> int:
+    try:
+        return max(0, int(texto))
+    except ValueError:
+        return 0
 
 
 def criar_handler(servico: Servico, porta: int):
@@ -209,6 +339,12 @@ def criar_handler(servico: Servico, porta: int):
         (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}$"), lambda m, q: servico.detalhe(m["id"])),
         (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/arquivo$"),
          lambda m, q: servico.arquivo(m["id"], (q.get("caminho") or [""])[0])),
+        (re.compile(r"^/api/agentes$"), lambda m, q: servico.agentes_cfg()),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/mensagens$"), lambda m, q: servico.mensagens(m["id"])),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/auditoria$"), lambda m, q: servico.auditoria(m["id"])),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/proveniencia$"), lambda m, q: servico.proveniencia(m["id"])),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/log$"),
+         lambda m, q: servico.log(m["id"], _inteiro((q.get("desde") or ["0"])[0]))),
     ]
     rotas_post = [
         (re.compile(r"^/api/tarefas$"), lambda m, c: servico.iniciar(c)),
@@ -217,6 +353,9 @@ def criar_handler(servico: Servico, porta: int):
          lambda m, c: servico.aprovar(m["id"], "arquiteto", "business_spec_approved", "aprovar")),
         (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/aprovar-release$"),
          lambda m, c: servico.aprovar(m["id"], "release", "release_approved", "aprovar-release")),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/mensagem$"), lambda m, c: servico.mensagem(m["id"], c)),
+        (re.compile(rf"^/api/tarefas/{RE_TAREFA_ROTA}/continuar$"), lambda m, c: servico.continuar(m["id"], c)),
+        (re.compile(r"^/api/agentes$"), lambda m, c: servico.salvar_agentes(c)),
     ]
 
     class Handler(BaseHTTPRequestHandler):

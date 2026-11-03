@@ -97,7 +97,8 @@ def familias_do_papel(papel: str, state: Optional[dict] = None) -> tuple:
     os papéis; senão vem do perfil da Doutrina (núcleo sugerido pelo papel, já dentro do orçamento de tokens)."""
     if _explicito(state):
         return familias(state)
-    nomes = tuple(dict.fromkeys(str(n) for n in perfil(papel, state)["nucleo_sugerido"]))
+    excluidas = set((state or {}).get("doutrina_excluir") or ())  # famílias que a stack escolhida não usa (ex.: arquitetura .NET)
+    nomes = tuple(dict.fromkeys(str(n) for n in perfil(papel, state)["nucleo_sugerido"] if str(n) not in excluidas))
     if not nomes or not all(_RE_FAMILIA.match(n) for n in nomes):
         raise DoutrinaIndisponivel(f"perfil do papel '{papel}' sem famílias válidas")
     return nomes
@@ -217,7 +218,7 @@ def ids_do_papel(papel: str, state: Optional[dict] = None, prefixo: str = "") ->
     return [{"id": i, "nivel": n} for i, n in sorted(achadas.items(), key=lambda kv: (ordem.get(kv[1], 3), kv[0]))]
 
 
-def contexto(papel, state: Optional[dict] = None, com_nucleo: bool = True) -> str:
+def contexto(papel, state: Optional[dict] = None, com_nucleo: bool = True, orcamento_tokens: Optional[int] = None) -> str:
     """Bloco pronto para o prompt de sistema: núcleo (opcional) + regras do papel. `papel` pode ser uma tupla: o núcleo
     sai uma vez só (sem família repetida) e as regras vêm por papel."""
     papeis = _papeis(papel)
@@ -225,5 +226,19 @@ def contexto(papel, state: Optional[dict] = None, com_nucleo: bool = True) -> st
     if com_nucleo:
         partes.append("--- NÚCLEO ---\n" + nucleo(state, papeis))
     for p in papeis:
-        partes.append(f"--- REGRAS DO PAPEL ({p}) ---\n" + regras_do_papel(p, state))
+        partes.append(f"--- REGRAS DO PAPEL ({p}) ---\n" + regras_do_papel(p, state, orcamento_tokens=orcamento_tokens))
     return "\n".join(partes)
+
+
+def ids_existentes(state: Optional[dict] = None) -> frozenset:
+    """Todos os IDs de regra que a Doutrina tem (todas as famílias geradas), para conferir o que um modelo cita."""
+    raiz = raiz_doutrina(state)
+    achados = set()
+    for arq in sorted((raiz / "gerado").glob("*.json")):
+        if arq.name == "manifesto.json":
+            continue
+        dados = _json(raiz, arq.name)
+        for r in dados.get("regras", []) if isinstance(dados, dict) else []:
+            if isinstance(r, dict) and isinstance(r.get("id"), str):
+                achados.add(r["id"])
+    return frozenset(achados)

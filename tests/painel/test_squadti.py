@@ -102,7 +102,7 @@ def test_operador_aprova_spec_e_release(operador, api_falsa):
 
 
 # ---------------------------------------------------------------- privacidade
-@pytest.mark.parametrize("perfil", ["local", "hibrido", "nuvem"])
+@pytest.mark.parametrize("perfil", ["local", "hibrido", "nuvem", "auto"])
 def test_perfil_que_pode_sair_da_maquina_exige_consentimento(operador, api_falsa, perfil):
     r = operador.post("/api/squadti/tarefas", json={"tarefa": "T1", "briefing": "x", "perfil": perfil})
     assert r.status_code == 422 and r.json()["erro"]["codigo"] == "consentimento_nuvem"
@@ -145,7 +145,7 @@ def test_arquivo_repassa_o_caminho_como_parametro(operador, api_falsa):
 def test_sem_token_no_env_tudo_responde_503(tmp_path):
     with montar(tmp_path, ["TZ=UTC"], PAPEL_OPERADOR) as c:
         assert c.get("/api/squadti/estado").json() == {"configurado": False, "no_ar": False,
-                                                       "perfis": ["local-estrito", "local", "hibrido", "nuvem"]}
+                                                       "perfis": ["local-estrito", "local", "hibrido", "nuvem", "auto"]}
         for r in (c.get("/api/squadti/tarefas"), c.post("/api/squadti/tarefas/T1/aprovar", json={})):
             assert r.status_code == 503 and r.json()["erro"]["codigo"] == "indisponivel"
 

@@ -85,7 +85,10 @@ class Api(unittest.TestCase):
         self.assertEqual(self.req("POST", "/api/tarefas", bruto=b"{}", tipo="text/plain")[0], 415)
         self.assertEqual(self.req("POST", "/api/tarefas", bruto=b"{nao-json")[0], 400)
         self.assertEqual(self.req("POST", "/api/tarefas", bruto=b"[1]")[0], 422)
-        self.assertEqual(self.req("POST", "/api/tarefas", bruto=b"x" * (api.MAX_CORPO + 1))[0], 413)
+        try:
+            self.assertEqual(self.req("POST", "/api/tarefas", bruto=b"x" * (api.MAX_CORPO + 1))[0], 413)
+        except ConnectionError:
+            pass  # o servidor recusa pelo cabeçalho e fecha sem ler o corpo: o cliente pode ver o reset antes da resposta
 
     def test_rota_inexistente_e_tarefa_inexistente(self):
         self.assertEqual(self.req("GET", "/api/nada")[0], 404)

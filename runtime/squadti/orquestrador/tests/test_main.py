@@ -29,6 +29,10 @@ class Cli(unittest.TestCase):
         self.db = str(base / "estado.db")
         self.config = base / "stack.json"
         self.config.write_text(json.dumps({"project_name": "Demo", "stack": {"backend": {}}}), encoding="utf-8")
+        import os
+        antigo = os.getcwd()
+        os.chdir(base)  # o workspace é relativo ao diretório de trabalho: nada de sujar o repositório
+        self.addCleanup(os.chdir, antigo)
         self.ordem, self.apps = [], []
         patch_nos = mock.patch.multiple(graph, **dubles(self.ordem))
         patch_nos.start()

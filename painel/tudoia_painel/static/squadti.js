@@ -19,6 +19,7 @@ const SQUADTI_PERFIS = [
   ["local", "Local (o gateway pode reenviar à nuvem)", true],
   ["hibrido", "Híbrido (local primeiro, nuvem gratuita de apoio)", true],
   ["nuvem", "Nuvem gratuita", true],
+  ["auto", "Automático (tudoia-auto: o roteador decide por pedido entre local e nuvem)", true],
 ];
 let squadtiTimer = null;
 let squadtiAberta = null;

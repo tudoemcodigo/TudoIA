@@ -15,8 +15,10 @@ import json
 import os
 import sys
 
+import agentes
+import stacks
 from perfis import PERFIS
-from servico import ErroUso, cfg_da_tarefa, montar_entrada, situacao, tarefa_valida  # noqa: F401 (ErroUso e tarefa_valida são API do módulo)
+from servico import ErroUso, aprovar_release, aprovar_spec, cfg_da_tarefa, montar_entrada, situacao, tarefa_valida  # noqa: F401 (ErroUso e tarefa_valida são API do módulo)
 
 DB_PADRAO = "squad_state.db"
 CONFIG_PADRAO = "stack_config.example.json"
@@ -71,7 +73,7 @@ def _executar(app, entrada, cfg) -> None:
 
 PREFIXO_SITUACAO = {
     "aguardando_aprovacao_spec": "Pausada", "aguardando_aprovacao_release": "Pausada", "concluida": "Concluída",
-    "bloqueada": "Bloqueada", "escalada_qa": "Escalação humana", "escalada_revisao": "Escalação humana",
+    "bloqueada": "Bloqueada", "escalada_qa": "Escalação humana", "escalada_revisao": "Escalação humana", "escalada": "Escalação humana",
     "aguardando_respostas": "Aguardando o usuário",
 }
 
@@ -90,7 +92,7 @@ def cmd_iniciar(app, args) -> None:
     if app.get_state(cfg).values:
         raise ErroUso(f"a tarefa {args.tarefa} já existe; use `responder`, `aprovar` ou outro identificador")
     config = carregar_stack_config(args.config)
-    entrada = montar_entrada(args.tarefa, args.briefing, config)
+    entrada = montar_entrada(args.tarefa, args.briefing, config, stack=getattr(args, 'stack', None), cfg_agentes=agentes.carregar())
     print(f"[Iniciando Tarefa]: {args.tarefa} para o projeto {config['project_name']}")
     _executar(app, entrada, cfg)
 
@@ -110,7 +112,7 @@ def cmd_aprovar(app, args) -> None:
     snap = app.get_state(cfg)
     if "arquiteto" not in snap.next:
         raise ErroUso("nada a aprovar: a tarefa não está pausada antes do arquiteto")
-    app.update_state(cfg, {"business_spec_approved": True})
+    aprovar_spec(app, cfg)  # o sim grava o hash do texto aprovado
     _executar(app, None, cfg)
 
 
@@ -119,7 +121,7 @@ def cmd_aprovar_release(app, args) -> None:
     snap = app.get_state(cfg)
     if "release" not in snap.next:
         raise ErroUso("nada a aprovar: a tarefa não está pausada antes do release")
-    app.update_state(cfg, {"release_approved": True})
+    aprovar_release(app, cfg)  # o sim grava o hash do pacote aprovado
     _executar(app, None, cfg)
 
 
@@ -138,6 +140,7 @@ def main(argv=None) -> int:
         p.set_defaults(funcao=funcao)
         if nome == "iniciar":
             p.add_argument("--briefing", required=True)
+            p.add_argument("--stack", choices=sorted(stacks.STACKS), help="fixa a stack do backend (padrão: o CHEFE decide)")
             p.add_argument("--config", default=CONFIG_PADRAO)
             destino = p.add_mutually_exclusive_group()
             destino.add_argument("--perfil", choices=sorted(PERFIS),

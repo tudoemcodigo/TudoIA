@@ -27,7 +27,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 ALIAS = "squadti"
 DURACAO = "90d"
 MODELOS = ("tudoia-local-estrito", "tudoia-local-estrito-agente", "tudoia-local", "tudoia-local-agente",
-           "tudoia-hibrido", "tudoia-nuvem")
+           "tudoia-hibrido", "tudoia-nuvem", "tudoia-auto")
 TIMEOUT_S = 20.0
 TRANSPORTE = None   # seam dos testes: httpx.MockTransport
 

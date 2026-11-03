@@ -267,9 +267,14 @@ class Nos(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.n.modelo_da_tarefa({**base, "modelo": "tudoia-nuvem", "consentimento_nuvem": "sim"})
         self.assertEqual(self.n.modelo_da_tarefa({**base, "modelo": "tudoia-nuvem", "consentimento_nuvem": True}), "tudoia-nuvem")
-        # tudoia-auto não é perfil da Squad: nunca, nem com consentimento
+        # tudoia-auto (roteador) é perfil da Squad, mas pode sair da máquina: só com o consentimento explícito da tarefa
+        with self.assertRaises(RuntimeError) as cm:
+            self.n.modelo_da_tarefa({**base, "modelo": "tudoia-auto"})
+        self.assertIn("consentimento", str(cm.exception))
+        self.assertEqual(self.n.modelo_da_tarefa({**base, "modelo": "tudoia-auto", "consentimento_nuvem": True}), "tudoia-auto")
+        # modelo que não é perfil da Squad: nunca, nem com consentimento
         with self.assertRaises(RuntimeError):
-            self.n.modelo_da_tarefa({**base, "modelo": "tudoia-auto", "consentimento_nuvem": True})
+            self.n.modelo_da_tarefa({**base, "modelo": "tudoia-qualquer", "consentimento_nuvem": True})
 
     def test_janela_invalida_volta_ao_padrao_e_nunca_desliga_a_checagem(self):
         for ruim in ("abc", "", "-5", "0", "10", "999999999999"):

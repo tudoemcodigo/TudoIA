@@ -36,8 +36,8 @@ def test_gera_com_alias_tag_validade_e_so_os_perfis_da_squad(cenario):
     (caminho, auth, corpo), = pedidos
     assert caminho == "/key/generate" and auth == f"Bearer {MESTRE}"
     assert corpo["key_alias"] == "squadti" and corpo["metadata"] == {"tags": ["squadti"]} and corpo["duration"] == "90d"
-    assert "tudoia-max" not in corpo["models"] and "tudoia-auto" not in corpo["models"]
-    assert "tudoia-local-estrito" in corpo["models"]
+    assert "tudoia-max" not in corpo["models"]   # o pago nunca entra na chave da Squad
+    assert "tudoia-local-estrito" in corpo["models"] and "tudoia-auto" in corpo["models"]
     assert _env(raiz)["SQUADTI_API_KEY"] == GERADA and _env(raiz)["TZ"] == "UTC"
     assert list((raiz / "dados" / "backups" / "env").iterdir())   # backup do .env antes de gravar
 

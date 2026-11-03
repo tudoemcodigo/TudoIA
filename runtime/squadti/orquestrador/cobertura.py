@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from xml.etree import ElementTree
 
-PADROES = ("**/*.cobertura.xml", "**/cobertura.xml", "**/cobertura-coverage.xml", "**/coverage.cobertura.xml")
-IGNORAR = {"node_modules", ".git", "bin", "obj"}
+PADROES = ("**/*.cobertura.xml", "**/cobertura.xml", "**/cobertura-coverage.xml", "**/coverage.cobertura.xml", "**/coverage.xml")  # coverage.xml: pytest-cov
+IGNORAR = {"node_modules", ".git", "bin", "obj", ".venv", "venv"}
 MAX_BYTES = 30_000_000
 MAX_ARQUIVOS = 200
 _RE_COND = re.compile(r"\((\d+)/(\d+)\)")
