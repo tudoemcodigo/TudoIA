@@ -37,7 +37,7 @@ A navegação está em `painel/tudoia_painel/static/index.html`:
 | Plataforma | `hardware` | Uso de GPU, VRAM e fila do ComfyUI. Permite descarregar modelos da VRAM. |
 | Roteamento e modelos | `modelos` | Catálogo de modelos, testes de chave e modelos locais (Ollama). |
 | Roteamento e modelos | `roteador` | Grupos do roteador `tudoia-auto`, membros de cada grupo e geração do `config.yaml`. |
-| Agentes | `squadti` | Squad de agentes (SquadTI): inicia tarefas, responde à entrevista, aprova a especificação e o release, lê os arquivos gerados. Ver [squadti.md](squadti.md). |
+| Agentes | `squadti` | Squad de agentes (SquadTI): inicia tarefas, responde à entrevista, conversa com o CHEFE, acompanha o cockpit, configura os agentes, aprova a especificação e o release, lê os arquivos gerados. Ver [squadti.md](squadti.md). |
 | Governança e segurança | `governanca` | Regras, skills, MCP e instâncias dos clientes. Dispara o `sync`. |
 | Governança e segurança | `segredos` | Chaves do `.env`, mascaradas, com teste e edição. |
 | Governança e segurança | `limites` | Limites e consumo de tokens por provedor (`/api/limites-tokens`). |
@@ -128,7 +128,7 @@ o código para a assinatura de cada rota. A OpenAPI está desligada (`openapi_ur
 | `/api/provedores` | admin | Cadastro de provedor, descoberta de modelos (`/api/provedores/{id}/descobrir-modelos`) |
 | `/api/segredos` | admin | Listar (mascarado), gravar (`PUT /api/segredos/{chave}`), revelar, testar |
 | `/api/governanca` | admin (leitura: qualquer papel, exceto `/api/governanca/mcp`, só admin) | Estado, `sincronizar`, instâncias, regras, skills, MCP e edição de arquivos |
-| `/api/squadti` | operador (leitor vê) | Repasse validado à API local da Squad: tarefas, responder, aprovar, aprovar-release, arquivos. Ver [squadti.md](squadti.md) |
+| `/api/squadti` | operador (leitor vê; `/api/squadti/agentes` só altera o admin) | Repasse validado à API local da Squad: tarefas, responder, aprovar, aprovar-release, arquivos, agentes, mensagens ao CHEFE, auditoria, proveniência, log e continuar. Ver [squadti.md](squadti.md) |
 | `/api/estudio` | operador | Geração (imagem, vídeo, música, inpaint), otimização de prompt, galeria, cancelamento e upload |
 | `/api/chat/completions` | operador | Chat pelo LiteLLM (usa `LITELLM_MASTER_KEY`) |
 

@@ -48,11 +48,31 @@ Ligar e desligar: Sistema → Serviços → **SquadTI** (serviço Docker comum d
 
 ## Papéis e privacidade
 
-- **Leitor** vê tarefas e arquivos. **Operador** inicia, responde e aprova (inclusive o release, que só gera notas: nada é commitado, tagueado nem publicado).
+- **Leitor** vê tarefas, arquivos, conversa, auditoria e log. **Operador** inicia, responde, fala com o CHEFE, continua tarefa escalada e aprova (inclusive o release, que só gera notas: nada é commitado, tagueado nem publicado). Só o **admin** salva a configuração dos agentes.
 - O perfil padrão é `local-estrito` (nunca sai da máquina). `local`, `hibrido` e `nuvem` exigem o consentimento marcado na criação da tarefa, gravado no estado dela.
   `tudoia-max` (pago) não é oferecido, e a chave da Squad nem o lista.
 - Arquivos lidos pelo painel omitem linhas com padrão de segredo. Uma execução por vez (a API responde 409 se houver outra).
 - A API só escuta em `0.0.0.0` **dentro** do container; no host a porta é publicada só em `127.0.0.1`. O `Host` da requisição precisa ser `127.0.0.1:8790` ou `localhost:8790`.
+
+## Painel: abas Tarefas e Agentes
+
+O menu **SquadTI** do painel tem duas abas. O painel só repassa pedidos validados (`painel/tudoia_painel/rotas/squadti.py`); a Squad revalida tudo.
+
+| Rota do painel | Papel | Repassa para |
+|---|---|---|
+| `GET /api/squadti/agentes` | leitor | `GET /api/agentes` |
+| `POST /api/squadti/agentes` | **admin** | `POST /api/agentes` (modelo, temperatura, max tokens, revisão, validação em execução, orçamento) |
+| `GET /api/squadti/tarefas/{id}/mensagens`, `/auditoria`, `/proveniencia`, `/log?desde=N` | leitor | rota de mesmo nome da API |
+| `POST /api/squadti/tarefas/{id}/mensagem` `{texto}` (até 4000 caracteres) | operador | `POST .../mensagem`; é a única rota com timeout de 120 s (o CHEFE chama o modelo); as demais usam 15 s |
+| `POST /api/squadti/tarefas/{id}/continuar` `{orcamento?}` | operador | `POST .../continuar` |
+| `POST /api/squadti/tarefas` | operador | agora aceita `stack` (`dotnet`, `python`; ausente = o CHEFE decide) e `orcamento` |
+
+Erros 4xx da Squad passam com código e mensagem; 401 e 5xx viram 503 sem o corpo. Corpo com campo extra, id de tarefa fora de `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` ou valor fora da faixa são recusados no painel, sem chamar a Squad.
+
+- **Aba Agentes**: tabela por agente (perfil, temperatura, max tokens), modo de revisão, validação em execução (modo, carga, SLO p95/p99/erro, segundos do macaco de UI) e orçamento (vazio = sem limite). Perfil que pode sair da máquina mostra aviso e só vale em tarefa com consentimento de nuvem. Só o admin habilita o **Salvar**; a configuração é copiada para a tarefa ao iniciar. A tela só envia agente ou `validacao` que a API devolveu (ou que você alterou), para não quebrar contra uma Squad mais antiga.
+- **Cockpit** (detalhe da tarefa): trilha dos nós (pendente, rodando, ok, falhou) com duração, chamadas e tokens; barras de consumo do orçamento; log ao vivo (polling de 2 s só enquanto há execução, 500 linhas no máximo); banner de **escalada** com o motivo e **Continuar** (os três tetos vêm preenchidos; campo vazio vira sem limite, porque a Squad substitui o orçamento inteiro); download da proveniência em JSON; tabela de auditoria das chamadas.
+- **Conversa com o CHEFE**: histórico e envio (Enter envia). `/ajuste <texto>` registra instrução para as próximas fases; `status` resume. Com a tarefa aguardando a entrevista, a mensagem vale como resposta ao analista (a API faz isso e a tela avisa).
+- Todo texto vindo da API (briefing, mensagens, log) entra por `textContent`.
 
 ## Custo e telemetria
 

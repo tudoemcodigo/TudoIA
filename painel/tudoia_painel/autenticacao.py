@@ -54,6 +54,7 @@ PREFIXOS_SO_ADMIN = (
 # como instrução, e o sync grava tokens de MCP em claro nas pastas das instâncias: é poder de admin.
 PREFIXOS_ESCRITA_SO_ADMIN = (
     "/api/governanca",
+    "/api/squadti/agentes",   # modelo, temperatura e orçamento da Squad: decide o que pode sair da máquina e quanto gasta
 )
 METODOS_SEGUROS = {"GET", "HEAD", "OPTIONS"}
 IDADE_MAXIMA_SESSAO = 8 * 3600
