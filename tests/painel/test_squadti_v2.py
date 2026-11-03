@@ -12,7 +12,7 @@ from test_squadti import TOKEN, admin, api_falsa, leitor, montar, operador  # no
 CFG_OK = {
     "agentes": {"chefe": {"perfil": "local", "temperatura": 0.2, "max_tokens": 4000}, "backend": {"temperatura": 0.0}},
     "revisao": {"modo": "dupla"},
-    "validacao": {"modo": "auto", "carga": "escalado", "slo": {"p95_ms": 800, "p99_ms": 1500, "erro_pct": 1}, "macaco_s": 30},
+    "validacao": {"modo": "auto", "carga": "escalado", "slo": {"p95_ms": 800, "p99_ms": 1500, "erro_max": 0.01}, "ui_segundos": 30},
     "orcamento": {"tokens": 3_000_000, "tempo_s": None, "chamadas": 400},
 }
 

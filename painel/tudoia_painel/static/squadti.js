@@ -613,8 +613,8 @@ async function carregarAgentesSquadti() {
   vCarga.value = val.carga || "escalado";
   const vP95 = num(slo.p95_ms, { min: "1", step: "1", placeholder: "p95 (ms)", "aria-label": "SLO p95 em ms" });
   const vP99 = num(slo.p99_ms, { min: "1", step: "1", placeholder: "p99 (ms)", "aria-label": "SLO p99 em ms" });
-  const vErro = num(slo.erro_pct, { min: "0", max: "100", step: "0.1", placeholder: "erro (%)", "aria-label": "SLO de taxa de erro em %" });
-  const vMacaco = num(val.macaco_s, { min: "0", step: "1", placeholder: "segundos", "aria-label": "Segundos do macaco de UI" });
+  const vErro = num(slo.erro_max === undefined ? undefined : slo.erro_max * 100, { min: "0", max: "100", step: "0.1", placeholder: "erro (%)", "aria-label": "SLO de taxa de erro em %" });
+  const vMacaco = num(val.ui_segundos, { min: "10", max: "600", step: "1", placeholder: "segundos (10 a 600)", "aria-label": "Segundos do macaco de UI" });
   for (const campo of [vModo, vCarga, vP95, vP99, vErro, vMacaco]) { campo.addEventListener("input", marcar("validacao")); campo.addEventListener("change", marcar("validacao")); }
 
   const orc = cfg.orcamento || {};
@@ -647,7 +647,10 @@ async function carregarAgentesSquadti() {
         corpo = { agentes, revisao: { modo: revisao.value }, orcamento };
         if (cfg.validacao !== undefined || tocados.has("validacao")) {
           const dec = (campo, rotulo) => { const b = campo.value.trim(); if (!b) return null; const n = Number(b); if (!(n >= 0)) throw new Error(`${rotulo}: número positivo`); return n; };
-          corpo.validacao = { modo: vModo.value, carga: vCarga.value, slo: { p95_ms: dec(vP95, "p95"), p99_ms: dec(vP99, "p99"), erro_pct: dec(vErro, "erro %") }, macaco_s: dec(vMacaco, "macaco de UI") };
+          const slo = {};  // campo vazio = não enviar (a Squad usa o padrão); null seria recusado
+          for (const [chave, campo, rotulo, f] of [["p95_ms", vP95, "p95", 1], ["p99_ms", vP99, "p99", 1], ["erro_max", vErro, "erro %", 0.01]]) { const n = dec(campo, rotulo); if (n !== null) slo[chave] = n * f; }
+          corpo.validacao = { modo: vModo.value, carga: vCarga.value, slo };
+          const ui = dec(vMacaco, "macaco de UI"); if (ui !== null) corpo.validacao.ui_segundos = Math.round(ui);
         }
       } catch (e) { toast(e.message, "warning"); return; }
       salvar.disabled = true;
