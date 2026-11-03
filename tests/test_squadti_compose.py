@@ -35,3 +35,14 @@ def test_feed_publico_e_opcional_e_so_https():
     assert "TUDOIA_NUGET_FEED_URL=${TUDOIA_NUGET_FEED_URL:-}" in s["environment"]
     entrypoint = (RAIZ / "runtime" / "squadti" / "entrypoint.sh").read_text(encoding="utf-8")
     assert "https://*" in entrypoint and "tec-publico" in entrypoint
+
+
+def test_versao_da_doutrina_e_uma_so_no_pacote_no_dockerfile_e_no_compose():
+    """O pin de governanca/doutrina.json manda: o instantâneo do pacote, a imagem da SquadTI e o compose usam o mesmo commit."""
+    import json
+    import re
+
+    sha = json.loads((RAIZ / "governanca" / "doutrina.json").read_text(encoding="utf-8"))["sha"]
+    dockerfile = (RAIZ / "runtime" / "squadti" / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"^ARG DOUTRINA_SHA=(\w+)$", dockerfile, re.M).group(1) == sha
+    assert f"DOUTRINA_SHA: ${{SQUADTI_DOUTRINA_SHA:-{sha}}}" in COMPOSE.read_text(encoding="utf-8")

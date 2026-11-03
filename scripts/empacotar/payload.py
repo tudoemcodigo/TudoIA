@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tarfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,7 +44,7 @@ def _excluido(rel: str) -> bool:
 
 
 # Variáveis que `tudoia segredos` gera sozinho na instalação: o MCP que só depende delas pode vir ligado.
-GERADAS_PELO_INSTALADOR = {"CEREBRO_TOKEN_ESTATICO"}
+GERADAS_PELO_INSTALADOR = {"CEREBRO_TOKEN_ESTATICO", "DOUTRINA_TEC", "TUDOIA_PYTHON"}
 _VARIAVEL_OBRIGATORIA = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 
 
@@ -89,11 +91,144 @@ def _commit(raiz: Path) -> str:
         return ""
 
 
-def gerar(raiz: Path = RAIZ, saida: Path = SAIDA) -> dict:
+# ───────────────────────────── Doutrina TEC embutida
+# O pacote leva um instantâneo da Doutrina em `doutrina/`, na versão (SHA) fixada em governanca/doutrina.json. Sem ele a skill
+# `doutrina-tec`, o MCP `doutrina-tec` e a SquadTI falham fechado (ECO-CON-01). O que entra: o que o consumo por IA lê.
+PASTA_DOUTRINA = "doutrina"
+DOUTRINA_INCLUIR = ("gerado", "familias", "INDEX.md", "llms.txt", "VERSION", "LICENSE", "NOTICE", "tools/mcp_doutrina.py")
+_RE_SHA = re.compile(r"[0-9a-f]{40}")
+_RE_REPO = re.compile(r"(?!\.+/)[A-Za-z0-9_.\-]+/(?!\.+$)[A-Za-z0-9_.\-]+")   # dono/nome; "." e ".." não são nome
+_TEXTO_DOUTRINA = (".md", ".json", ".txt", ".py")
+
+
+class ErroDoutrina(RuntimeError):
+    """Doutrina ausente, fora da versão fixada ou incompleta: o pacote não deve ser gerado."""
+
+
+def ler_pin(raiz: Path = RAIZ) -> dict:
+    """governanca/doutrina.json: repositório e SHA completo. SHA curto ou ref móvel (main) não vale: o pacote precisa ser reprodutível."""
+    try:
+        pin = json.loads((raiz / "governanca" / "doutrina.json").read_text(encoding="utf-8"))
+        sha, repo = pin["sha"], pin["repositorio"]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise ErroDoutrina(f"governanca/doutrina.json ausente ou inválido: {e}") from e
+    if not (isinstance(sha, str) and _RE_SHA.fullmatch(sha) and isinstance(repo, str) and _RE_REPO.fullmatch(repo)):
+        raise ErroDoutrina("governanca/doutrina.json: use 'repositorio' (dono/nome) e 'sha' com os 40 caracteres do commit")
+    return {"repositorio": repo, "sha": sha}
+
+
+# Onde o SHA de governanca/doutrina.json é repetido porque o Docker não lê JSON. O JSON manda; estes são derivados dele.
+PIN_DERIVADOS = (("runtime/squadti/Dockerfile", re.compile(r"(?m)^(ARG DOUTRINA_SHA=)\w+(?=\r?$)")),
+                 ("runtime/docker-compose.yml", re.compile(r"(DOUTRINA_SHA: \$\{SQUADTI_DOUTRINA_SHA:-)\w+(\})")))
+
+
+def ultimo_commit(repo: str, executar=subprocess.run) -> str:
+    """SHA completo do commit mais novo do ramo padrão de `repo` no GitHub (git ls-remote). Falha fechado: nunca devolve ref móvel."""
+    if not _RE_REPO.fullmatch(repo):
+        raise ErroDoutrina(f"repositório inválido: {repo!r}")
+    try:
+        r = executar(["git", "ls-remote", f"https://github.com/{repo}.git", "HEAD"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise ErroDoutrina(f"não consegui consultar {repo} no GitHub: {e}") from e
+    sha = (r.stdout.split() or [""])[0]
+    if r.returncode != 0 or not _RE_SHA.fullmatch(sha):
+        raise ErroDoutrina(f"não consegui obter o commit mais novo de {repo}: {(r.stderr or r.stdout).strip()[:200]}")
+    return sha
+
+
+def atualizar_pin(raiz: Path = RAIZ, executar=subprocess.run) -> tuple[str, str]:
+    """Busca o commit mais novo da Doutrina, grava em governanca/doutrina.json e devolve (sha_antigo, sha_novo)."""
+    pin = ler_pin(raiz)
+    novo = ultimo_commit(pin["repositorio"], executar)
+    if novo != pin["sha"]:
+        texto = json.dumps({"repositorio": pin["repositorio"], "sha": novo}, indent=2) + chr(10)
+        (raiz / "governanca" / "doutrina.json").write_bytes(texto.encode("utf-8"))
+    return pin["sha"], novo
+
+
+def buscar_no_clone(clone: Path, sha: str, executar=subprocess.run) -> None:
+    """Garante que o commit está no clone local (git fetch), para o empacotador lê-lo do histórico."""
+    try:
+        r = executar(["git", "-C", str(clone), "fetch", "-q", "origin"], capture_output=True, text=True, timeout=300)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise ErroDoutrina(f"não consegui rodar git fetch em {clone}: {e}") from e
+    if r.returncode != 0:
+        raise ErroDoutrina(f"git fetch falhou em {clone}: {(r.stderr or '').strip()[:200]}")
+
+
+def sincronizar_pin(raiz: Path = RAIZ, aplicar: bool = False) -> list[str]:
+    """Arquivos cujo SHA da Doutrina difere do JSON (e, com `aplicar`, já corrigidos). Alvo sem exatamente uma ocorrência falha."""
+    sha = ler_pin(raiz)["sha"]
+    divergentes: list[str] = []
+    gravacoes: list[tuple[Path, bytes]] = []   # só grava depois de validar todos os alvos: nada fica pela metade
+    for rel, padrao in PIN_DERIVADOS:
+        caminho = raiz / rel
+        try:
+            texto = caminho.read_bytes().decode("utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            raise ErroDoutrina(f"{rel}: não consegui ler: {e}") from e
+        achados = padrao.findall(texto)
+        if len(achados) != 1:
+            raise ErroDoutrina(f"{rel}: esperava exatamente uma ocorrência do SHA da Doutrina, achei {len(achados)}")
+        novo = padrao.sub(lambda m: m.group(1) + sha + (m.group(2) if m.lastindex == 2 else ""), texto)
+        if novo != texto:
+            divergentes.append(rel)
+            gravacoes.append((caminho, novo.encode("utf-8")))   # bytes: mantém o fim de linha do arquivo
+    if aplicar:
+        for caminho, dados in gravacoes:
+            caminho.write_bytes(dados)
+    return divergentes
+
+
+def instantaneo_doutrina(clone: Path, sha: str) -> dict[str, bytes]:
+    """Arquivos da Doutrina no commit `sha`, lidos do histórico git do clone (não da pasta de trabalho: edição local não entra)."""
+    cmd = ["git", "-C", str(clone), "archive", "--format=tar", sha, "--", *DOUTRINA_INCLUIR]
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise ErroDoutrina(f"não consegui rodar o git em {clone}: {e}") from e
+    if r.returncode != 0:
+        raise ErroDoutrina(f"não consegui ler {sha[:12]} de {clone} (o commit existe? rode `git fetch` lá; os caminhos esperados existem nele?): "
+                            f"{r.stderr.decode(errors='replace').strip()[:200]}")
+    arquivos: dict[str, bytes] = {}
+    with tarfile.open(fileobj=io.BytesIO(r.stdout)) as t:
+        for m in t.getmembers():
+            if not m.isfile():
+                continue
+            if m.name.startswith(("/", "../")) or ".." in m.name.split("/"):
+                raise ErroDoutrina(f"caminho perigoso no instantâneo da Doutrina: {m.name!r}")
+            dados = t.extractfile(m).read()
+            if m.name.endswith(_TEXTO_DOUTRINA) or "." not in m.name.rsplit("/", 1)[-1]:
+                dados = dados.replace(b"\r\n", b"\n")
+            arquivos[m.name] = dados
+    _conferir_doutrina(arquivos)
+    return arquivos
+
+
+def _conferir_doutrina(arquivos: dict[str, bytes]) -> dict:
+    """Manifesto legível e todos os arquivos que ele lista presentes: instantâneo incompleto reprova o pacote."""
+    try:
+        man = json.loads(arquivos["gerado/manifesto.json"])
+        listados, versao, hash_ = man["arquivos"], man["versao"], man["hash"]
+    except (KeyError, ValueError, TypeError) as e:
+        raise ErroDoutrina(f"instantâneo da Doutrina sem gerado/manifesto.json válido: {e!r}") from e
+    faltam = [a for a in listados if a not in arquivos]
+    if faltam or "tools/mcp_doutrina.py" not in arquivos:
+        raise ErroDoutrina(f"instantâneo da Doutrina incompleto: faltam {(faltam + ['tools/mcp_doutrina.py'])[:5]}")
+    return {"versao": versao, "hash": hash_}
+
+
+def gerar(raiz: Path = RAIZ, saida: Path = SAIDA, doutrina: dict[str, bytes] | None = None, pin: dict | None = None) -> dict:
     arquivos = listar_arquivos(raiz)
     saida.mkdir(parents=True, exist_ok=True)
     zip_path = saida / "payload.zip"
+    info_doutrina = {**(pin or {}), **_conferir_doutrina(doutrina)} if doutrina else None
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for rel, dados in sorted((doutrina or {}).items()):
+            info = zipfile.ZipInfo(f"{PASTA_DOUTRINA}/{rel}", TIMESTAMP_FIXO)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            z.writestr(info, dados)
         for rel in arquivos:
             dados = (raiz / rel).read_bytes()
             if rel == "governanca/governanca.json":
@@ -108,7 +243,9 @@ def gerar(raiz: Path = RAIZ, saida: Path = SAIDA) -> dict:
             z.writestr(info, dados)
     h = hashlib.sha256(zip_path.read_bytes()).hexdigest()
     manifesto = {"versao": _versao(raiz), "commit": _commit(raiz), "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                 "arquivos": len(arquivos), "sha256": h}
+                 "arquivos": len(arquivos) + len(doutrina or {}), "sha256": h}
+    if info_doutrina:
+        manifesto["doutrina"] = info_doutrina
     (saida / "payload.manifest.json").write_text(json.dumps(manifesto, indent=2), encoding="utf-8")
     return manifesto
 
@@ -156,7 +293,7 @@ def verificar_conteudo(zip_path: Path) -> list[str]:
     with zipfile.ZipFile(zip_path) as z:
         for info in z.infolist():
             nome = info.filename
-            if _excluido(nome):
+            if _excluido(nome) and not nome.startswith(PASTA_DOUTRINA + "/"):   # familias/dados/ da Doutrina não é a pasta de dados
                 achados.append(f"{nome}: arquivo que nunca deveria entrar no pacote")
                 continue
             if Path(nome).suffix.lower() not in TEXTO or info.file_size > 3 * 1024 * 1024:
@@ -174,9 +311,42 @@ def verificar_conteudo(zip_path: Path) -> list[str]:
     return achados
 
 
-def principal() -> int:
-    m = gerar()
-    print(f"payload: {m['arquivos']} arquivos, sha256 {m['sha256'][:16]}…, versão {m['versao']} {m['commit']}")
+def principal(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv in (["--sincronizar-pin"], ["--derivar-pin"]):
+        # --sincronizar-pin: busca o commit MAIS NOVO da Doutrina, grava no JSON e propaga. --derivar-pin: só propaga o JSON (sem rede).
+        try:
+            if argv == ["--sincronizar-pin"]:
+                antigo, novo = atualizar_pin()
+                clone = os.environ.get("DOUTRINA_TEC")
+                if clone:
+                    buscar_no_clone(Path(clone), novo)
+                print(f"Doutrina: {antigo[:12]} -> {novo[:12]}" if antigo != novo else f"Doutrina: já no commit mais novo ({novo[:12]})")
+            mudou = sincronizar_pin(aplicar=True)
+        except ErroDoutrina as e:
+            print(f"ERRO: {e}", file=sys.stderr)
+            return 1
+        print("SHA da Doutrina gravado em: " + (", ".join(mudou) or "nenhum arquivo (já estava em dia)"))
+        return 0
+    if argv:
+        print("uso: python -m scripts.empacotar.payload [--sincronizar-pin | --derivar-pin]", file=sys.stderr)
+        return 2
+    try:
+        pin = ler_pin()
+        divergentes = sincronizar_pin()
+        if divergentes:
+            raise ErroDoutrina(f"o SHA de governanca/doutrina.json não está em {', '.join(divergentes)}: "
+                               "rode `python -m scripts.empacotar.payload --derivar-pin` (ou --sincronizar-pin para buscar a Doutrina mais nova)")
+        clone = os.environ.get("DOUTRINA_TEC")
+        if not clone:
+            raise ErroDoutrina("defina DOUTRINA_TEC com a pasta do clone da Doutrina (o commit fixado em governanca/doutrina.json precisa estar nele)")
+        doutrina = instantaneo_doutrina(Path(clone), pin["sha"])
+    except ErroDoutrina as e:
+        print(f"ERRO: {e}", file=sys.stderr)
+        return 1
+    m = gerar(doutrina=doutrina, pin=pin)
+    print(f"payload: {m['arquivos']} arquivos, sha256 {m['sha256'][:16]}…, versão {m['versao']} {m['commit']}, "
+          f"Doutrina {m['doutrina']['versao']} @ {pin['sha'][:12]}")
     achados = verificar_conteudo(SAIDA / "payload.zip")
     for a in achados:
         print("ACHADO:", a, file=sys.stderr)

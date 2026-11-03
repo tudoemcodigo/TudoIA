@@ -40,7 +40,7 @@ Por isso o componente é **opcional** no instalador (desmarcado por padrão).
 | `TUDOIA_NUGET_FEED_URL` | Feed NuGet **público** (`https://...`, sem credencial) das bibliotecas TEC.*; entra como fonte `tec-publico` |
 | `TUDOIA_NUGET_USER`, `TUDOIA_NUGET_PAT` | Opcional: feed privado `tec-interno` (GitHub Packages exige PAT `read:packages`). Só por ambiente; o arquivo do NuGet guarda a referência, não o segredo |
 | `SQUADTI_TEMPLATE_DIR` | Opcional: pasta do TemplateTEC (padrão `dados\squadti-template`), montada só leitura em `/template` para o `dotnet new tec-project` |
-| `SQUADTI_DOUTRINA_SHA` | Opcional: versão da Doutrina embutida na imagem (padrão fixado no `Dockerfile`); trocar exige reconstruir |
+| `SQUADTI_DOUTRINA_SHA` | Opcional: versão da Doutrina embutida na imagem (padrão = `governanca/doutrina.json`, repetido no `Dockerfile` e no compose); trocar exige reconstruir |
 | `SQUADTI_MEMORIA`, `SQUADTI_CPUS`, `SQUADTI_TIMEOUT_S`, `SQUADTI_CONTEXTO_TOKENS` | Opcionais: tetos do container, prazo por chamada ao modelo e janela de contexto |
 | `TUDOIA_SQUADTI_URL` | Opcional: só `http://127.0.0.1` ou `http://localhost` (padrão `:8790`) |
 

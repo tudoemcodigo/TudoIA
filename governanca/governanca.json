@@ -38,7 +38,8 @@
     "fetch",
     "vercel",
     "microsoft-learn",
-    "serena"
+    "serena",
+    "doutrina-tec"
   ],
   "workspaces": [],
   "clientes": [
@@ -49,5 +50,62 @@
     "opencode",
     "aider"
   ],
-  "instancias": []
+  "instancias": [
+    {
+      "id": "claude-padrao",
+      "cliente": "claude",
+      "nome": "Claude Code (Padrão)",
+      "caminho": "~/.claude",
+      "config_json": "~/.claude.json",
+      "ativo": true
+    },
+    {
+      "id": "claude-dimep",
+      "cliente": "claude",
+      "nome": "Claude Code (DIMEP)",
+      "caminho": "~/.claude-dimep",
+      "config_json": "~/.claude-dimep/.claude.json",
+      "ativo": true
+    },
+    {
+      "id": "antigravity",
+      "cliente": "antigravity",
+      "nome": "Google Antigravity CLI",
+      "caminho": "~/.gemini",
+      "config_json": "~/.gemini/config/mcp_config.json",
+      "ativo": true
+    },
+    {
+      "id": "claude-server-commander",
+      "cliente": "claude",
+      "nome": "Claude Code (SERVER-COMMANDER)",
+      "caminho": "~/.claude-server-commander",
+      "config_json": "~/.claude-server-commander/.claude.json",
+      "ativo": true
+    },
+    {
+      "id": "codex",
+      "cliente": "codex",
+      "nome": "Codex CLI",
+      "caminho": "~/.codex",
+      "config_json": null,
+      "ativo": true
+    },
+    {
+      "id": "opencode",
+      "cliente": "opencode",
+      "nome": "OpenCode CLI",
+      "caminho": "~/.config/opencode",
+      "config_json": "~/.config/opencode/opencode.json",
+      "ativo": true
+    },
+    {
+      "id": "aider",
+      "cliente": "aider",
+      "nome": "Aider CLI",
+      "caminho": "~",
+      "config_json": "~/.aider.conf.yml",
+      "ativo": true
+    }
+  ]
 }
