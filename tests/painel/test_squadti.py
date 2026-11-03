@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from itsdangerous import TimestampSigner
 
 from tudoia_painel.app import criar_app
-from tudoia_painel.autenticacao import PAPEL_LEITOR, PAPEL_OPERADOR, ConfigAuth
+from tudoia_painel.autenticacao import PAPEL_ADMIN, PAPEL_LEITOR, PAPEL_OPERADOR, ConfigAuth
 from tudoia_painel.rotas import squadti
 
 SEGREDO = "t" * 48
@@ -30,6 +30,7 @@ class ApiFalsa:
 
     def __init__(self):
         self.pedidos = []
+        self.timeouts = []
         self.resposta = (200, {"ok": True})
         self.url = "http://127.0.0.1:8790"
 
@@ -37,6 +38,7 @@ class ApiFalsa:
         corpo = json.loads(request.content) if request.content else None
         self.pedidos.append({"metodo": request.method, "caminho": request.url.raw_path.decode(),
                              "auth": request.headers.get("authorization"), "corpo": corpo})
+        self.timeouts.append(request.extensions.get("timeout", {}).get("read"))
         status, dados = self.resposta
         return httpx.Response(status, json=dados)
 
@@ -67,6 +69,12 @@ def operador(tmp_path, api_falsa):
 @pytest.fixture
 def leitor(tmp_path, api_falsa):
     with montar(tmp_path, [f"TUDOIA_SQUADTI_TOKEN={TOKEN}"], PAPEL_LEITOR) as c:
+        yield c
+
+
+@pytest.fixture
+def admin(tmp_path, api_falsa):
+    with montar(tmp_path, [f"TUDOIA_SQUADTI_TOKEN={TOKEN}"], PAPEL_ADMIN) as c:
         yield c
 
 
