@@ -1,28 +1,14 @@
 <#
 .SYNOPSIS  Liga o TudoIA: Docker Desktop, Ollama, ComfyUI, os servicos Docker e o painel. Abre o painel no navegador.
 .NOTES     Nao mexe nos clientes de IA (para isso, use tudoia.ps1 sync). Seguro de rodar com tudo ja ligado.
+           -ComSquadti liga tambem a API da Squad (menu SquadTI do painel), se o .env estiver configurado.
 #>
-param([switch]$SemNavegador)
+param([switch]$SemNavegador, [switch]$ComSquadti)
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path $PSScriptRoot -Parent
 $arquivoEnv = Join-Path $raiz '.env'
 
-function ValorEnv([string]$chave, [string]$padrao = '') {
-    if (-not (Test-Path $arquivoEnv)) { return $padrao }
-    $linha = Select-String -Path $arquivoEnv -Pattern "^$chave=(.+)$" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($linha) { return $linha.Matches[0].Groups[1].Value.Trim() }
-    return $padrao
-}
-function PortaAberta([int]$porta) {
-    if (Get-NetTCPConnection -State Listen -LocalPort $porta -ErrorAction SilentlyContinue) { return $true }
-    $tcp = New-Object System.Net.Sockets.TcpClient
-    try { $tcp.Connect('127.0.0.1', $porta); return $true } catch { return $false } finally { $tcp.Dispose() }
-}
-function Esperar([scriptblock]$condicao, [int]$segundos) {
-    $fim = (Get-Date).AddSeconds($segundos)
-    while ((Get-Date) -lt $fim) { if (& $condicao) { return $true }; Start-Sleep -Seconds 3 }
-    return $false
-}
+. "$PSScriptRoot\_comum.ps1"
 
 # 1. Docker Desktop
 docker info *> $null
@@ -60,14 +46,10 @@ docker compose -p $projeto -f (Join-Path $raiz 'runtime\docker-compose.yml') --e
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up falhou.' }
 
 # 4. Painel
-if (-not (PortaAberta 3100)) {
-    $python = Join-Path $raiz '.venv\Scripts\python.exe'
-    $env:PYTHONPATH = "$raiz;$raiz\painel"
-    $logs = Join-Path $raiz 'dados\logs'
-    New-Item -ItemType Directory -Force $logs | Out-Null
-    Start-Process $python -ArgumentList '-m', 'tudoia_painel', 'painel' -WorkingDirectory $raiz -WindowStyle Hidden `
-        -RedirectStandardOutput (Join-Path $logs 'painel.out.log') -RedirectStandardError (Join-Path $logs 'painel.err.log')
-    if (-not (Esperar { PortaAberta 3100 } 90)) { throw 'O painel nao respondeu na porta 3100.' }
-}
+if (-not (IniciarPainel)) { throw 'O painel nao respondeu na porta 3100.' }
+
+# 5. API da Squad (opcional)
+if ($ComSquadti -and -not (IniciarSquadti)) { Write-Warning 'A API da SquadTI nao subiu; veja dados\logs\squadti.err.log.' }
+
 if (-not $SemNavegador) { Start-Process 'http://127.0.0.1:3100/app/' }
 exit 0
