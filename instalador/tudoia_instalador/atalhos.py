@@ -13,6 +13,7 @@ ATALHOS = (
     ("TudoIA - Painel", "painel.ps1", "", True),
     ("TudoIA - Iniciar", "iniciar.ps1", "", True),
     ("TudoIA - Parar", "parar.ps1", "", True),
+    ("TudoIA - Reiniciar painel", "reiniciar.ps1", "", True),
     ("TudoIA - Desinstalar", "desinstalar.ps1", "", False),
 )
 
